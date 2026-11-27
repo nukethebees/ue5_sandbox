@@ -70,7 +70,7 @@ void UPauseMenuWidget::NativeConstruct() {
 
 void UPauseMenuWidget::prepare_for_open() {
     options_modal_visible_ = false;
-    options_widget->select_page(EMenuPage::Audio, {});
+    options_widget->select_page(MainMenuItem::Audio, {});
     set_navigation_enabled(true);
 }
 
@@ -131,7 +131,7 @@ void UPauseMenuWidget::present(host::PauseCommand command) {
             break;
         case ShowPage:
             options_widget->select_page(
-                command.item == host::PauseMenuItem::Audio ? EMenuPage::Audio : EMenuPage::Controls,
+                command.item == host::PauseMenuItem::Audio ? MainMenuItem::Audio : MainMenuItem::Controls,
                 FSimpleDelegate::CreateUObject(options_widget, &UOptionsWidget::focus_content));
             set_navigation_enabled(!options_modal_visible_);
             break;
@@ -163,8 +163,8 @@ void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
                                quit_button}) {
         if (IsValid(button)) {
             auto const page{options_widget->page()};
-            button->SetIsEnabled(enabled && !(button == audio_button && page == EMenuPage::Audio) &&
-                                 !(button == controls_button && page == EMenuPage::Controls));
+            button->SetIsEnabled(enabled && !(button == audio_button && page == MainMenuItem::Audio) &&
+                                 !(button == controls_button && page == MainMenuItem::Controls));
         }
     }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/ui/main_menu/MenuPage.h"
+#include <ioj/input/dispatch/player_menu.h>
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
@@ -19,10 +19,10 @@ class SMainMenuView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SMainMenuView)
         : _Style(nullptr)
-        , _Page(EMenuPage::SelectLevel)
+        , _Page(MainMenuItem::SelectLevel)
         , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ATTRIBUTE(EMenuPage, Page)
+    SLATE_ATTRIBUTE(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_NAMED_SLOT(FArguments, LevelContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
@@ -50,11 +50,11 @@ class SMainMenuView final : public SCompoundWidget {
     auto build_footer() const -> TSharedRef<SWidget>;
     void add_section(TSharedRef<SVerticalBox> const& navigation, FText text) const;
     void add_page(TSharedRef<SVerticalBox> const& navigation,
-                  EMenuPage page,
+                  MainMenuItem page,
                   FText text,
                   EGameUiIcon icon);
     auto activate_item(MainMenuItem item) -> FReply;
-    auto page_content_index(EMenuPage page) const -> int32;
+    auto page_content_index(MainMenuItem page) const -> int32;
     auto navigation_has_focus() const -> bool;
 
     FGameUiStyle const* style_{};
@@ -65,7 +65,7 @@ class SMainMenuView final : public SCompoundWidget {
     TSharedPtr<SHiveNavigationButton> quit_button_{};
     TSharedPtr<SWidgetSwitcher> content_switcher_{};
     TSharedPtr<SBox> level_content_{};
-    TAttribute<EMenuPage> page_;
+    TAttribute<MainMenuItem> page_;
     bool navigation_enabled_{true};
     bool focus_content_next_{};
 };

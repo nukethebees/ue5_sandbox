@@ -100,7 +100,7 @@ auto UOptionsWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
-void UOptionsWidget::select_page(EMenuPage page, FSimpleDelegate shown) {
+void UOptionsWidget::select_page(MainMenuItem page, FSimpleDelegate shown) {
     if (page == page_) {
         shown.ExecuteIfBound();
         return;
@@ -110,7 +110,7 @@ void UOptionsWidget::select_page(EMenuPage page, FSimpleDelegate shown) {
         FSimpleDelegate::CreateUObject(this, &ThisClass::open_page, page, MoveTemp(shown)));
 }
 
-void UOptionsWidget::open_page(EMenuPage page, FSimpleDelegate shown) {
+void UOptionsWidget::open_page(MainMenuItem page, FSimpleDelegate shown) {
     page_ = page;
     if (auto category{settings_category(page)}) {
         settings_->load(GetOwningLocalPlayer());
@@ -194,9 +194,9 @@ void UOptionsWidget::handle_apply() {
 
 void UOptionsWidget::handle_reset() {
     auto const category{settings_category(page_)};
-    if (IsValid(settings_) && category.IsSet()) {
-        settings_->reset_category(category.GetValue());
-        if (category.GetValue() == GameSettingCategory::Controls && options_view_.IsValid()) {
+    if (IsValid(settings_) && category.has_value()) {
+        settings_->reset_category(*category);
+        if (*category == GameSettingCategory::Controls && options_view_.IsValid()) {
             options_view_->refresh_controls();
         }
     }

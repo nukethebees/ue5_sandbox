@@ -9,7 +9,6 @@
 #include "MainMenuWidget.generated.h"
 
 namespace ioj {
-enum class EMenuPage : uint8;
 class SMainMenuView;
 class UGameUiStyleSubsystem;
 class ULevelSelectWidget;
@@ -38,8 +37,8 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     auto handle_back() -> bool override;
   private:
     void create_content_widgets();
-    void request_page(EMenuPage page);
-    void show_page(EMenuPage page);
+    void request_page(MainMenuItem page);
+    void show_page(MainMenuItem page);
     void request_quit();
     void quit_game();
     void focus_active_content();

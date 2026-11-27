@@ -40,12 +40,12 @@ class SGameOptionsView final : public SCompoundWidget {
         : _Settings(nullptr)
         , _Capabilities(nullptr)
         , _Style(nullptr)
-        , _Page(EMenuPage::SelectLevel)
+        , _Page(MainMenuItem::SelectLevel)
         , _Audio() {}
     SLATE_ARGUMENT(UOptionsDraft*, Settings)
     SLATE_ARGUMENT(SystemCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ATTRIBUTE(EMenuPage, Page)
+    SLATE_ATTRIBUTE(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FSimpleDelegate, OnApply)
     SLATE_EVENT(FSimpleDelegate, OnReset)
@@ -140,7 +140,7 @@ class SGameOptionsView final : public SCompoundWidget {
     SystemCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
-    TAttribute<EMenuPage> page_;
+    TAttribute<MainMenuItem> page_;
 
     FSimpleDelegate on_apply_{};
     FSimpleDelegate on_reset_{};

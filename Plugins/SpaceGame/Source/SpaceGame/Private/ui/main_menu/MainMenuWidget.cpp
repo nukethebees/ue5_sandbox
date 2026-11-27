@@ -112,10 +112,10 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
 
 auto UMainMenuWidget::handle_back() -> bool {
     if (page_modal_visible_) {
-        if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&
+        if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::DataArchive &&
             IsValid(save_game_viewer_)) {
             save_game_viewer_->request_back();
-        } else if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
+        } else if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
             options_widget_->request_back();
         }
 
@@ -191,10 +191,10 @@ void UMainMenuWidget::activate_item(MainMenuItem item) {
     if (item == MainMenuItem::Quit) {
         request_quit();
     } else {
-        request_page(static_cast<EMenuPage>(item));
+        request_page(item);
     }
 }
-void UMainMenuWidget::request_page(EMenuPage const page) {
+void UMainMenuWidget::request_page(MainMenuItem const page) {
     if (page_modal_visible_ || !IsValid(options_widget_)) {
         return;
     }
@@ -202,12 +202,12 @@ void UMainMenuWidget::request_page(EMenuPage const page) {
                                  FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
 }
 
-void UMainMenuWidget::show_page(EMenuPage const page) {
+void UMainMenuWidget::show_page(MainMenuItem const page) {
     if (view_.IsValid()) {
         view_->refresh_page();
     }
 
-    if (page == EMenuPage::SelectLevel && IsValid(level_select_widget_)) {
+    if (page == MainMenuItem::SelectLevel && IsValid(level_select_widget_)) {
         level_select_widget_->refresh();
     }
 }
@@ -217,7 +217,7 @@ void UMainMenuWidget::request_quit() {
         return;
     }
 
-    if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
+    if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
         options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
         return;
     }
@@ -230,13 +230,13 @@ void UMainMenuWidget::quit_game() {
 }
 
 void UMainMenuWidget::focus_active_content() {
-    if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::SelectLevel &&
+    if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::SelectLevel &&
         IsValid(level_select_widget_)) {
         level_select_widget_->focus_primary_action();
-    } else if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&
+    } else if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::DataArchive &&
                IsValid(save_game_viewer_)) {
         save_game_viewer_->focus_primary_action();
-    } else if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
+    } else if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
         options_widget_->focus_content();
     }
 }

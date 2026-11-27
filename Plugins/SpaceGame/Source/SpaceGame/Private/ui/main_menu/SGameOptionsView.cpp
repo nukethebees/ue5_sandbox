@@ -202,8 +202,8 @@ void SGameOptionsView::refresh() {
 
     auto const category{settings_category(page_.Get())};
     if (reset_button_.IsValid()) {
-        reset_button_->SetEnabled(category.IsSet() &&
-                                  !settings->is_at_defaults(category.GetValue()) &&
+        reset_button_->SetEnabled(category.has_value() &&
+                                  !settings->is_at_defaults(*category) &&
                                   !settings->is_awaiting_display_confirmation());
     }
     if (apply_button_.IsValid()) {
@@ -367,13 +367,13 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
-    if (page_.Get() == EMenuPage::Controls) {
+    if (page_.Get() == MainMenuItem::Controls) {
         return build_controls_page();
     }
     if (auto category{settings_category(page_.Get())}) {
         return build_category_page(*category);
     }
-    return page_.Get() == EMenuPage::System ? build_system_page() : SNullWidget::NullWidget;
+    return page_.Get() == MainMenuItem::System ? build_system_page() : SNullWidget::NullWidget;
 }
 
 auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
@@ -390,13 +390,13 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                       .Style(&style_->button(EGameButtonStyle::Secondary))
                       .Audio(audio_)
                       .Text_Lambda([this] {
-                          if (page_.Get() != EMenuPage::Controls) {
+                          if (page_.Get() != MainMenuItem::Controls) {
                               return NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category");
                           }
                           return NSLOCTEXT("OptionsMenu", "ResetAllControls", "Reset All Controls");
                       })
                       .ToolTipText_Lambda([this] {
-                          if (page_.Get() != EMenuPage::Controls) {
+                          if (page_.Get() != MainMenuItem::Controls) {
                               return FText::GetEmpty();
                           }
                           return NSLOCTEXT(

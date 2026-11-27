@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/ui/main_menu/MenuPage.h"
+#include <ioj/input/dispatch/player_menu.h>
 
 #include "Blueprint/UserWidget.h"
 
@@ -20,8 +20,8 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
   public:
     UOptionsWidget(FObjectInitializer const& object_initializer);
 
-    auto page() const -> EMenuPage { return page_; }
-    void select_page(EMenuPage page, FSimpleDelegate shown);
+    auto page() const -> MainMenuItem { return page_; }
+    void select_page(MainMenuItem page, FSimpleDelegate shown);
     void request_leave(FSimpleDelegate continuation, FSimpleDelegate cancelled = {});
     void request_back();
     void focus_content();
@@ -38,7 +38,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void open_page(EMenuPage page, FSimpleDelegate shown);
+    void open_page(MainMenuItem page, FSimpleDelegate shown);
     void handle_apply();
     void handle_reset();
     void handle_dirty_apply();
@@ -62,6 +62,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     TSharedPtr<SGameOptionsView> options_view_{};
     FSimpleDelegate leave_continuation_{};
     FSimpleDelegate leave_cancelled_{};
-    EMenuPage page_{EMenuPage::SelectLevel};
+    MainMenuItem page_{MainMenuItem::SelectLevel};
 };
 } // namespace ioj

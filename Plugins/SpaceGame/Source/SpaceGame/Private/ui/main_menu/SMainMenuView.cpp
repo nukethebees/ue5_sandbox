@@ -165,33 +165,33 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
                            .TextStyle(&style_->text(EGameTextStyle::Caption))];
     add_section(navigation, NSLOCTEXT("MainMenu", "OperationsSection", "OPERATIONS"));
     add_page(navigation,
-             EMenuPage::SelectLevel,
+             MainMenuItem::SelectLevel,
              NSLOCTEXT("MainMenu", "SelectMission", "Select Mission"),
              EGameUiIcon::Hive);
     add_page(navigation,
-             EMenuPage::DataArchive,
+             MainMenuItem::DataArchive,
              NSLOCTEXT("MainMenu", "DataArchive", "Data Archive"),
              EGameUiIcon::Hive);
 
     add_section(navigation, NSLOCTEXT("MainMenu", "ConfigurationSection", "CONFIGURATION"));
     add_page(
-        navigation, EMenuPage::Video, NSLOCTEXT("MainMenu", "Video", "Video"), EGameUiIcon::Video);
+        navigation, MainMenuItem::Video, NSLOCTEXT("MainMenu", "Video", "Video"), EGameUiIcon::Video);
     add_page(navigation,
-             EMenuPage::Gameplay,
+             MainMenuItem::Gameplay,
              NSLOCTEXT("MainMenu", "Gameplay", "Gameplay"),
              EGameUiIcon::Gameplay);
     add_page(
-        navigation, EMenuPage::Audio, NSLOCTEXT("MainMenu", "Audio", "Audio"), EGameUiIcon::Audio);
+        navigation, MainMenuItem::Audio, NSLOCTEXT("MainMenu", "Audio", "Audio"), EGameUiIcon::Audio);
     add_page(navigation,
-             EMenuPage::Controls,
+             MainMenuItem::Controls,
              NSLOCTEXT("MainMenu", "Controls", "Controls"),
              EGameUiIcon::Controls);
     add_page(navigation,
-             EMenuPage::Accessibility,
+             MainMenuItem::Accessibility,
              NSLOCTEXT("MainMenu", "Accessibility", "Accessibility"),
              EGameUiIcon::Accessibility);
     add_page(navigation,
-             EMenuPage::System,
+             MainMenuItem::System,
              NSLOCTEXT("MainMenu", "System", "System"),
              EGameUiIcon::System);
 
@@ -239,7 +239,7 @@ void SMainMenuView::add_section(TSharedRef<SVerticalBox> const& navigation, FTex
 }
 
 void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
-                             EMenuPage const page,
+                             MainMenuItem const page,
                              FText text,
                              EGameUiIcon const icon) {
     TSharedPtr<SHiveNavigationButton> button;
@@ -250,7 +250,7 @@ void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
              .Icon(&style_->icon(icon))
              .Text(MoveTemp(text))
              .Audio(audio_)
-             .OnClicked(this, &SMainMenuView::activate_item, static_cast<MainMenuItem>(page))];
+             .OnClicked(this, &SMainMenuView::activate_item, page)];
     page_buttons_.Add(button);
 }
 
@@ -259,11 +259,11 @@ auto SMainMenuView::activate_item(MainMenuItem item) -> FReply {
     return FReply::Handled();
 }
 
-auto SMainMenuView::page_content_index(EMenuPage const page) const -> int32 {
-    if (page == EMenuPage::SelectLevel) {
+auto SMainMenuView::page_content_index(MainMenuItem const page) const -> int32 {
+    if (page == MainMenuItem::SelectLevel) {
         return 0;
     }
-    if (page == EMenuPage::DataArchive) {
+    if (page == MainMenuItem::DataArchive) {
         return 1;
     }
     return 2;
