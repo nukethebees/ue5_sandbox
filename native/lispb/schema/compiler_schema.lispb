@@ -323,7 +323,8 @@
     (value try_parse_serialized :serialized-name "try-parse-serialized" :groups (parser))
     (value traits :serialized-name "traits")
     (value formatter :serialized-name "formatter")
-    (value cycle_next :serialized-name "cycle-next")))
+    (value cycle_next :serialized-name "cycle-next")
+    (value cycle_previous :serialized-name "cycle-previous")))
 
 
 (module semantic_relation_unit

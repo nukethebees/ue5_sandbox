@@ -181,6 +181,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
         {NativeEnumHelper::try_parse_serialized, "auto try_parse_serialized_state("},
         {NativeEnumHelper::traits, "struct EnumTraits<"},
         {NativeEnumHelper::cycle_next, "auto cycle_next("},
+        {NativeEnumHelper::cycle_previous, "auto cycle_previous("},
     };
     for (auto const& [helper, spelling] : selections) {
         auto const selected{

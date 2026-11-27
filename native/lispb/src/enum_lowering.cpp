@@ -183,9 +183,11 @@ class EnumLowering : public CppIRBuilder {
             emission.header_prefix = prefix.build();
             auto decls{node_list()};
             decls.append({native_enum_declaration(ctx, schema), native_enum_parsers(ctx, schema)});
-            if (std::ranges::contains(ctx.declarations.items(enums.helpers[schema]),
-                                      NativeEnumHelper::cycle_next)) {
-                decls.add(native_enum_cycle_next(ctx, schema, enum_type), 2);
+            for (auto helper : ctx.declarations.items(enums.helpers[schema])) {
+                if (helper == NativeEnumHelper::cycle_next ||
+                    helper == NativeEnumHelper::cycle_previous) {
+                    decls.add(native_enum_cycle(ctx, schema, enum_type, helper), 2);
+                }
             }
 
             decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
@@ -946,9 +948,10 @@ class EnumLowering : public CppIRBuilder {
         return parsers.build();
     }
 
-    auto native_enum_cycle_next(LoweringContext& ctx,
-                                DeclarationHandle const schema,
-                                CppTypeId const enum_type) -> NodeId {
+    auto native_enum_cycle(LoweringContext& ctx,
+                           DeclarationHandle const schema,
+                           CppTypeId const enum_type,
+                           NativeEnumHelper helper) -> NodeId {
         auto const& enums{ctx.declarations.enums};
         std::vector<StringId> values;
         for (auto const value : ctx.declarations.items(enums.values[schema])) {
@@ -960,16 +963,17 @@ class EnumLowering : public CppIRBuilder {
 
         std::vector<SwitchCaseId> cases;
         auto const count{values.size()};
+        auto const step{helper == NativeEnumHelper::cycle_next ? 1u : count - 1};
         for (std::size_t index{}; index < count; ++index) {
             cases.push_back(switch_case(
                 scope_member(enum_type, values[index]),
-                block({return_stmt(scope_member(enum_type, values[(index + 1) % count]))})));
+                block({return_stmt(scope_member(enum_type, values[(index + step) % count]))})));
         }
 
         cases.push_back(switch_case(
             std::nullopt, block({assertion(literal(false)), return_stmt(named("value"))})));
         FunctionDefinition const function{
-            .name = name("cycle_next"),
+            .name = name(helper == NativeEnumHelper::cycle_next ? "cycle_next" : "cycle_previous"),
             .return_type = enum_type,
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(decorate_type(enum_type, "", " const"), "value")},

@@ -15,7 +15,7 @@
 namespace lispb::codegen {
 using NativeEnumHelperUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 4.
 enum class NativeEnumHelper : NativeEnumHelperUnderlying {
     to_string,
     try_parse,
@@ -25,6 +25,7 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
     traits,
     formatter,
     cycle_next,
+    cycle_previous,
 };
 
 using ioj::to_serialized_string;
@@ -53,6 +54,12 @@ using ioj::to_serialized_string;
         case 10ULL: {
             if (value == "cycle-next") {
                 return NativeEnumHelper::cycle_next;
+            }
+            return std::nullopt;
+        }
+        case 14ULL: {
+            if (value == "cycle-previous") {
+                return NativeEnumHelper::cycle_previous;
             }
             return std::nullopt;
         }
@@ -101,11 +108,11 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::NativeEnumHelper>
     enum_range<lispb::codegen::NativeEnumHelper>{lispb::codegen::NativeEnumHelper::to_string,
-                                                 lispb::codegen::NativeEnumHelper::cycle_next};
+                                                 lispb::codegen::NativeEnumHelper::cycle_previous};
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{
     PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
-                  "parse-serialized\000traits\000formatter\000cycle-next",
-                  std::array<std::uint8_t, 9>{0, 10, 20, 38, 59, 80, 87, 97, 108}}};
+                  "parse-serialized\000traits\000formatter\000cycle-next\000cycle-previous",
+                  std::array<std::uint8_t, 10>{0, 10, 20, 38, 59, 80, 87, 97, 108, 123}}};
 } // namespace ioj

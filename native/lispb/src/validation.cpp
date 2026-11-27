@@ -713,15 +713,17 @@ class Validator {
         auto const enum_conversions{declarations_.items(enums.conversions[schema])};
         auto const enum_values{declarations_.items(enums.values[schema])};
         auto const value_count{enum_values.size()};
-        if (helpers.contains(NativeEnumHelper::cycle_next)) {
+        if (helpers.contains(NativeEnumHelper::cycle_next) ||
+            helpers.contains(NativeEnumHelper::cycle_previous)) {
             if (value_count == (enums.count[schema] ? 1u : 0u) ||
                 domains.distinct_code_count[domain_row] != value_count) {
                 throw std::invalid_argument{
-                    enum_context + " cycle-next requires real values with known, unique codes"};
+                    enum_context + " enum cycling requires real values with known, unique codes"};
             }
             for (std::size_t index{}; index < value_count; ++index) {
                 if (!domains.code(domain, index)) {
-                    throw std::invalid_argument{enum_context + " cycle-next requires known codes"};
+                    throw std::invalid_argument{enum_context +
+                                                " enum cycling requires known codes"};
                 }
             }
         }
