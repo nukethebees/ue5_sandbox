@@ -3,7 +3,6 @@
 #include <ioj/host/unreal_messages.h>
 #include <ioj/presentation/profile_view.h>
 #include <ioj/settings/player_settings_view.h>
-#include <ioj/sim/player/player_events.h>
 #include <ioj/system_capabilities.h>
 
 #include <string_view>
@@ -26,8 +25,7 @@ bool request_menu(session::LevelSelectRequest request);
 SPACEGAME_API auto menu_selection() -> std::optional<session::LevelSelectRequest>&;
 auto supported_resolutions() -> std::span<ScreenResolution const>;
 void request_simulation_mode(levels::LaunchMode mode);
-auto ship_input() -> sim::player::PlayerInputEvents&;
-void reset_level_input();
+void clear_requested_simulation_mode();
 void clear_consumed_messages();
 void detach_player();
 }

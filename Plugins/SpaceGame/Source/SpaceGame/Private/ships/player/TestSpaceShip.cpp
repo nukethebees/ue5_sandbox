@@ -76,13 +76,8 @@ void ATestSpaceShip::present_player(Team player_team, sim::ShipHealth health, Ve
 }
 
 void ATestSpaceShip::clear_player_frame() {
-    reset_level_input();
+    clear_requested_simulation_mode();
     player_snapshot_.reset();
-}
-
-auto ATestSpaceShip::input_events() -> sim::player::PlayerInputEvents& {
-    checkf(player_snapshot_, TEXT("Player input requires bound simulation commands"));
-    return ship_input();
 }
 
 void ATestSpaceShip::handle_simulation_death() {
@@ -115,28 +110,6 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
 
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return player_snapshot_ ? player_snapshot_->velocity : FVector::ZeroVector;
-}
-
-/* **************************************** */
-// Weapons
-/* **************************************** */
-
-void ATestSpaceShip::upgrade_laser() {
-    input_events().upgrade_laser();
-}
-
-void ATestSpaceShip::select_next_laser_trigger_mode() noexcept {
-    input_events().select_next_laser_trigger_mode();
-}
-
-void ATestSpaceShip::select_previous_laser_trigger_mode() noexcept {
-    input_events().select_previous_laser_trigger_mode();
-}
-
-void ATestSpaceShip::set_laser_trigger_mode(ETestShipTriggerMode const value) noexcept {
-    if (player_snapshot_) {
-        input_events().set_laser_trigger_mode(to_native(value));
-    }
 }
 
 /* **************************************** */

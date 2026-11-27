@@ -36,7 +36,7 @@ extern "C" {
 }
 namespace host {
 // Call once after the Unreal tick. Views last until the next BeginFrame or detach.
-// BeginFrame clears consumed requests and input edges. Axes carry forward.
+// BeginFrame clears consumed requests.
 // Requests queued while handling results belong to the next batch.
 IOJ_PLAYER_API void present_catalog(presentation::LevelCatalogView const& catalog);
 IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,

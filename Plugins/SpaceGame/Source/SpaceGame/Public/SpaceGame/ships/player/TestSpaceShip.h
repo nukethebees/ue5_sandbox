@@ -1,8 +1,6 @@
 #pragma once
 #include <ioj/sim/entities/ship_health.h>
-#include <ioj/sim/player/player_events.h>
 #include <ioj/vector.h>
-#include <SpaceGame/ships/player/TestShipTriggerModeConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -44,23 +42,12 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     ATestSpaceShip();
     void present_player(Team player_team, sim::ShipHealth health, Vector3d velocity);
     void clear_player_frame();
-    auto input_events() -> sim::player::PlayerInputEvents&;
-    auto has_player_frame() const noexcept -> bool { return player_snapshot_.has_value(); }
 
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
-
-    /* **************************************** */
-    // Weapons
-    /* **************************************** */
-
-    void upgrade_laser();
-    void select_next_laser_trigger_mode() noexcept;
-    void select_previous_laser_trigger_mode() noexcept;
-    void set_laser_trigger_mode(ETestShipTriggerMode value) noexcept;
 
     /* **************************************** */
     // Health and collision

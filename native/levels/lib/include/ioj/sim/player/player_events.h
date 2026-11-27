@@ -12,13 +12,6 @@ struct PlayerInputEvents {
     explicit PlayerInputEvents(std::pmr::memory_resource& memory)
         : events_{&memory} {}
 
-    void begin_frame(PlayerInputEvents const& previous) {
-        events_.clear();
-        pitch_ = previous.pitch_;
-        yaw_ = previous.yaw_;
-        accelerator_ = previous.accelerator_;
-    }
-
     auto view() const -> PlayerInputFrame { return {events_, pitch_, yaw_, accelerator_}; }
     void clear_events() { events_.clear(); }
 

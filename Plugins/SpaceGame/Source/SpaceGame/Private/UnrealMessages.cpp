@@ -14,7 +14,6 @@
 #include <HAL/IConsoleManager.h>
 #endif
 
-#include <memory_resource>
 #include <utility>
 #include <vector>
 
@@ -34,7 +33,6 @@ struct MessageBuffer {
     host::NavigationRequest navigation_request;
     TWeakObjectPtr<ULevelSelectWidget> catalog_request;
     std::optional<levels::LaunchMode> requested_simulation_mode;
-    sim::player::PlayerInputEvents ship_input{*std::pmr::get_default_resource()};
 };
 
 MessageBuffer pending;
@@ -106,12 +104,7 @@ void request_simulation_mode(levels::LaunchMode mode) {
     pending.requested_simulation_mode = mode;
 }
 
-auto ship_input() -> sim::player::PlayerInputEvents& {
-    return pending.ship_input;
-}
-
-void reset_level_input() {
-    pending.ship_input = sim::player::PlayerInputEvents{*std::pmr::get_default_resource()};
+void clear_requested_simulation_mode() {
     pending.requested_simulation_mode.reset();
 }
 
@@ -145,13 +138,11 @@ void clear_consumed_messages() {
 
 auto host::take_messages() -> UnrealMessages {
     std::swap(pending, published);
-    pending.ship_input.begin_frame(published.ship_input);
 
     return {published.profile_actions,
             published.preference_edits,
             published.navigation_request,
             published.requested_simulation_mode,
-            published.ship_input.view(),
             published.catalog_request.IsValid()};
 }
 
