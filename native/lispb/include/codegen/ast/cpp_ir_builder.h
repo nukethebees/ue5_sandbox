@@ -213,8 +213,6 @@ class CppIRBuilder {
 
     NodeListBuilder node_list() { return ir_.node_list(); }
 
-    LoweringStorage& lowering_storage() { return ir_.lowering_storage(); }
-
     void clear() { ir_.clear(); }
 
     void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const {

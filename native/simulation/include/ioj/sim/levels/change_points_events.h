@@ -4,9 +4,7 @@
 #pragma once
 
 #include "change_points_events_compact_view.h"
-#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/points.h"
 #include "ioj/single_allocation/operations.h"
 
 namespace ioj::sim {

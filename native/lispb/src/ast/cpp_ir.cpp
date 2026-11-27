@@ -595,7 +595,7 @@ void CppIR::clear() {
           for_stmt_nodes_.condition,
           for_stmt_nodes_.increment,
           for_stmt_nodes_.children);
-    clear(files, modules, lowering, template_parameter_references_);
+    clear(files, modules, template_parameter_references_);
     clear(type_template_parameters_.name,
           type_template_parameters_.default_type,
           type_template_parameters_.pack);

@@ -4,12 +4,8 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/levels/level_event_count.h"
 #include "ioj/single_allocation/operations.h"
 #include "level_spawn_groups_compact_view.h"
-
-#include <cstdint>
 
 namespace ioj::sim {
 

@@ -23,6 +23,5 @@ auto soa_row_operations(LoweringContext& ctx,
 auto lower_soa_api(LoweringContext& ctx,
                    DeclarationHandle schema,
                    SoaReceiver receiver,
-                   std::string const& type_name,
-                   CppTypeId base) -> LoweredSoa;
+                   std::string const& type_name) -> LoweredSoa;
 }

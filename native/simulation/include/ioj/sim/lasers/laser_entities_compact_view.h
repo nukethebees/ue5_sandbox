@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/rotators3f_compact_view.h"
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -18,8 +17,7 @@ namespace laser_entities {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t active_column{0ULL};
     static constexpr std::size_t sources_column{1ULL};
     static constexpr std::size_t locations_xs_column{2ULL};

@@ -21,7 +21,7 @@ struct StorageState {
 
 template <typename View>
 consteval auto validate_compact_view() -> bool {
-    static_assert(sizeof(View) == sizeof(StorageState),
+    static_assert(View::has_strided_columns || sizeof(View) == sizeof(StorageState),
                   "Compact view must contain only a state pointer, offset, and count.");
     static_assert(std::is_trivially_copyable_v<View>,
                   "Compact view must remain trivially copyable.");
@@ -107,7 +107,7 @@ struct CompactViewBase : ViewOperations<Schema> {
     }
     template <std::size_t Index, typename Self>
     auto column_at(this Self const& self) {
-        using T = typename Self::Layout::column_types::template at<Index>;
+        using T = typename Schema::pointer_types::template element_type<Index>;
         return std::span<Element<T>>{
             view_column_data<T>(self.state_,
                                 self.offset_,
@@ -117,8 +117,8 @@ struct CompactViewBase : ViewOperations<Schema> {
 
     template <typename Child, std::size_t First, typename Self>
     auto nested_at(this Self const& self) {
-        if constexpr (Child::strided) {
-            return make_strided_view<typename Child::template compact<Const>,
+        if constexpr (Child::has_strided_columns) {
+            return make_strided_view<typename Child::template compact_view_for<Const>,
                                      typename Self::Layout>(
                 self.state_, self.offset_, self.count_, First, First + 1);
         } else {
@@ -186,8 +186,8 @@ struct StridedViewBase : ViewOperations<Schema> {
 
     template <typename Child, std::size_t First>
     auto nested_at(this auto const& self) {
-        if constexpr (Child::strided) {
-            return typename Child::template compact<Const>{
+        if constexpr (Child::has_strided_columns) {
+            return typename Child::template compact_view_for<Const>{
                 self.column(First).data(), self.byte_stride(), self.num()};
         } else {
             return nested_resolved_view<Child, Const, First>(self);
@@ -246,8 +246,8 @@ struct StridedViewBase : ViewOperations<Schema> {
 
 template <typename Schema, bool Const>
 using CompactStorage = std::conditional_t<
-    Schema::strided,
-    StridedViewBase<typename Schema::column_types::template at<0>, Const, Schema>,
+    Schema::has_strided_columns,
+    StridedViewBase<typename Schema::pointer_types::template element_type<0>, Const, Schema>,
     CompactViewBase<Const, Schema>>;
 
 template <typename Schema, typename ColumnLayout, bool Const>
@@ -257,13 +257,13 @@ struct CompactView : CompactStorage<Schema, Const> {
     using Base::Base;
     using soa_schema = Schema;
     using Layout = ColumnLayout;
-    using view_type = typename Schema::template compact<false>;
-    using const_view_type = typename Schema::template compact<true>;
-    using resolved_view_type = typename Schema::template resolved<Const>;
+    using view_type = typename Schema::template compact_view_for<false>;
+    using const_view_type = typename Schema::template compact_view_for<true>;
+    using resolved_view_type = typename Schema::template resolved_view_for<Const>;
     using State = std::conditional_t<Const, StorageState const, StorageState>;
 
     CompactView(State* state, std::uint32_t offset, std::uint32_t count)
-        requires Schema::strided
+        requires Schema::has_strided_columns
         : Base{make_strided_view<Base, Layout>(state, offset, count, 0, 1)} {}
     template <bool Enabled = Const>
         requires Enabled

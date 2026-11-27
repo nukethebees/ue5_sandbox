@@ -266,7 +266,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
                          ConflictingSoaModuleDeclaration,
-                         testing::Values("CompactView", "Pointers", "ColumnTypes"));
+                         testing::Values("CompactView", "Pointers"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(

@@ -21,6 +21,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -74,11 +77,8 @@ using Pointers = soa_storage_detail::ColumnPointers<EntityId,
                                                     float,
                                                     std::uint8_t>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -141,103 +141,63 @@ struct Schema
                     source.target_radii(),
                     source.carrier_launched());
     }
-    auto entity_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto integral_biases(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto float_biases(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 3>(self);
     }
-    auto integral_biases(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    auto view_desired_move_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 6>(self);
     }
-    auto float_biases(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    auto view_aim_directions(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 9>(self);
     }
-    auto view_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 3ULL>();
+    auto view_planned_aim_directions(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 12>(self);
     }
-    auto view_desired_move_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 6ULL>();
+    auto view_desired_aiming_directions(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 15>(self);
     }
-    auto view_aim_directions(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 9ULL>();
+    auto view_movement_directions(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 18>(self);
     }
-    auto view_planned_aim_directions(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 12ULL>();
+    auto view_velocities(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 21>(self);
     }
-    auto view_desired_aiming_directions(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 15ULL>();
+    auto move_distances(this ColumnReceiver auto&& self) { return column_at<24>(self); }
+    auto speeds(this ColumnReceiver auto&& self) { return column_at<25>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<26>(self); }
+    auto navigation_update_countdowns_remaining_ticks(this ColumnReceiver auto&& self) {
+        return column_at<27>(self);
     }
-    auto view_movement_directions(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 18ULL>();
+    auto navigation_update_countdowns_periods(this ColumnReceiver auto&& self) {
+        return column_at<28>(self);
     }
-    auto view_velocities(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 21ULL>();
+    auto view_separation_steering(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 29>(self);
     }
-    auto move_distances(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<24ULL>();
+    auto navigation_risk_tiers(this ColumnReceiver auto&& self) { return column_at<32>(self); }
+    auto navigation_lower_risk_scan_counts(this ColumnReceiver auto&& self) {
+        return column_at<33>(self);
     }
-    auto speeds(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<25ULL>();
+    auto avoidance_choice_indices(this ColumnReceiver auto&& self) { return column_at<34>(self); }
+    auto avoidance_clear_scan_counts(this ColumnReceiver auto&& self) {
+        return column_at<35>(self);
     }
-    auto teams(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<26ULL>();
+    auto attack_cooldowns(this ColumnReceiver auto&& self) { return column_at<36>(self); }
+    auto target_ids(this ColumnReceiver auto&& self) { return column_at<37>(self); }
+    auto view_target_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 38>(self);
     }
-    auto navigation_update_countdowns_remaining_ticks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<27ULL>();
+    auto view_target_velocities(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 41>(self);
     }
-    auto navigation_update_countdowns_periods(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<28ULL>();
-    }
-    auto view_separation_steering(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 29ULL>();
-    }
-    auto navigation_risk_tiers(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<32ULL>();
-    }
-    auto navigation_lower_risk_scan_counts(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<33ULL>();
-    }
-    auto avoidance_choice_indices(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<34ULL>();
-    }
-    auto avoidance_clear_scan_counts(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<35ULL>();
-    }
-    auto attack_cooldowns(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<36ULL>();
-    }
-    auto target_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<37ULL>();
-    }
-    auto view_target_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 38ULL>();
-    }
-    auto view_target_velocities(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 41ULL>();
-    }
-    auto intercept_times(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<44ULL>();
-    }
-    auto target_distance_sq(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<45ULL>();
-    }
-    auto target_distances(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<46ULL>();
-    }
-    auto target_radii(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<47ULL>();
-    }
-    auto carrier_launched(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<48ULL>();
-    }
+    auto intercept_times(this ColumnReceiver auto&& self) { return column_at<44>(self); }
+    auto target_distance_sq(this ColumnReceiver auto&& self) { return column_at<45>(self); }
+    auto target_distances(this ColumnReceiver auto&& self) { return column_at<46>(self); }
+    auto target_radii(this ColumnReceiver auto&& self) { return column_at<47>(self); }
+    auto carrier_launched(this ColumnReceiver auto&& self) { return column_at<48>(self); }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.entity_ids(),
                     source.integral_biases(),

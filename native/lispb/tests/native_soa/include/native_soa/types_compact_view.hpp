@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -11,15 +10,13 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::native_soa_fixture {
 namespace counts {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t count_column{0ULL};
 };
 
@@ -43,8 +40,7 @@ namespace pointer_a {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t others_column{0ULL};
 };
 
@@ -68,8 +64,7 @@ namespace pointer_b {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t others_column{0ULL};
 };
 
@@ -93,8 +88,7 @@ namespace mixed_rows {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t records_column{0ULL};
 };
 
@@ -118,8 +112,7 @@ namespace pair_rows {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t pairs_column{0ULL};
     static constexpr std::size_t pointers_column{1ULL};
 };
@@ -144,26 +137,25 @@ namespace vectors {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t xs_column{0ULL};
     static constexpr std::size_t ys_column{1ULL};
     static constexpr std::size_t zs_column{2ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace vectors
 
@@ -171,25 +163,24 @@ namespace odd_pairs {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t first_column{0ULL};
     static constexpr std::size_t second_column{1ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace odd_pairs
 
@@ -197,8 +188,7 @@ namespace vector_groups {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t starts_xs_column{0ULL};
     static constexpr std::size_t starts_ys_column{1ULL};
     static constexpr std::size_t starts_zs_column{2ULL};
@@ -208,18 +198,18 @@ struct Layout
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace vector_groups
 
@@ -227,8 +217,7 @@ namespace single_rows {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t values_column{0ULL};
     static constexpr std::size_t positions_xs_column{1ULL};
     static constexpr std::size_t positions_ys_column{2ULL};
@@ -258,8 +247,7 @@ namespace single_alignment_rows {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t bytes_column{0ULL};
     static constexpr std::size_t odd_first_column{1ULL};
     static constexpr std::size_t odd_second_column{2ULL};
@@ -294,20 +282,19 @@ namespace api_coordinates {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t xs_column{0ULL};
     static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
     float x_at(std::uint32_t index) const;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
@@ -321,7 +308,7 @@ struct CompactView
         }
     }
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace api_coordinates
 
@@ -329,8 +316,7 @@ namespace api_owner {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t values_column{0ULL};
     static constexpr std::size_t masks_column{1ULL};
     static constexpr std::size_t positions_xs_column{2ULL};
@@ -366,25 +352,24 @@ namespace equivalent_owner {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t xs_column{0ULL};
     static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace equivalent_owner
 
@@ -392,26 +377,25 @@ namespace accessor_owner {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t horizontal_column{0ULL};
     static constexpr std::size_t vertical_column{1ULL};
     static constexpr std::size_t depth_column{2ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace accessor_owner
 } // namespace ioj::native_soa_fixture

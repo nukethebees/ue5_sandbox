@@ -23,6 +23,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -43,11 +46,8 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     std::optional<std::uint64_t>,
                                                     std::optional<std::uint64_t>>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.analysis(),
@@ -67,54 +67,22 @@ struct Schema
                     source.allocated_payload_bytes(),
                     source.capacity_slack_bytes());
     }
-    auto analysis(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto selections(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto element_count(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto multiplicity(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto bits(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
-    auto cache(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
-    }
-    auto pages(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
-    }
-    auto cache_capacity(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
-    }
-    auto packed_waste(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
-    }
-    auto footprint_exact(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
-    }
-    auto storage_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
-    }
-    auto full_logical_payload_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
-    }
-    auto unselected_payload_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
-    }
-    auto allocated_payload_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
-    }
-    auto capacity_slack_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
-    }
+    auto analysis(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto selections(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto element_count(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto multiplicity(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto bytes(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto bits(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto cache(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto pages(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto cache_capacity(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto packed_waste(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto footprint_exact(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto storage_bytes(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto full_logical_payload_bytes(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto unselected_payload_bytes(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto allocated_payload_bytes(this ColumnReceiver auto&& self) { return column_at<14>(self); }
+    auto capacity_slack_bytes(this ColumnReceiver auto&& self) { return column_at<15>(self); }
 };
 
 /* **************************************** */

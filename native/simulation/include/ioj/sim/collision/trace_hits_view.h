@@ -19,17 +19,17 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = soa_storage_detail::
     ColumnPointers<float, float, float, EntityId, collision::StaticGeometryIndex, TraceHit>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -40,19 +40,12 @@ struct Schema
                     source.static_geometry_indices(),
                     source.hits());
     }
-    auto view_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    auto view_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 0>(self);
     }
-    auto entities(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto static_geometry_indices(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto hits(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
+    auto entities(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto static_geometry_indices(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto hits(this ColumnReceiver auto&& self) { return column_at<5>(self); }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.view_locations(),
                     source.entities(),

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "fighter_entity_data_view.h"
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -17,8 +16,7 @@ namespace fighter_entity_data {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t entity_ids_column{0ULL};
     static constexpr std::size_t integral_biases_column{1ULL};
     static constexpr std::size_t float_biases_column{2ULL};

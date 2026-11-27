@@ -3,40 +3,37 @@
 
 #pragma once
 
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj {
 namespace vectors3f {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t xs_column{0ULL};
     static constexpr std::size_t ys_column{1ULL};
     static constexpr std::size_t zs_column{2ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace vectors3f
 } // namespace ioj

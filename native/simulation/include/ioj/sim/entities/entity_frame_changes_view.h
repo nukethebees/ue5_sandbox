@@ -21,6 +21,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -31,11 +34,8 @@ using Pointers = soa_storage_detail::ColumnPointers<EntityFrameChangeKind,
                                                     ::ioj::Team,
                                                     EntityId>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.kinds(),
@@ -45,24 +45,12 @@ struct Schema
                     source.teams(),
                     source.ids());
     }
-    auto kinds(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto indices(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto rotations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto teams(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
+    auto kinds(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto indices(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto locations(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto rotations(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto ids(this ColumnReceiver auto&& self) { return column_at<5>(self); }
 };
 
 /* **************************************** */

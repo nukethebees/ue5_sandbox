@@ -25,6 +25,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -54,11 +57,8 @@ using Pointers =
                                        std::optional<std::uint64_t>,
                                        RowRange>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),
@@ -86,78 +86,30 @@ struct Schema
                     source.unused_codes(),
                     source.codes());
     }
-    auto parent(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto segment(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto name(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto semantic_type(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto logical_type(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto kind(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
-    auto reserved(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
-    }
-    auto schema_bit_width(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
-    }
-    auto schema_bit_width_auto(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
-    }
-    auto bit_width(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
-    }
-    auto overridden(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
-    }
-    auto least_significant_bit(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
-    }
-    auto most_significant_bit(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
-    }
-    auto maximum_unsigned_value(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
-    }
-    auto minimum_signed_value(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
-    }
-    auto maximum_signed_value(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
-    }
-    auto minimum_semantic_value(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<16ULL>();
-    }
-    auto maximum_semantic_value(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<17ULL>();
-    }
-    auto semantic_value_count(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<18ULL>();
-    }
-    auto sentinel_code_count(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<19ULL>();
-    }
-    auto required_code_count(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<20ULL>();
-    }
-    auto minimum_required_bits(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<21ULL>();
-    }
-    auto unused_codes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<22ULL>();
-    }
-    auto codes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<23ULL>();
-    }
+    auto parent(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto segment(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto name(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto semantic_type(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto logical_type(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto kind(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto reserved(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto schema_bit_width(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto schema_bit_width_auto(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto bit_width(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto overridden(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto least_significant_bit(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto most_significant_bit(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto maximum_unsigned_value(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto minimum_signed_value(this ColumnReceiver auto&& self) { return column_at<14>(self); }
+    auto maximum_signed_value(this ColumnReceiver auto&& self) { return column_at<15>(self); }
+    auto minimum_semantic_value(this ColumnReceiver auto&& self) { return column_at<16>(self); }
+    auto maximum_semantic_value(this ColumnReceiver auto&& self) { return column_at<17>(self); }
+    auto semantic_value_count(this ColumnReceiver auto&& self) { return column_at<18>(self); }
+    auto sentinel_code_count(this ColumnReceiver auto&& self) { return column_at<19>(self); }
+    auto required_code_count(this ColumnReceiver auto&& self) { return column_at<20>(self); }
+    auto minimum_required_bits(this ColumnReceiver auto&& self) { return column_at<21>(self); }
+    auto unused_codes(this ColumnReceiver auto&& self) { return column_at<22>(self); }
+    auto codes(this ColumnReceiver auto&& self) { return column_at<23>(self); }
 };
 
 /* **************************************** */

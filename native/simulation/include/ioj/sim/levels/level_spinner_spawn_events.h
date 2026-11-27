@@ -3,9 +3,7 @@
 
 #pragma once
 
-#include "ioj/constrained_numbers.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/operations.h"
 #include "level_spinner_spawn_events_compact_view.h"
 

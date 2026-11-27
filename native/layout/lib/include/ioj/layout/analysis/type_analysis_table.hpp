@@ -3,13 +3,8 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/aggregate_layout.hpp"
 #include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/enum_backing.hpp"
-#include "ioj/layout/analysis/packed_layout.hpp"
-#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analysis/scenario_id.hpp"
-#include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/layout/analysis/type_analysis_table_compact_view.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"

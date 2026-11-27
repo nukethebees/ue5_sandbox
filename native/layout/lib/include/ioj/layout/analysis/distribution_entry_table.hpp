@@ -7,11 +7,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 
-#include "codegen/schema/packed_integer_value.h"
-
-#include <cstddef>
-#include <cstdint>
-
 namespace ioj::layout {
 
 /* **************************************** */

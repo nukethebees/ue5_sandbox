@@ -19,17 +19,17 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers =
     soa_storage_detail::ColumnPointers<::ioj::Team, KillCount, LifeState, SimTick, Vector3f>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.teams(),
@@ -38,21 +38,11 @@ struct Schema
                     source.death_ticks(),
                     source.death_locations());
     }
-    auto teams(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto kills(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto life_state(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto death_ticks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto death_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto kills(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto life_state(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto death_ticks(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto death_locations(this ColumnReceiver auto&& self) { return column_at<4>(self); }
 };
 
 /* **************************************** */

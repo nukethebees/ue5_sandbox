@@ -38,27 +38,22 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask8, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */
@@ -101,30 +96,23 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask9, std::int32_t, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values(), source.tail());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto tail(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto tail(this ColumnReceiver auto&& self) { return column_at<2>(self); }
 };
 
 /* **************************************** */
@@ -166,27 +154,22 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask16, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */
@@ -228,27 +211,22 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask17, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */
@@ -290,27 +268,22 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask32, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */
@@ -352,27 +325,22 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask33, std::int32_t>;
 
-using ColumnTypes =
-    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : ioj::soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
     }
-    auto masks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto values(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */

@@ -4,10 +4,7 @@
 #pragma once
 
 #include "entity_death_info_compact_view.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
-#include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/single_allocation/operations.h"
 
 namespace ioj::sim {

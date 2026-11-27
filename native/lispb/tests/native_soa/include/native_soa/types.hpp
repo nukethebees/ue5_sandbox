@@ -5,10 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
-#include "native_soa/aligned256.h"
 #include "native_soa/aligned32.h"
-#include "native_soa/aligned64.h"
-#include "native_soa/odd_bytes.h"
 #include "native_soa/types_compact_view.hpp"
 
 #include <array>

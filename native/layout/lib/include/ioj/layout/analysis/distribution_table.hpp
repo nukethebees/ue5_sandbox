@@ -11,7 +11,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cstdint>
-#include <optional>
 
 namespace ioj::layout {
 

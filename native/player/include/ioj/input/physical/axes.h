@@ -4,7 +4,6 @@
 #pragma once
 
 #include "axes_compact_view.h"
-#include "ioj/input/physical/physical_key.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 

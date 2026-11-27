@@ -4,9 +4,6 @@
 #pragma once
 
 #include "buttons_compact_view.h"
-#include "ioj/input/physical/button_state.h"
-#include "ioj/input/physical/modifiers.h"
-#include "ioj/input/physical/physical_key.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 

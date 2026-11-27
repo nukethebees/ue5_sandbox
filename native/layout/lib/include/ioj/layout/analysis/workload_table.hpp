@@ -4,13 +4,9 @@
 #pragma once
 
 #include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/packed_access_waste.hpp"
-#include "ioj/layout/analysis/payload_footprint.hpp"
-#include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/layout/analysis/workload_id.hpp"
 #include "ioj/layout/analysis/workload_table_compact_view.hpp"
-#include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 

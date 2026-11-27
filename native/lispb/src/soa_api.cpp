@@ -26,7 +26,6 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <span>
 #include <stdexcept>
@@ -105,8 +104,7 @@ class SoaApiLowering : public CppIRBuilder {
     auto lower_soa_api(LoweringContext& parent_context,
                        DeclarationHandle schema,
                        SoaReceiver const receiver,
-                       std::string const& type_name,
-                       CppTypeId) -> LoweredSoa {
+                       std::string const& type_name) -> LoweredSoa {
         auto ctx{parent_context.for_declaration(schema)};
         auto const& soas{ctx.declarations.soas};
         auto header{node_list()};
@@ -368,13 +366,6 @@ class SoaApiLowering : public CppIRBuilder {
 auto schema_rows(LoweringContext& ctx, DeclarationHandle schema) -> Nodes {
     return SoaApiLowering{ctx.ir}.schema_rows(ctx, schema);
 }
-auto logical_column_access(LoweringContext& ctx,
-                           DeclarationHandle schema,
-                           std::span<std::string const> const path,
-                           Expr receiver = {},
-                           bool pointer = false) -> Expr {
-    return SoaApiLowering{ctx.ir}.logical_column_access(ctx, schema, path, receiver, pointer);
-}
 auto soa_row_operations(LoweringContext& ctx,
                         DeclarationHandle schema,
                         SoaReceiver receiver,
@@ -385,9 +376,8 @@ auto soa_row_operations(LoweringContext& ctx,
 auto lower_soa_api(LoweringContext& ctx,
                    DeclarationHandle schema,
                    SoaReceiver const receiver,
-                   std::string const& type_name,
-                   CppTypeId base) -> LoweredSoa {
-    return SoaApiLowering{ctx.ir}.lower_soa_api(ctx, schema, receiver, type_name, base);
+                   std::string const& type_name) -> LoweredSoa {
+    return SoaApiLowering{ctx.ir}.lower_soa_api(ctx, schema, receiver, type_name);
 }
 
 } // namespace lispb::codegen::detail

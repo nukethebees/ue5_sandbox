@@ -3,15 +3,7 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/enum_domain.hpp"
-#include "ioj/layout/analysis/fixed_encoding.hpp"
-#include "ioj/layout/analysis/float_encoding.hpp"
-#include "ioj/layout/analysis/integer_domain.hpp"
-#include "ioj/layout/analysis/optional_presence_encoding.hpp"
-#include "ioj/layout/analysis/optional_sentinel_encoding.hpp"
-#include "ioj/layout/analysis/quantized_encoding.hpp"
 #include "ioj/layout/analysis/scalar_table_compact_view.hpp"
-#include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 

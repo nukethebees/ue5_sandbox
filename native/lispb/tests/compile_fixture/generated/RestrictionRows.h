@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "compile_fixture/restricted_leaf.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 #include "RestrictionRows_compact_view.h"

@@ -55,7 +55,7 @@ void assign_row(View const& view, std::uint32_t index, Ts const&... values) {
     assert(index < view.num());
     if constexpr (std::is_same_v<ColumnTypes<Ts...>, typename Schema::column_types>) {
         auto const& resolved{view.resolve()};
-        auto const& [... columns]{resolved.pointers()};
+        auto const& [... columns]{resolved.physical_pointers()};
         ((columns[index] = values), ...);
     } else if constexpr (requires {
                              Schema::equivalent_values(values..., [](auto const&...) {});
@@ -99,7 +99,7 @@ struct ViewOperations : Schema {
     void each_column(this Self const& self, Func&& func) {
         auto const& resolved{self.resolve()};
         auto const count{self.num()};
-        template for (auto* column : resolved.pointers()) {
+        template for (auto* column : resolved.physical_pointers()) {
             func(std::span{column, count});
         }
     }
@@ -132,29 +132,39 @@ struct ViewOperations : Schema {
     }
 };
 
-template <class View,
-          class ConstView,
-          class Compact,
-          class ConstCompact,
-          class Columns,
-          bool Strided>
+// A temporary view still borrows live storage; a temporary owner destroys that storage.
+template <typename T>
+concept ColumnReceiver = std::is_lvalue_reference_v<T> || requires { typename T::const_view_type; };
+
+template <std::size_t Index>
+auto column_at(auto& source) {
+    return source.template column_at<Index>();
+}
+
+template <typename Child, std::size_t First>
+auto column_at(auto& source) {
+    return source.template nested_at<Child, First>();
+}
+
+template <class View, class ConstView, class Compact, class ConstCompact, class Pointers>
 struct ViewTypes {
-    using column_types = Columns;
-    using row_types = RowTypes<Columns>;
+    using pointer_types = Pointers;
+    using column_types = typename Pointers::template apply<ColumnTypes>;
+    using row_types = RowTypes<column_types>;
     static constexpr bool generated_set{false};
-    static constexpr bool strided{Strided};
+    static constexpr bool has_strided_columns{Pointers::has_strided_columns};
     template <bool Const>
-    using resolved = std::conditional_t<Const, ConstView, View>;
+    using resolved_view_for = std::conditional_t<Const, ConstView, View>;
     template <bool Const>
-    using compact = std::conditional_t<Const, ConstCompact, Compact>;
+    using compact_view_for = std::conditional_t<Const, ConstCompact, Compact>;
 };
 
 template <typename Child, bool Const, std::size_t First, typename Self>
 auto nested_resolved_view(Self const& self) {
-    using Result = typename Child::template resolved<Const>;
+    using Result = typename Child::template resolved_view_for<Const>;
     return [&]<std::size_t... I>(std::index_sequence<I...>) {
         return Result{self.template column_at<First + I>().data()..., self.num()};
-    }(std::make_index_sequence<Child::column_types::size>{});
+    }(std::make_index_sequence<Child::pointer_types::size>{});
 }
 
 template <typename Columns, bool Const, typename Schema>
@@ -185,7 +195,7 @@ struct ViewBase<ColumnTypes<Ts...>, Const, Schema> : ViewOperations<Schema> {
 
     auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
-    auto pointers() const noexcept -> PointerStorage const& { return columns_; }
+    auto physical_pointers() const noexcept -> PointerStorage const& { return columns_; }
 
     template <typename Self>
     auto slice(this Self const& self, size_type offset, size_type count) -> Self {
@@ -221,8 +231,8 @@ struct ResolvedView : ViewBase<typename Schema::column_types, Const, Schema> {
     using Base = ViewBase<typename Schema::column_types, Const, Schema>;
     using Base::Base;
     using soa_schema = Schema;
-    using view_type = typename Schema::template resolved<false>;
-    using const_view_type = typename Schema::template resolved<true>;
+    using view_type = typename Schema::template resolved_view_for<false>;
+    using const_view_type = typename Schema::template resolved_view_for<true>;
 
     template <bool Enabled = Const>
         requires Enabled

@@ -12,7 +12,6 @@
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
-#include <map>
 #include <string>
 
 namespace lispb::codegen::detail {
@@ -56,13 +55,8 @@ class SingleAllocationLowering : public CppIRBuilder {
             .add(block_comment("****************************************"))
             .new_lines(1);
         result.add(line_comment("Columns:")).new_lines(1);
-        auto const& models{lowering_storage().single_allocation_models};
-        auto const& columns{lowering_storage().single_allocation_columns};
-        for (auto const column : lowering_storage().items(models.columns[models.index(model)])) {
-            auto const column_row{columns.index(column)};
-            result
-                .add(line_comment(ctx.text(columns.flattened_identifier[column_row]) + ": " +
-                                  std::string{type_spelling(columns.type[column_row])}))
+        for (auto const& column : model.columns) {
+            result.add(line_comment(column.name + ": " + std::string{type_spelling(column.type)}))
                 .new_lines(1);
         }
         result.add(emit_single_allocation_container(ctx, model, source));

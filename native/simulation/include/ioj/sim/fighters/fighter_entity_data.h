@@ -4,13 +4,8 @@
 #pragma once
 
 #include "fighter_entity_data_compact_view.h"
-#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
-#include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cstdint>
 
 namespace ioj::sim {
 

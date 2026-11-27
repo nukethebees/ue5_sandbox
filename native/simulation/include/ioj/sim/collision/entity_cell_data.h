@@ -5,10 +5,7 @@
 
 #include "entity_cell_data_compact_view.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cstdint>
 
 namespace ioj::sim::collision {
 

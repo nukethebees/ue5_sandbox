@@ -4,12 +4,8 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
-#include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/operations.h"
 #include "laser_entities_compact_view.h"
-
-#include <cstdint>
 
 namespace ioj::sim::lasers {
 

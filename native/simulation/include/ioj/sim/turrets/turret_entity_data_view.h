@@ -22,6 +22,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -49,11 +52,8 @@ using Pointers = soa_storage_detail::ColumnPointers<EntityId,
                                                     float,
                                                     float>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -85,49 +85,32 @@ struct Schema
                     target_velocities_view.ys(),
                     target_velocities_view.zs());
     }
-    auto entity_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto integral_biases(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 2>(self);
     }
-    auto integral_biases(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    auto view_fire_point_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 5>(self);
     }
-    auto view_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 2ULL>();
+    auto view_rotations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::rotators3f::Schema, 8>(self);
     }
-    auto view_fire_point_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 5ULL>();
+    auto teams(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto laser_damages(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto target_refresh_countdowns_periods(this ColumnReceiver auto&& self) {
+        return column_at<14>(self);
     }
-    auto view_rotations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::rotators3f::Schema, 8ULL>();
+    auto target_refresh_countdowns_remaining_ticks(this ColumnReceiver auto&& self) {
+        return column_at<15>(self);
     }
-    auto teams(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    auto target_ids(this ColumnReceiver auto&& self) { return column_at<16>(self); }
+    auto view_target_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 17>(self);
     }
-    auto laser_cooldowns(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
-    }
-    auto laser_damages(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
-    }
-    auto target_refresh_countdowns_periods(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
-    }
-    auto target_refresh_countdowns_remaining_ticks(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
-    }
-    auto target_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<16ULL>();
-    }
-    auto view_target_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 17ULL>();
-    }
-    auto view_target_velocities(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 20ULL>();
+    auto view_target_velocities(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 20>(self);
     }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.entity_ids(),

@@ -19,17 +19,17 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = soa_storage_detail::
     ColumnPointers<EntityId, float, float, float, float, std::int16_t, std::int32_t>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -41,22 +41,13 @@ struct Schema
                     source.laser_cooldowns(),
                     source.next_fire_point_indices());
     }
-    auto entity_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 1>(self);
     }
-    auto view_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 1ULL>();
-    }
-    auto yaws(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto laser_cooldowns(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
-    auto next_fire_point_indices(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
-    }
+    auto yaws(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto next_fire_point_indices(this ColumnReceiver auto&& self) { return column_at<6>(self); }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.entity_ids(),
                     source.view_locations(),

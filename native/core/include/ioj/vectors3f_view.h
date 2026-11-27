@@ -18,29 +18,23 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
 using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys(), source.zs());
     }
-    auto xs(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto ys(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto zs(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
+    auto xs(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto ys(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto zs(this ColumnReceiver auto&& self) { return column_at<2>(self); }
     using equivalent_type = Vector3f;
     auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
         assert((index < self.num()));

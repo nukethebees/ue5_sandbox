@@ -7,8 +7,6 @@
 #include "ioj/sim/collision/cell_coords_compact_view.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <cstdint>
-
 namespace ioj::sim::collision {
 
 /* **************************************** */

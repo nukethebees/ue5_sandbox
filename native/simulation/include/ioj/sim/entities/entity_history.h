@@ -4,12 +4,7 @@
 #pragma once
 
 #include "entity_history_compact_view.h"
-#include "ioj/kill_count.h"
-#include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_life_state.h"
-#include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/operations.h"
 
 namespace ioj::sim {

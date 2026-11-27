@@ -3,13 +3,9 @@
 
 #pragma once
 
-#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 #include "turret_entity_data_compact_view.h"
-
-#include <cstdint>
 
 namespace ioj::sim {
 

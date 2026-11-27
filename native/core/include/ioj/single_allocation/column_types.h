@@ -11,19 +11,26 @@ namespace ioj::soa_storage_detail {
 // type in storage, retaining constness and one address per column.
 template <typename... Ts>
 struct ColumnPointers {
-    using Address = std::conditional_t<(std::is_const_v<Ts> && ...), void const*, void*>;
+    template <std::size_t Index>
+    using element_type = Ts...[Index];
     template <template <typename...> typename Result>
     using apply = Result<Ts...>;
+    static constexpr std::size_t size{sizeof...(Ts)};
+    static constexpr bool has_strided_columns{size >= 2 &&
+                                              (std::is_same_v<Ts, element_type<0>> && ...)};
+    using Address = std::conditional_t<(std::is_const_v<Ts> && ...), void const*, void*>;
 
     ColumnPointers() = default;
     explicit ColumnPointers(Ts*... columns) noexcept
         : columns_{columns...} {}
 
-  template <std::size_t Index>
-      auto get() const noexcept -> Ts... [Index] *
-  { return static_cast<Ts...[Index]*>(columns_[Index]); }
+    template <std::size_t Index>
+    auto get() const noexcept -> element_type<Index>* {
+        return static_cast<element_type<Index>*>(columns_[Index]);
+    }
 
-      private : std::array<Address, sizeof...(Ts)> columns_ {};
+  private:
+    std::array<Address, sizeof...(Ts)> columns_{};
 };
 }
 
@@ -40,14 +47,7 @@ struct tuple_element<Index, ioj::soa_storage_detail::ColumnPointers<Ts...>> {
 
 namespace ioj::soa_storage_detail {
 template <typename... Ts>
-struct ColumnTypes {
-    static constexpr std::size_t size{sizeof...(Ts)};
-    template <std::size_t Index>
-    using at = Ts...[Index];
-};
-
-template <template <typename...> typename Result, typename Pointers>
-using FromPointers = typename Pointers::template apply<Result>;
+struct ColumnTypes {};
 
 template <typename Result>
 auto convert_pointers(auto const& data) noexcept -> Result {

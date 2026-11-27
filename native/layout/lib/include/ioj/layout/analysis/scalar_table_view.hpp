@@ -26,6 +26,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -40,11 +43,8 @@ using Pointers =
                                        std::optional<ioj::layout::FloatEncoding>,
                                        std::optional<ioj::layout::VarintEncoding>>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.type(),
@@ -57,33 +57,15 @@ struct Schema
                     source.float_encoding(),
                     source.varint_encoding());
     }
-    auto type(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto integer_domain(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto enum_domain(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto optional_sentinel_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto optional_presence_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto quantized_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
-    auto fixed_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
-    }
-    auto float_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
-    }
-    auto varint_encoding(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
-    }
+    auto type(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto integer_domain(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto enum_domain(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto optional_sentinel_encoding(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto optional_presence_encoding(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto quantized_encoding(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto fixed_encoding(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto float_encoding(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto varint_encoding(this ColumnReceiver auto&& self) { return column_at<8>(self); }
 };
 
 /* **************************************** */

@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/payload_footprint.hpp"
-#include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analysis/selection_table_compact_view.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 
 #include <cstddef>
-#include <cstdint>
 
 namespace ioj::layout {
 

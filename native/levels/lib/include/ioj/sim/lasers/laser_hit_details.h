@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/operations.h"
 #include "laser_hit_details_compact_view.h"
 

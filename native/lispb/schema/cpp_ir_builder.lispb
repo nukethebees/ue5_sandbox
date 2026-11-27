@@ -145,7 +145,6 @@
         (parameter template_arguments "std::initializer_list<Syntax>")
         (parameter arguments "std::initializer_list<Syntax>"))
       (method node_list "NodeListBuilder")
-      (method lowering_storage "LoweringStorage&")
       (method clear "void")
       (method collect_dependencies "void" :const true
         (parameter expr "Expr")

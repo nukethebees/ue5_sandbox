@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -17,8 +16,7 @@ namespace level_spinner_spawn_events {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t entity_indices_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};

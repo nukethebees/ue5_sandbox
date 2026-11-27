@@ -1,7 +1,6 @@
 #pragma once
 
 #include <codegen/ast/indices.h>
-#include <codegen/lowering/indices.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/module_handle.h>
@@ -30,7 +29,6 @@ struct LoweringContext {
     schema::TypeGraph const& semantic;
     ModuleHandle module;
 
-    auto path_text(LoweringPathId path, std::string_view separator) const -> std::string;
     auto resolve(TypeRefId reference) const -> CppTypeId;
     auto for_declaration(DeclarationHandle declaration) const -> LoweringContext;
     auto nested_declaration(SoaMemberId member) const -> DeclarationHandle;

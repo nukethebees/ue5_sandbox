@@ -4,15 +4,10 @@
 #pragma once
 
 #include "ioj/layout/analysis/code_table_compact_view.hpp"
-#include "ioj/layout/analyzer/enum_code_value.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 
-#include "codegen/schema/packed_integer_value.h"
-
 #include <cstddef>
-#include <cstdint>
-#include <string_view>
 
 namespace ioj::layout {
 

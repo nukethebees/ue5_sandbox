@@ -3,14 +3,9 @@
 
 #pragma once
 
-#include "ioj/input/physical/button_state.h"
-#include "ioj/input/physical/physical_key.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
-#include "ioj/vector.h"
 #include "pointer_buttons_compact_view.h"
-
-#include <cstdint>
 
 namespace ioj {
 

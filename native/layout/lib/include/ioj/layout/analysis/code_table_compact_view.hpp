@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/layout/analysis/code_table_view.hpp"
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -16,8 +15,7 @@ namespace code_table {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t name_column{0ULL};
     static constexpr std::size_t sentinel_column{1ULL};
     static constexpr std::size_t count_sentinel_column{2ULL};

@@ -22,6 +22,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -40,11 +43,8 @@ using Pointers = soa_storage_detail::ColumnPointers<float,
                                                     EntityId,
                                                     LaserSource>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -65,33 +65,20 @@ struct Schema
                     source.instigator_ids(),
                     source.sources());
     }
-    auto view_locations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    auto view_locations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 0>(self);
     }
-    auto view_rotations(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::rotators3f::Schema, 3ULL>();
+    auto view_rotations(this ColumnReceiver auto&& self) {
+        return column_at<ioj::rotators3f::Schema, 3>(self);
     }
-    auto view_base_velocities(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 6ULL>();
+    auto view_base_velocities(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 6>(self);
     }
-    auto damages(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
-    }
-    auto speeds(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
-    }
-    auto max_distances(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
-    }
-    auto instigator_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
-    }
-    auto sources(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
-    }
+    auto damages(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto speeds(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto max_distances(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto instigator_ids(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto sources(this ColumnReceiver auto&& self) { return column_at<13>(self); }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.view_locations(),
                     source.view_rotations(),

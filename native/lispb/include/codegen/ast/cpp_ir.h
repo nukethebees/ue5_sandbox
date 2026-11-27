@@ -82,7 +82,6 @@
 #include <codegen/ast/template_id.h>
 #include <codegen/ast/template_parameter_id.h>
 #include <codegen/ast/unary_operator.h>
-#include <codegen/lowering/lowering_storage.h>
 #include <lispb/indices.h>
 
 #include <array>
@@ -123,11 +122,9 @@ class CppIR {
     auto operator=(CppIR const&) -> CppIR& = delete;
     Strings& strings;
     CppTypes& types;
-    LoweringStorage lowering;
     CppFiles files;
     Modules modules;
     auto node_list() -> NodeListBuilder { return NodeListBuilder{*this}; }
-    auto lowering_storage() -> LoweringStorage& { return lowering; }
     auto store_text(std::string_view value) -> StringId;
     auto store_optional_text(std::optional<std::string_view> value) -> std::optional<StringId>;
     void clear();

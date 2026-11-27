@@ -286,6 +286,19 @@ class Validator {
             "soa_schema",
             "resolved_view_type",
             "column_count",
+            "column_at",
+            "nested_at",
+            "physical_pointers",
+            "row_types",
+            "column_types",
+            "generated_set",
+            "logical_columns",
+            "equivalent_values",
+            "with_columns",
+            "implementation_type",
+            "has_strided_columns",
+            "resolved_view_for",
+            "compact_view_for",
         };
         return names.contains(value);
     }

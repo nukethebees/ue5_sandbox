@@ -3,13 +3,9 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/layout/analysis/relationship_table_compact_view.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
-
-#include "lispb/schema/indices.h"
 
 #include <cstddef>
 

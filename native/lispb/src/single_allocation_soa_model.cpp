@@ -1,33 +1,19 @@
 #include "single_allocation_soa_model.h"
 
 #include "lowering_context.h"
-#include "lowering_utils.h"
-#include "soa_api.h"
 
-#include <codegen/ast/cpp_ir_builder.h>
-#include <codegen/ast/cpp_types.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
-#include <codegen/schema/function_schemas.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
 #include <lispb/indices.h>
-#include <lispb/schema/soa_columns.h>
-#include <lispb/schema/soa_types.h>
-#include <lispb/schema/type_graph.h>
-#include <lispb/strings.h>
 
-#include <algorithm>
-#include <map>
+#include <cstddef>
 #include <optional>
 #include <set>
-#include <span>
 #include <stdexcept>
 #include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
 
 namespace lispb::codegen::detail {
 auto schema_namespace(LoweringContext& ctx, DeclarationHandle schema) -> std::string {
@@ -39,115 +25,31 @@ auto schema_namespace(LoweringContext& ctx, DeclarationHandle schema) -> std::st
            soa_namespace_name(ctx.text(decls.soas.name[schema]));
 }
 
-auto is_strided_schema(LoweringContext& ctx, DeclarationHandle schema) -> bool {
-    auto const& decls{ctx.declarations};
-    auto const& soas{decls.soas};
-    auto const& members{decls.soa_members};
-    std::optional<CppTypeId> element_type;
-    std::size_t count{};
-    auto homogeneous = [&](auto&& self, DeclarationHandle current) -> bool {
-        auto const scoped{ctx.for_declaration(current)};
-        for (auto const member : decls.items(soas.members[current])) {
-            auto const row{members.index(member)};
-            if (members.kind[row] == SoaMemberKind::nested) {
-                if (!self(self, scoped.nested_declaration(member))) {
-                    return false;
-                }
-            } else {
-                auto const type{scoped.resolve(members.type[row])};
-                if (element_type && *element_type != type) {
-                    return false;
-                }
-                element_type = type;
-                ++count;
-            }
-        }
-        return true;
-    };
-    return homogeneous(homogeneous, schema) && count >= 2;
-}
-
-namespace {
-class SingleAllocationModelLowering : public CppIRBuilder {
-  public:
-    explicit SingleAllocationModelLowering(CppIR& ir)
-        : CppIRBuilder{ir} {}
-    auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
-        -> SingleAllocationModelId {
-        auto const& type_graph{ctx.semantic};
-        auto const module_name{ctx.module};
-        auto& storage{lowering_storage()};
-        auto& models{storage.single_allocation_models};
-        auto& columns{storage.single_allocation_columns};
-        auto const result{models.append()};
-        auto const row{models.index(result)};
-        models.schema[row] = schema;
-        std::vector<TypeDependencyId> dependencies{
-            dependency("single_allocation_storage", "ioj/native_soa/storage.h")};
-        std::vector<SingleAllocationColumnId> column_ids;
-
-        auto const root_id{
-            type_graph.find_declared(module_name, ctx.declarations.soas.name[schema])};
-        if (!root_id.has_value()) {
-            throw std::invalid_argument{"Missing resolved single-allocation SOA: " +
-                                        ctx.text(ctx.declarations.soas.name[schema])};
-        }
-        auto const root_type{type_graph.definition(*root_id)};
-        std::set<std::string> flattened_names;
-        auto collect_columns = [&](auto&& self,
-                                   schema::TypeDefinitionId const& current,
-                                   LoweringPathId prefix) -> void {
-            for (auto const member_id : type_graph.definitions().soas.columns_of(current)) {
-                auto const member{member_id};
-                auto const path{storage.paths.append(
-                    prefix,
-                    type_graph.definitions()
-                        .soa_columns.name[type_graph.definitions().soa_columns.index(member)])};
-                if (type_graph.definitions()
-                        .soa_columns.kind[type_graph.definitions().soa_columns.index(member)] ==
-                    SoaMemberKind::nested) {
-                    auto const occurrence{
-                        type_graph.definitions()
-                            .soa_columns
-                            .semantic_type[type_graph.definitions().soa_columns.index(member)]};
-                    auto const nested_type{
-                        type_graph.occurrences().type[type_graph.occurrences().index(occurrence)]};
-                    auto const nested{type_graph.definition(nested_type)};
-                    self(self, nested, path);
-                    continue;
-                }
-                auto type{type_graph.occurrences().cpp_type[type_graph.occurrences().index(
-                    type_graph.definitions().soa_columns.semantic_type
-                        [type_graph.definitions().soa_columns.index(member)])]};
-                auto const flattened{ctx.path_text(path, "_")};
-                if (!flattened_names.insert(flattened).second) {
-                    throw std::invalid_argument{"Single-allocation column name collision: " +
-                                                flattened};
-                }
-                auto const column{columns.append()};
-                auto const column_row{columns.index(column)};
-                columns.flattened_identifier[column_row] = store_text(flattened);
-                columns.type[column_row] = type;
-                columns.member_path[column_row] = path;
-                column_ids.push_back(column);
-                dependencies.insert(dependencies.end(),
-                                    type_dependencies(type).begin(),
-                                    type_dependencies(type).end());
-            }
-        };
-        collect_columns(collect_columns, root_type, {});
-
-        models.columns[row] = storage.save(std::span<SingleAllocationColumnId const>{column_ids});
-
-        models.dependencies[row] = storage.save(std::span<TypeDependencyId const>{dependencies});
-        return result;
-    }
-};
-} // namespace
-
 auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
-    -> SingleAllocationModelId {
-    return SingleAllocationModelLowering{ctx.ir}.build_single_allocation_model(ctx, schema);
+    -> SingleAllocationModel {
+    SingleAllocationModel model{schema, {}};
+    std::set<std::string> names;
+    auto collect = [&](auto&& self,
+                       DeclarationHandle current,
+                       std::string const& prefix,
+                       StringId top) -> void {
+        auto const local{ctx.for_declaration(current)};
+        auto const& members{ctx.declarations.soa_members};
+        for (auto member : ctx.declarations.items(ctx.declarations.soas.members[current])) {
+            auto const name{prefix + ctx.text(members.name[member])};
+            auto const root_member{prefix.empty() ? members.name[member] : top};
+            if (members.kind[member] == SoaMemberKind::nested) {
+                self(self, local.nested_declaration(member), name + "_", root_member);
+            } else {
+                if (!names.insert(name).second) {
+                    throw std::invalid_argument{"Single-allocation column name collision: " + name};
+                }
+                model.columns.push_back({name, local.resolve(members.type[member]), root_member});
+            }
+        }
+    };
+    collect(collect, schema, "", {});
+    return model;
 }
 
 } // namespace lispb::codegen::detail

@@ -4,9 +4,7 @@
 #pragma once
 
 #include "fighter_spawn_queue_compact_view.h"
-#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/operations.h"
 
 namespace ioj::sim {

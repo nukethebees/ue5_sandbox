@@ -4,14 +4,8 @@
 #pragma once
 
 #include "ioj/layout/analysis/physical_fact_table_compact_view.hpp"
-#include "ioj/layout/fact_origin.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
-
-#include "lispb/indices.h"
-#include "lispb/schema/enum_signedness.h"
-
-#include <cstdint>
 
 namespace ioj::layout {
 

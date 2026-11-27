@@ -3,39 +3,36 @@
 
 #pragma once
 
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "radar_positions_view.hpp"
 
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::ui::radar_2d {
 namespace positions {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t xs_column{0ULL};
     static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace positions
 } // namespace ioj::ui::radar_2d

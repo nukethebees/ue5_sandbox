@@ -21,6 +21,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -38,11 +41,8 @@ using Pointers = soa_storage_detail::ColumnPointers<float,
                                                     std::int32_t,
                                                     EntityId>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& min_points_view{source.view_min_points()};
@@ -63,25 +63,19 @@ struct Schema
                     max_cells_view.zs(),
                     source.entity_ids());
     }
-    auto view_min_points(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    auto view_min_points(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 0>(self);
     }
-    auto view_max_points(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::vectors3f::Schema, 3ULL>();
+    auto view_max_points(this ColumnReceiver auto&& self) {
+        return column_at<ioj::vectors3f::Schema, 3>(self);
     }
-    auto view_min_cells(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::sim::collision::cell_coords::Schema, 6ULL>();
+    auto view_min_cells(this ColumnReceiver auto&& self) {
+        return column_at<ioj::sim::collision::cell_coords::Schema, 6>(self);
     }
-    auto view_max_cells(this auto&& self) {
-        return static_cast<decltype(self)&&>(self)
-            .template nested_at<ioj::sim::collision::cell_coords::Schema, 9ULL>();
+    auto view_max_cells(this ColumnReceiver auto&& self) {
+        return column_at<ioj::sim::collision::cell_coords::Schema, 9>(self);
     }
-    auto entity_ids(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
-    }
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<12>(self); }
     static decltype(auto) logical_columns(auto const& source, auto&& func) {
         return func(source.view_min_points(),
                     source.view_max_points(),

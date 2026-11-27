@@ -155,7 +155,7 @@ struct StorageOperations {
         if constexpr (std::is_base_of_v<StorageState, Source>) {
             return source.data();
         } else if constexpr (std::derived_from<Source, ViewOperations<typename Self::soa_schema>>) {
-            return convert_pointers<Result>(source.resolve().pointers());
+            return convert_pointers<Result>(source.resolve().physical_pointers());
         } else {
             return Self::soa_schema::with_columns(
                 source, [](auto const&... columns) { return Result{source_data(columns)...}; });

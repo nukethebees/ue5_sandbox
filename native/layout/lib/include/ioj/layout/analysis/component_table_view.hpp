@@ -22,6 +22,9 @@ struct ConstView;
 struct CompactView;
 struct CompactConstView;
 
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
 /* **************************************** */
 // Column pointers
 /* **************************************** */
@@ -36,11 +39,8 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     std::optional<std::uint64_t>,
                                                     std::optional<std::uint64_t>>;
 
-using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
-
 struct Schema
-    : soa_storage_detail::
-          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),
@@ -54,36 +54,16 @@ struct Schema
                     source.padding_before_bytes(),
                     source.slack_bytes());
     }
-    auto parent(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
-    }
-    auto name(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
-    }
-    auto tag(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
-    }
-    auto semantic_type(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
-    }
-    auto element_count(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
-    }
-    auto element_facts(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
-    }
-    auto offset_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
-    }
-    auto extent_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
-    }
-    auto padding_before_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
-    }
-    auto slack_bytes(this auto&& self) {
-        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
-    }
+    auto parent(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto name(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto tag(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto semantic_type(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto element_count(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto element_facts(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto offset_bytes(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto extent_bytes(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto padding_before_bytes(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto slack_bytes(this ColumnReceiver auto&& self) { return column_at<9>(self); }
 };
 
 /* **************************************** */

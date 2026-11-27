@@ -166,10 +166,6 @@ ioj_enable_warnings(lispb-schema CODEGEN)
 
 add_library(codegen-lib)
 target_sources(codegen-lib PRIVATE
-  src/lowering/lowering_paths.cpp
-  src/lowering/lowering_storage.cpp
-  src/lowering/single_allocation_columns.cpp
-  src/lowering/single_allocation_models.cpp
   src/ast/cpp_ir.cpp
   src/ast/cpp_renderer.cpp
   src/ast/cpp_declaration_id.cpp

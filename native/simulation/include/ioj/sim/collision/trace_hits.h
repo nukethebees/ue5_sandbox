@@ -4,10 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/collision/collision_types.h"
-#include "ioj/sim/collision/query_result_types.h"
 #include "ioj/sim/collision/trace_hits_compact_view.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 
 namespace ioj::sim {

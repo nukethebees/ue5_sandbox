@@ -3,39 +3,36 @@
 
 #pragma once
 
-#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "motions_view.h"
 
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj {
 namespace physical_motions_rows {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
     static constexpr std::size_t positions_column{0ULL};
     static constexpr std::size_t deltas_column{1ULL};
 };
 
 /* **************************************** */
-// Strided views
+// Compact views
 /* **************************************** */
 struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
     : soa_storage_detail::
           ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
     using implementation_type::implementation_type;
 };
-static_assert(std::is_trivially_copyable_v<CompactView>);
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace physical_motions_rows
 } // namespace ioj

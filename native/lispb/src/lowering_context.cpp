@@ -16,18 +16,6 @@
 
 namespace lispb::codegen::detail {
 
-auto LoweringContext::path_text(LoweringPathId path, std::string_view separator) const
-    -> std::string {
-    std::string result;
-    for (auto const name : ir.lowering.paths.items(path)) {
-        if (!result.empty()) {
-            result += separator;
-        }
-        result += declarations.strings().view(name);
-    }
-    return result;
-}
-
 auto LoweringContext::resolve(TypeRefId reference) const -> CppTypeId {
     auto const occurrence{semantic.resolved(module, reference)};
     auto const& occurrences{semantic.occurrences()};

@@ -3,17 +3,11 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/component_table_compact_view.hpp"
-#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 
-#include "lispb/schema/indices.h"
-
 #include <cstddef>
-#include <cstdint>
-#include <string_view>
 
 namespace ioj::layout {
 
