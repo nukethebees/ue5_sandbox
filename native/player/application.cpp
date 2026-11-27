@@ -272,24 +272,6 @@ auto Application::play(Window& window,
                                  "Could not apply player preferences. See the game log."};
     }
 
-    if (!settings_.applied().controls.bindings) {
-        std::vector<KeyBinding> legacy;
-        host::read_legacy_key_bindings(
-            &legacy, [](void* destination, FlightMapping mapping, input::KeyCode key) {
-                static_cast<std::vector<KeyBinding>*>(destination)->push_back({mapping, key});
-            });
-        if (!legacy.empty()) {
-            auto updated{settings_.applied()};
-            updated.controls.bindings = std::move(legacy);
-            if (auto result{settings_.save_category(
-                    GameSettingCategory::Controls, updated, settings_.applied())};
-                !result) {
-                return result;
-            }
-            settings_.apply(updated.controls);
-            host::present_settings(settings_.view(), window.supported_resolutions());
-        }
-    }
     if (settings_.launch_display_mode() != LaunchDisplayMode::Headless) {
         if (auto result{window.show(settings_)}; !result) {
             return result;

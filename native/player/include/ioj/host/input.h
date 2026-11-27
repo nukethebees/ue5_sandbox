@@ -92,8 +92,6 @@ using InputEvent = std::variant<PlayerAction, MenuButton, PresentationEvent>;
 #define IOJ_INPUT_API __declspec(dllimport)
 #endif
 IOJ_INPUT_API auto menu_status() -> MenuStatus;
-using LegacyBindingSink = void (*)(void*, FlightMapping mapping, input::KeyCode key);
-IOJ_INPUT_API void read_legacy_key_bindings(void* destination, LegacyBindingSink sink);
 IOJ_INPUT_API auto present_pause(PauseCommand command) -> bool;
 IOJ_INPUT_API void select_benchmark_button(bool end_selected);
 IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);

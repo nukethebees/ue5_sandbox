@@ -2,7 +2,6 @@
 #include "input/BindingCapture.h"
 #include "input/BindingKey.h"
 #include <ioj/host/input.h>
-#include <ioj/input/flight_controls.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
@@ -17,8 +16,6 @@
 #include <GenericPlatform/GenericPlatformInputDeviceMapper.h>
 #include <Input/Events.h>
 #include <InputCoreTypes.h>
-#include <Kismet/GameplayStatics.h>
-#include <UserSettings/EnhancedInputUserSettings.h>
 #include <Widgets/Input/SEditableText.h>
 #include <Widgets/SWindow.h>
 #include <Widgets/Text/SMultiLineEditableText.h>
@@ -55,35 +52,6 @@ auto menu_status() -> MenuStatus {
     return {editing,
             widget && widget->GetMetaData<FBindingCapture>().IsValid(),
             main ? main->focused_item() : std::nullopt};
-}
-void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
-    static constexpr TCHAR slot[]{TEXT("SpaceGameInputSettings")};
-    if (!UGameplayStatics::DoesSaveGameExist(slot, 0)) {
-        return;
-    }
-    auto* const settings{
-        Cast<UEnhancedInputUserSettings>(UGameplayStatics::LoadGameFromSlot(slot, 0))};
-    auto* const profile{settings ? settings->GetActiveKeyProfile() : nullptr};
-    if (!profile) {
-        return;
-    }
-
-    for (auto const& control : input::flight_controls()) {
-        auto const* row{
-            profile->FindKeyMappingRow(FName{*to_fstring(to_serialized_string(control.mapping))})};
-        if (!row) {
-            continue;
-        }
-        for (auto const& mapping : row->Mappings) {
-            if (mapping.GetSlot() == EPlayerMappableKeySlot::First) {
-                auto const& key{mapping.GetCurrentKey()};
-                sink(destination,
-                     control.mapping,
-                     key.IsValid() ? input::parse_key(to_string(key.GetFName().ToString()))
-                                   : input::KeyCode{});
-            }
-        }
-    }
 }
 auto present_pause(PauseCommand command) -> bool {
     auto* player{controller()};

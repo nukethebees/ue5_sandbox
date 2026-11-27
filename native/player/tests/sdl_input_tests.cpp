@@ -33,7 +33,6 @@ Presentation presentation;
 
 namespace ioj::host {
 
-void read_legacy_key_bindings(void*, LegacyBindingSink) {}
 void present_input(PresentationEvent const& event) {
     auto& view{tests::presentation};
     if (auto const* key{std::get_if<MenuKey>(&event)}; key && key->down) {
