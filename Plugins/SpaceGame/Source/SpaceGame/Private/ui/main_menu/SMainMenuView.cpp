@@ -111,20 +111,20 @@ auto SMainMenuView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_ev
     }
     return SCompoundWidget::OnKeyDown(geometry, key_event);
 }
-auto SMainMenuView::focused_item() const -> std::optional<input::MainMenuItem> {
+auto SMainMenuView::focused_item() const -> std::optional<MainMenuItem> {
     if (quit_button_ && quit_button_->has_focus()) {
-        return input::MainMenuItem::Quit;
+        return MainMenuItem::Quit;
     }
     auto const count{page_buttons_.Num()};
     for (int32 index{}; index < count; ++index) {
         if (page_buttons_[index]->has_focus()) {
-            return static_cast<input::MainMenuItem>(index);
+            return static_cast<MainMenuItem>(index);
         }
     }
     return {};
 }
-void SMainMenuView::focus_item(input::MainMenuItem item) {
-    if (item == input::MainMenuItem::Quit) {
+void SMainMenuView::focus_item(MainMenuItem item) {
+    if (item == MainMenuItem::Quit) {
         quit_button_->focus();
     } else {
         page_buttons_[static_cast<int32>(item)]->focus();
@@ -203,7 +203,7 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
              .Icon(&style_->icon(EGameUiIcon::System))
              .Text(NSLOCTEXT("MainMenu", "QuitGame", "Quit Game"))
              .Audio(audio_)
-             .OnClicked(this, &SMainMenuView::activate_item, input::MainMenuItem::Quit)];
+             .OnClicked(this, &SMainMenuView::activate_item, MainMenuItem::Quit)];
     navigation->AddSlot().AutoHeight().Padding(FMargin{
         0.0f,
         14.0f,
@@ -250,12 +250,11 @@ void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
              .Icon(&style_->icon(icon))
              .Text(MoveTemp(text))
              .Audio(audio_)
-             .OnClicked(
-                 this, &SMainMenuView::activate_item, static_cast<input::MainMenuItem>(page))];
+             .OnClicked(this, &SMainMenuView::activate_item, static_cast<MainMenuItem>(page))];
     page_buttons_.Add(button);
 }
 
-auto SMainMenuView::activate_item(input::MainMenuItem item) -> FReply {
+auto SMainMenuView::activate_item(MainMenuItem item) -> FReply {
     on_item_.ExecuteIfBound(item);
     return FReply::Handled();
 }

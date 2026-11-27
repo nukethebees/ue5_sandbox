@@ -3,23 +3,23 @@
 #include "ioj/vector.h"
 #include <ioj/settings/controls_settings.h>
 
-namespace ioj::input {
-enum class Response { TurnPointerDelta, GamepadTurn };
-enum class Axis { None, Pitch, Yaw };
+namespace ioj {
+enum class InputResponse { TurnPointerDelta, GamepadTurn };
+enum class FlightAxis { None, Pitch, Yaw };
 
 auto clamp_sensitivity(float value) noexcept -> float;
 auto clamp_dead_zone(float value) noexcept -> float;
 
 auto apply_response(float value,
-                    Response response,
-                    Axis axis,
+                    InputResponse response,
+                    FlightAxis axis,
                     ControlsSettings const& settings) noexcept -> float;
 auto apply_response(Vector2d value,
-                    Response response,
-                    Axis axis,
+                    InputResponse response,
+                    FlightAxis axis,
                     ControlsSettings const& settings) noexcept -> Vector2d;
 auto apply_response(Vector3d value,
-                    Response response,
-                    Axis axis,
+                    InputResponse response,
+                    FlightAxis axis,
                     ControlsSettings const& settings) noexcept -> Vector3d;
 }

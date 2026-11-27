@@ -38,7 +38,7 @@ inline auto control_bindings_changed(std::span<ControlBindingSnapshot const> con
 
 inline auto control_binding_conflicts(std::span<ControlBindingSnapshot const> const bindings,
                                       ControlBindingAddress const& address,
-                                      input::KeyCode const key) -> std::vector<std::size_t> {
+                                      KeyCode const key) -> std::vector<std::size_t> {
     std::vector<std::size_t> result;
     auto const target{std::ranges::find(bindings, address, &ControlBindingSnapshot::address)};
     if (target == bindings.end() || key == PhysicalKey::Unbound) {
@@ -59,8 +59,8 @@ inline auto control_binding_conflicts(std::span<ControlBindingSnapshot const> co
 
 inline auto control_chord_binding_conflicts(std::span<ControlBindingSnapshot const> const bindings,
                                             ControlBindingAddress const& address,
-                                            input::KeyCode const activator_key,
-                                            input::KeyCode const action_key)
+                                            KeyCode const activator_key,
+                                            KeyCode const action_key)
     -> std::vector<std::size_t> {
     std::vector<std::size_t> result;
     auto const target{std::ranges::find(bindings, address, &ControlBindingSnapshot::address)};

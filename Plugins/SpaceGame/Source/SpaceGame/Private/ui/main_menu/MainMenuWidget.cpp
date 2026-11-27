@@ -75,7 +75,7 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
                     .ArchiveContent()[archive_content]
                     .OptionsContent()[options_content]
                     .OnItem(FOnMainMenuItem::CreateLambda(
-                        [](input::MainMenuItem item) { queue_input_action(item); }))
+                        [](MainMenuItem item) { queue_input_action(item); }))
                     .OnFocusContent(
                         FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
     if (focus_level_content_) {
@@ -179,16 +179,16 @@ void UMainMenuWidget::create_content_widgets() {
     }
 }
 
-auto UMainMenuWidget::focused_item() const -> std::optional<input::MainMenuItem> {
+auto UMainMenuWidget::focused_item() const -> std::optional<MainMenuItem> {
     return view_ && !page_modal_visible_ ? view_->focused_item() : std::nullopt;
 }
-void UMainMenuWidget::focus_item(input::MainMenuItem item) {
+void UMainMenuWidget::focus_item(MainMenuItem item) {
     if (view_ && !page_modal_visible_) {
         view_->focus_item(item);
     }
 }
-void UMainMenuWidget::activate_item(input::MainMenuItem item) {
-    if (item == input::MainMenuItem::Quit) {
+void UMainMenuWidget::activate_item(MainMenuItem item) {
+    if (item == MainMenuItem::Quit) {
         request_quit();
     } else {
         request_page(static_cast<EMenuPage>(item));

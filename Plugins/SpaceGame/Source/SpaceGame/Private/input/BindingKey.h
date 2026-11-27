@@ -10,7 +10,7 @@
 #include <utility>
 
 namespace ioj {
-inline auto binding_key(input::KeyCode code) -> FKey {
+inline auto binding_key(KeyCode code) -> FKey {
     if (code.key == PhysicalKey::Character) {
         return FInputKeyManager::Get().GetKeyFromCodes(INDEX_NONE, code.codepoint);
     }

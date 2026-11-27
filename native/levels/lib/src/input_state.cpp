@@ -1,6 +1,6 @@
 #include <ioj/input/input_state.h>
 
-namespace ioj::input {
+namespace ioj {
 void InputState::button(DigitalAction action, ButtonState edge) {
     if (edge == ButtonState::Repeated && !held.get(action)) {
         return;

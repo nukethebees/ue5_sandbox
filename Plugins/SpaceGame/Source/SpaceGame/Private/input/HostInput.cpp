@@ -81,7 +81,7 @@ void present_steering(std::optional<Vector2d> steering) {
     player->present_steering(position);
 }
 void ui_key(
-    input::KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
+    KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const key{binding_key(code)};
     if (!key.IsValid()) {
@@ -96,7 +96,7 @@ void ui_key(
         slate.ProcessKeyUpEvent(event);
     }
 }
-void ui_axis(input::KeyCode code, float value, Modifiers modifiers) {
+void ui_axis(KeyCode code, float value, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
     slate.ProcessAnalogInputEvent(FAnalogInputEvent{
@@ -150,14 +150,14 @@ void ui_text(std::string_view text, Modifiers modifiers) {
     }
 }
 }
-void focus_main_item(input::MainMenuItem item) {
+void focus_main_item(MainMenuItem item) {
     if (auto* player{controller()}) {
         if (auto* main{player->main_menu()}) {
             main->focus_item(item);
         }
     }
 }
-void activate_main_item(input::MainMenuItem item) {
+void activate_main_item(MainMenuItem item) {
     if (auto* player{controller()}) {
         if (auto* main{player->main_menu()}) {
             main->activate_item(item);
@@ -167,33 +167,33 @@ void activate_main_item(input::MainMenuItem item) {
 void present_menu_button(MenuButton button) {
     PhysicalKey key{};
     switch (button.command) {
-        case input::MenuCommand::Up:
+        case MenuCommand::Up:
             key = PhysicalKey::Up;
             break;
-        case input::MenuCommand::Down:
+        case MenuCommand::Down:
             key = PhysicalKey::Down;
             break;
-        case input::MenuCommand::Left:
+        case MenuCommand::Left:
             key = PhysicalKey::Left;
             break;
-        case input::MenuCommand::Right:
+        case MenuCommand::Right:
             key = PhysicalKey::Right;
             break;
-        case input::MenuCommand::Next:
+        case MenuCommand::Next:
             button.modifiers.set_left_shift(false);
             button.modifiers.set_right_shift(false);
             key = PhysicalKey::Tab;
             break;
-        case input::MenuCommand::Previous:
+        case MenuCommand::Previous:
             if (!button.modifiers.left_shift() && !button.modifiers.right_shift()) {
                 button.modifiers.set_left_shift(true);
             }
             key = PhysicalKey::Tab;
             break;
-        case input::MenuCommand::Accept:
+        case MenuCommand::Accept:
             key = PhysicalKey::Enter;
             break;
-        case input::MenuCommand::Back:
+        case MenuCommand::Back:
             key = PhysicalKey::Escape;
             break;
     }

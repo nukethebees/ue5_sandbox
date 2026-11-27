@@ -6,7 +6,7 @@
 #include <charconv>
 #include <utility>
 
-namespace ioj::input {
+namespace ioj {
 auto character_key(std::uint32_t character) -> KeyCode {
     if (character >= 'a' && character <= 'z') {
         character -= 'a' - 'A';

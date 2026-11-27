@@ -9,7 +9,7 @@
 
 namespace ioj {
 namespace {
-auto keyboard_key(SDL_KeyboardEvent const& key) -> input::KeyCode {
+auto keyboard_key(SDL_KeyboardEvent const& key) -> KeyCode {
     static constexpr PhysicalKey keypad[]{PhysicalKey::NumPadOne,
                                           PhysicalKey::NumPadTwo,
                                           PhysicalKey::NumPadThree,
@@ -111,8 +111,8 @@ auto keyboard_key(SDL_KeyboardEvent const& key) -> input::KeyCode {
         case SDL_SCANCODE_MUTE:
             return PhysicalKey::VolumeMute;
         default:
-            return key.key >= 32 && key.key <= 0x10ffff ? input::character_key(key.key)
-                                                        : input::KeyCode{};
+            return key.key >= 32 && key.key <= 0x10ffff ? character_key(key.key)
+                                                        : KeyCode{};
     }
 }
 auto pad_button(std::size_t button) -> PhysicalKey {
@@ -213,8 +213,8 @@ void SdlInput::set_window_modes(bool relative_mouse, bool text_input) {
         }
     }
 }
-auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::PhysicalEvent> {
-    using enum input::ButtonState;
+auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent> {
+    using enum ButtonState;
     if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         bool const removed{gamepad_ && event.type == SDL_EVENT_GAMEPAD_REMOVED &&
                            SDL_GetGamepadID(gamepad_) == event.gdevice.which};
@@ -232,7 +232,7 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
         }
 
         if (removed) {
-            return input::GamepadDisconnected{};
+            return GamepadDisconnected{};
         }
         return {};
     }
@@ -242,12 +242,12 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
     }
     switch (event.type) {
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            return input::WindowFocus::Lost;
+            return WindowFocus::Lost;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
-            return input::WindowFocus::Gained;
+            return WindowFocus::Gained;
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
-            return input::PhysicalButton{keyboard_key(event.key),
+            return PhysicalButton{keyboard_key(event.key),
                                          event.key.key,
                                          modifiers(event.key.mod),
                                          event.key.repeat ? Repeated
@@ -255,22 +255,22 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
                                                           : Released};
         }
         case SDL_EVENT_TEXT_INPUT:
-            return input::TextInput{event.text.text};
+            return TextInput{event.text.text};
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             auto const& button{event.button};
             auto const code{mouse_key(button.button)};
             if (code != PhysicalKey::Unbound) {
-                return input::PhysicalPointerButton{
+                return PhysicalPointerButton{
                     {button.x, button.y}, code, button.down ? Pressed : Released, button.clicks};
             }
             break;
         }
         case SDL_EVENT_MOUSE_MOTION:
-            return input::PointerMotion{{event.motion.x, event.motion.y},
+            return PointerMotion{{event.motion.x, event.motion.y},
                                         {event.motion.xrel, event.motion.yrel}};
         case SDL_EVENT_MOUSE_WHEEL:
-            return input::WheelMotion{
+            return WheelMotion{
                 {event.wheel.mouse_x, event.wheel.mouse_y},
                 event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y};
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
@@ -278,7 +278,7 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
                 auto const code{pad_button(event.gbutton.button)};
                 if (code != PhysicalKey::Unbound) {
-                    return input::PhysicalButton{
+                    return PhysicalButton{
                         code, 0, {}, event.gbutton.down ? Pressed : Released};
                 }
             }
@@ -286,7 +286,7 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gaxis.which) {
                 auto const axis{event.gaxis.axis};
-                return input::PhysicalAxis{
+                return PhysicalAxis{
                     axis_keys[axis],
                     axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value)};
             }

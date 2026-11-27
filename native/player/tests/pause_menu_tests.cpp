@@ -14,7 +14,7 @@ TEST(PauseMenu, ImmediateResumeWaitsOnlyForTheQueuedSimulationPause) {
     EXPECT_TRUE(menu.handle(RequestResume, Running));
     EXPECT_TRUE(menu.widget_event(
         {host::PauseWidgetEventKind::LeaveAccepted, host::PauseMenuItem::Resume}));
-    EXPECT_EQ(menu.route({input::Context::Observer}).context, input::Context::Observer);
+    EXPECT_EQ(menu.route({InputContext::Observer}).context, InputContext::Observer);
     EXPECT_FALSE(menu.simulation_request(Running));
     EXPECT_EQ(menu.simulation_request(Paused), levels::LaunchMode::Running);
     EXPECT_FALSE(menu.simulation_request(Running));

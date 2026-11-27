@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-namespace ioj::input {
+namespace ioj {
 struct ActionTransition {
     DigitalAction action;
     ButtonState state;

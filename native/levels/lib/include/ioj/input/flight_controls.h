@@ -8,7 +8,7 @@
 #include <span>
 #include <string_view>
 
-namespace ioj::input {
+namespace ioj {
 enum class BindingGroup : std::uint8_t { Flight, Utility, Combat };
 
 struct FlightControl {

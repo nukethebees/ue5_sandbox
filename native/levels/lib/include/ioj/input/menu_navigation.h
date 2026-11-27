@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace ioj::input {
+namespace ioj {
 enum class MenuCommand { Up, Down, Left, Right, Next, Previous, Accept, Back };
 enum class MainMenuItem {
     SelectLevel,

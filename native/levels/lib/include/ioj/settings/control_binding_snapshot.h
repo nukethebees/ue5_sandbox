@@ -9,8 +9,8 @@
 namespace ioj {
 struct ControlBindingSnapshot {
     ControlBindingAddress address{};
-    input::KeyCode current_key{};
-    input::KeyCode default_key{};
+    KeyCode current_key{};
+    KeyCode default_key{};
     std::optional<ControlBindingAddress> chord{};
 };
 }

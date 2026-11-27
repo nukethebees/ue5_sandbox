@@ -11,6 +11,6 @@ struct KeyBinding {
     bool operator==(KeyBinding const&) const = default;
 
     FlightMapping mapping{};
-    input::KeyCode key{};
+    KeyCode key{};
 };
 } // namespace ioj

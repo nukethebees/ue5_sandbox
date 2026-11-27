@@ -12,7 +12,7 @@ struct TypeReader<FlightMapping> {
         if (!name) {
             return std::unexpected{std::move(name.error())};
         }
-        if (auto mapping{input::parse_mapping(*name)}) {
+        if (auto mapping{parse_mapping(*name)}) {
             return *mapping;
         }
         return read_error(
@@ -20,14 +20,14 @@ struct TypeReader<FlightMapping> {
     }
 };
 template <>
-struct TypeReader<input::KeyCode> {
+struct TypeReader<KeyCode> {
     static auto read(Reader const& reader, NodeIndex node, std::string_view path)
-        -> ReadResult<input::KeyCode> {
+        -> ReadResult<KeyCode> {
         auto name{s7::read<std::string>(reader, node, path)};
         if (!name) {
             return std::unexpected{std::move(name.error())};
         }
-        return input::parse_key(*name);
+        return parse_key(*name);
     }
 };
 }

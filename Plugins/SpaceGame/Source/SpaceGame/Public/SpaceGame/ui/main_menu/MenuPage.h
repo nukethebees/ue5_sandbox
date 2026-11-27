@@ -7,14 +7,14 @@
 
 namespace ioj {
 enum class EMenuPage : uint8 {
-    SelectLevel = static_cast<uint8>(input::MainMenuItem::SelectLevel),
-    DataArchive = static_cast<uint8>(input::MainMenuItem::DataArchive),
-    Video = static_cast<uint8>(input::MainMenuItem::Video),
-    Gameplay = static_cast<uint8>(input::MainMenuItem::Gameplay),
-    Audio = static_cast<uint8>(input::MainMenuItem::Audio),
-    Controls = static_cast<uint8>(input::MainMenuItem::Controls),
-    Accessibility = static_cast<uint8>(input::MainMenuItem::Accessibility),
-    System = static_cast<uint8>(input::MainMenuItem::System),
+    SelectLevel = static_cast<uint8>(MainMenuItem::SelectLevel),
+    DataArchive = static_cast<uint8>(MainMenuItem::DataArchive),
+    Video = static_cast<uint8>(MainMenuItem::Video),
+    Gameplay = static_cast<uint8>(MainMenuItem::Gameplay),
+    Audio = static_cast<uint8>(MainMenuItem::Audio),
+    Controls = static_cast<uint8>(MainMenuItem::Controls),
+    Accessibility = static_cast<uint8>(MainMenuItem::Accessibility),
+    System = static_cast<uint8>(MainMenuItem::System),
 };
 
 inline auto settings_category(EMenuPage page) -> TOptional<GameSettingCategory> {

@@ -18,7 +18,7 @@ class SdlInput {
     auto operator=(SdlInput const&) -> SdlInput& = delete;
 
     void set_window_modes(bool relative_mouse, bool text_input);
-    auto translate(SDL_Event const& event) -> std::optional<input::PhysicalEvent>;
+    auto translate(SDL_Event const& event) -> std::optional<PhysicalEvent>;
     auto focused() const -> bool;
   private:
     SDL_Window& window_;

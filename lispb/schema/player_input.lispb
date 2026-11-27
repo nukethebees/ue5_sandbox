@@ -1,7 +1,7 @@
 (module physical_button_state
   :header "native/levels/lib/include/ioj/input/button_state.h"
   :header-include "ioj/input/button_state.h"
-  :namespace ioj::input
+  :namespace ioj
   (enum ButtonState @native_uint8 :native-api true :helpers (traits)
     (value Released)
     (value Pressed)
@@ -11,7 +11,7 @@
 (module game_input_actions
   :header "native/levels/lib/include/ioj/input/actions.h"
   :header-include "ioj/input/actions.h"
-  :namespace ioj::input
+  :namespace ioj
   (enum DigitalAction @native_uint8 :native-api true :helpers (traits)
     (value Pause)
     (value Boost)
@@ -58,7 +58,7 @@
     (value Fast)
     (value Fastest)
     (projections (cpp)))
-  (enum Context @native_uint8 :native-api true :helpers (traits)
+  (enum InputContext @native_uint8 :native-api true :helpers (traits)
     (value Menu)
     (value Gameplay)
     (value Observer)

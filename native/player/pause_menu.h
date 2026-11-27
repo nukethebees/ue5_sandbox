@@ -17,7 +17,7 @@ struct PauseMenu {
 
     auto handle(host::PlayerAction action, sim::LevelState simulation) -> Command;
     auto route(InputRoute underlying) const -> InputRoute;
-    auto navigate(input::MenuCommand command, bool repeated) -> Command;
+    auto navigate(MenuCommand command, bool repeated) -> Command;
     auto activate(Item item) -> Command;
     auto widget_event(host::PauseWidgetEvent event) -> Command;
     auto simulation_request(sim::LevelState state) -> std::optional<levels::LaunchMode>;

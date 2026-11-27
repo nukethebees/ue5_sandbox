@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-namespace ioj::input {
+namespace ioj {
 struct KeyCode {
     constexpr KeyCode() = default;
     constexpr KeyCode(PhysicalKey key, std::uint32_t codepoint = {})

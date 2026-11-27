@@ -14,7 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
-namespace ioj::input {
+namespace ioj {
 using DigitalActionUnderlying = std::uint8_t;
 
 // Logical bit width: 5.
@@ -47,15 +47,10 @@ enum class DigitalAction : DigitalActionUnderlying {
     BenchmarkEnd,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::DigitalAction> enum_range<input::DigitalAction>{
-    input::DigitalAction::Pause, input::DigitalAction::BenchmarkEnd};
-} // namespace ioj
+inline constexpr MinMax<DigitalAction> enum_range<DigitalAction>{DigitalAction::Pause,
+                                                                 DigitalAction::BenchmarkEnd};
 
-namespace ioj::input {
 using Axis1DActionUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -63,15 +58,10 @@ enum class Axis1DAction : Axis1DActionUnderlying {
     Accelerate,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::Axis1DAction> enum_range<input::Axis1DAction>{
-    input::Axis1DAction::Accelerate, input::Axis1DAction::Accelerate};
-} // namespace ioj
+inline constexpr MinMax<Axis1DAction> enum_range<Axis1DAction>{Axis1DAction::Accelerate,
+                                                               Axis1DAction::Accelerate};
 
-namespace ioj::input {
 using Axis2DActionUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -80,15 +70,10 @@ enum class Axis2DAction : Axis2DActionUnderlying {
     ObserverLookDelta,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::Axis2DAction> enum_range<input::Axis2DAction>{
-    input::Axis2DAction::FlightTurn, input::Axis2DAction::ObserverLookDelta};
-} // namespace ioj
+inline constexpr MinMax<Axis2DAction> enum_range<Axis2DAction>{Axis2DAction::FlightTurn,
+                                                               Axis2DAction::ObserverLookDelta};
 
-namespace ioj::input {
 using MenuInputModeUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -97,15 +82,10 @@ enum class MenuInputMode : MenuInputModeUnderlying {
     Raw,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::MenuInputMode> enum_range<input::MenuInputMode>{
-    input::MenuInputMode::Navigation, input::MenuInputMode::Raw};
-} // namespace ioj
+inline constexpr MinMax<MenuInputMode> enum_range<MenuInputMode>{MenuInputMode::Navigation,
+                                                                 MenuInputMode::Raw};
 
-namespace ioj::input {
 using ObserverSpeedPresetUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
@@ -117,34 +97,24 @@ enum class ObserverSpeedPreset : ObserverSpeedPresetUnderlying {
     Fastest,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::ObserverSpeedPreset> enum_range<input::ObserverSpeedPreset>{
-    input::ObserverSpeedPreset::Slowest, input::ObserverSpeedPreset::Fastest};
-} // namespace ioj
+inline constexpr MinMax<ObserverSpeedPreset> enum_range<ObserverSpeedPreset>{
+    ObserverSpeedPreset::Slowest, ObserverSpeedPreset::Fastest};
 
-namespace ioj::input {
-using ContextUnderlying = std::uint8_t;
+using InputContextUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
-enum class Context : ContextUnderlying {
+enum class InputContext : InputContextUnderlying {
     Menu,
     Gameplay,
     Observer,
     Benchmark,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::Context> enum_range<input::Context>{input::Context::Menu,
-                                                                   input::Context::Benchmark};
-} // namespace ioj
+inline constexpr MinMax<InputContext> enum_range<InputContext>{InputContext::Menu,
+                                                               InputContext::Benchmark};
 
-namespace ioj::input {
 using ObserverLookModeUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -153,15 +123,10 @@ enum class ObserverLookMode : ObserverLookModeUnderlying {
     Camera,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::ObserverLookMode> enum_range<input::ObserverLookMode>{
-    input::ObserverLookMode::Pointer, input::ObserverLookMode::Camera};
-} // namespace ioj
+inline constexpr MinMax<ObserverLookMode> enum_range<ObserverLookMode>{ObserverLookMode::Pointer,
+                                                                       ObserverLookMode::Camera};
 
-namespace ioj::input {
 struct DigitalActions;
 
 namespace detail {
@@ -542,6 +507,7 @@ struct DigitalActions : detail::DigitalActionsBase {
             static_assert(false, "Unsupported enum accessor key");
         }
     }
+
     template <auto Key>
     constexpr void set(this auto& self, auto&& value)
         requires std::same_as<decltype(Key), DigitalAction>
@@ -602,6 +568,7 @@ struct DigitalActions : detail::DigitalActionsBase {
             static_assert(false, "Unsupported enum accessor key");
         }
     }
+
     constexpr decltype(auto) get(this auto const& self, DigitalAction key) {
         switch (key) {
             case DigitalAction::Pause:
@@ -661,6 +628,7 @@ struct DigitalActions : detail::DigitalActionsBase {
                 std::unreachable();
         }
     }
+
     constexpr void set(this auto& self, DigitalAction key, bool value) {
         switch (key) {
             case DigitalAction::Pause:
@@ -749,84 +717,82 @@ struct DigitalActions : detail::DigitalActionsBase {
 };
 
 static_assert(valid_packed_value_layout<DigitalActions>());
-} // namespace ioj::input
-namespace ioj {
+
 template <>
-struct EnumTraits<input::DigitalAction> {
-    static constexpr std::array values{input::DigitalAction::Pause,
-                                       input::DigitalAction::Boost,
-                                       input::DigitalAction::Brake,
-                                       input::DigitalAction::EmergencyBrake,
-                                       input::DigitalAction::Fire,
-                                       input::DigitalAction::HoldToSteer,
-                                       input::DigitalAction::ObserverRight,
-                                       input::DigitalAction::ObserverLeft,
-                                       input::DigitalAction::ObserverForward,
-                                       input::DigitalAction::ObserverBackward,
-                                       input::DigitalAction::ObserverUp,
-                                       input::DigitalAction::ObserverDown,
-                                       input::DigitalAction::ObserverFast,
-                                       input::DigitalAction::ObserverToggleLook,
-                                       input::DigitalAction::MenuUp,
-                                       input::DigitalAction::MenuDown,
-                                       input::DigitalAction::MenuLeft,
-                                       input::DigitalAction::MenuRight,
-                                       input::DigitalAction::MenuNext,
-                                       input::DigitalAction::MenuPrevious,
-                                       input::DigitalAction::MenuAccept,
-                                       input::DigitalAction::MenuBack,
-                                       input::DigitalAction::BenchmarkNext,
-                                       input::DigitalAction::BenchmarkActivate,
-                                       input::DigitalAction::BenchmarkToggle,
-                                       input::DigitalAction::BenchmarkEnd};
+struct EnumTraits<DigitalAction> {
+    static constexpr std::array values{DigitalAction::Pause,
+                                       DigitalAction::Boost,
+                                       DigitalAction::Brake,
+                                       DigitalAction::EmergencyBrake,
+                                       DigitalAction::Fire,
+                                       DigitalAction::HoldToSteer,
+                                       DigitalAction::ObserverRight,
+                                       DigitalAction::ObserverLeft,
+                                       DigitalAction::ObserverForward,
+                                       DigitalAction::ObserverBackward,
+                                       DigitalAction::ObserverUp,
+                                       DigitalAction::ObserverDown,
+                                       DigitalAction::ObserverFast,
+                                       DigitalAction::ObserverToggleLook,
+                                       DigitalAction::MenuUp,
+                                       DigitalAction::MenuDown,
+                                       DigitalAction::MenuLeft,
+                                       DigitalAction::MenuRight,
+                                       DigitalAction::MenuNext,
+                                       DigitalAction::MenuPrevious,
+                                       DigitalAction::MenuAccept,
+                                       DigitalAction::MenuBack,
+                                       DigitalAction::BenchmarkNext,
+                                       DigitalAction::BenchmarkActivate,
+                                       DigitalAction::BenchmarkToggle,
+                                       DigitalAction::BenchmarkEnd};
 };
 
 template <>
-struct EnumTraits<input::Axis1DAction> {
-    static constexpr std::array values{input::Axis1DAction::Accelerate};
+struct EnumTraits<Axis1DAction> {
+    static constexpr std::array values{Axis1DAction::Accelerate};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<input::Axis1DAction>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<Axis1DAction>() noexcept -> std::size_t {
     return 1ULL;
 }
 
 template <>
-struct EnumTraits<input::Axis2DAction> {
-    static constexpr std::array values{input::Axis2DAction::FlightTurn,
-                                       input::Axis2DAction::ObserverLookDelta};
+struct EnumTraits<Axis2DAction> {
+    static constexpr std::array values{Axis2DAction::FlightTurn, Axis2DAction::ObserverLookDelta};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<input::Axis2DAction>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<Axis2DAction>() noexcept -> std::size_t {
     return 2ULL;
 }
 
 template <>
-struct EnumTraits<input::MenuInputMode> {
-    static constexpr std::array values{input::MenuInputMode::Navigation, input::MenuInputMode::Raw};
+struct EnumTraits<MenuInputMode> {
+    static constexpr std::array values{MenuInputMode::Navigation, MenuInputMode::Raw};
 };
 
 template <>
-struct EnumTraits<input::ObserverSpeedPreset> {
-    static constexpr std::array values{input::ObserverSpeedPreset::Slowest,
-                                       input::ObserverSpeedPreset::Slow,
-                                       input::ObserverSpeedPreset::Normal,
-                                       input::ObserverSpeedPreset::Fast,
-                                       input::ObserverSpeedPreset::Fastest};
+struct EnumTraits<ObserverSpeedPreset> {
+    static constexpr std::array values{ObserverSpeedPreset::Slowest,
+                                       ObserverSpeedPreset::Slow,
+                                       ObserverSpeedPreset::Normal,
+                                       ObserverSpeedPreset::Fast,
+                                       ObserverSpeedPreset::Fastest};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<input::ObserverSpeedPreset>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<ObserverSpeedPreset>() noexcept -> std::size_t {
     return 5ULL;
 }
 
 template <>
-struct EnumTraits<input::Context> {
-    static constexpr std::array values{input::Context::Menu,
-                                       input::Context::Gameplay,
-                                       input::Context::Observer,
-                                       input::Context::Benchmark};
+struct EnumTraits<InputContext> {
+    static constexpr std::array values{InputContext::Menu,
+                                       InputContext::Gameplay,
+                                       InputContext::Observer,
+                                       InputContext::Benchmark};
 };
 
 } // namespace ioj

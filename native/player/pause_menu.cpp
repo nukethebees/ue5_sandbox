@@ -20,7 +20,7 @@ auto PauseMenu::handle(host::PlayerAction action, sim::LevelState simulation) ->
 
 auto PauseMenu::route(InputRoute underlying) const -> InputRoute {
     if (view != View::Closed) {
-        return {input::Context::Menu, view != View::Leaving && !options_modal && !pending};
+        return {InputContext::Menu, view != View::Leaving && !options_modal && !pending};
     }
     return underlying;
 }
@@ -33,8 +33,8 @@ auto PauseMenu::activate(Item item) -> Command {
     return host::PauseCommand{host::PauseCommandKind::CheckLeave, item};
 }
 
-auto PauseMenu::navigate(input::MenuCommand command, bool repeated) -> Command {
-    using enum input::MenuCommand;
+auto PauseMenu::navigate(MenuCommand command, bool repeated) -> Command {
+    using enum MenuCommand;
     if (options_modal || pending || view != View::Sidebar) {
         return {};
     }

@@ -7,11 +7,11 @@
 #include <bitset>
 #include <cstdint>
 
-namespace ioj::input {
+namespace ioj {
 class FlightBindings {
   public:
     FlightBindings() = default;
-    FlightBindings(ControlsSettings const& controls, Context context);
+    FlightBindings(ControlsSettings const& controls, InputContext context);
     auto matches(FlightMapping mapping, KeyCode key) const -> bool;
   private:
     EnumArray<std::uint32_t, FlightMapping> bound_characters_;
@@ -20,7 +20,7 @@ class FlightBindings {
 
 class FlightInputResolver {
   public:
-    void configure(InputState& state, ControlsSettings const& controls, Context context);
+    void configure(InputState& state, ControlsSettings const& controls, InputContext context);
     auto is_pause_button(KeyCode key) const -> bool;
     void button(InputState& state, KeyCode key, ButtonState edge, ControlsSettings const& controls);
     void pointer_motion(InputState& state, Vector2f delta, ControlsSettings const& controls);

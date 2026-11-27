@@ -4,36 +4,37 @@
 #include <algorithm>
 #include <cmath>
 
-namespace ioj::input {
+namespace ioj {
 namespace {
-auto inverted(Response const response, Axis const axis, ControlsSettings const& settings) noexcept
-    -> bool {
-    if (response == Response::TurnPointerDelta) {
+auto inverted(InputResponse const response,
+              FlightAxis const axis,
+              ControlsSettings const& settings) noexcept -> bool {
+    if (response == InputResponse::TurnPointerDelta) {
         switch (axis) {
-            case Axis::Pitch:
+            case FlightAxis::Pitch:
                 return settings.invert_mouse_pitch;
-            case Axis::Yaw:
+            case FlightAxis::Yaw:
                 return settings.invert_mouse_yaw;
             default:
                 return false;
         }
     }
     switch (axis) {
-        case Axis::Pitch:
+        case FlightAxis::Pitch:
             return settings.invert_gamepad_pitch;
-        case Axis::Yaw:
+        case FlightAxis::Yaw:
             return settings.invert_gamepad_yaw;
-        case Axis::None:
+        case FlightAxis::None:
             return false;
     }
     return false;
 }
 
-auto scale(Response const response, ControlsSettings const& settings) noexcept -> double {
+auto scale(InputResponse const response, ControlsSettings const& settings) noexcept -> double {
     switch (response) {
-        case Response::TurnPointerDelta:
+        case InputResponse::TurnPointerDelta:
             return clamp_sensitivity(settings.mouse_turn_sensitivity) / 400.0;
-        case Response::GamepadTurn:
+        case InputResponse::GamepadTurn:
             return clamp_sensitivity(settings.gamepad_turn_sensitivity);
     }
     return 1.0;
@@ -41,10 +42,10 @@ auto scale(Response const response, ControlsSettings const& settings) noexcept -
 
 template <std::size_t N>
 auto apply_vector_response(Vector<double, N> value,
-                           Response const response,
-                           Axis const axis,
+                           InputResponse const response,
+                           FlightAxis const axis,
                            ControlsSettings const& settings) noexcept -> Vector<double, N> {
-    if (response != Response::TurnPointerDelta) {
+    if (response != InputResponse::TurnPointerDelta) {
         auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{size(value)};
         if (magnitude <= threshold) {
@@ -69,10 +70,10 @@ auto clamp_dead_zone(float const value) noexcept -> float {
 }
 
 auto apply_response(float value,
-                    Response const response,
-                    Axis const axis,
+                    InputResponse const response,
+                    FlightAxis const axis,
                     ControlsSettings const& settings) noexcept -> float {
-    if (response != Response::TurnPointerDelta) {
+    if (response != InputResponse::TurnPointerDelta) {
         auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{std::abs(value)};
         value = magnitude <= threshold ? 0.0f
@@ -83,14 +84,14 @@ auto apply_response(float value,
                               (inverted(response, axis, settings) ? -1.0 : 1.0));
 }
 auto apply_response(Vector2d const value,
-                    Response const response,
-                    Axis const axis,
+                    InputResponse const response,
+                    FlightAxis const axis,
                     ControlsSettings const& settings) noexcept -> Vector2d {
     return apply_vector_response(value, response, axis, settings);
 }
 auto apply_response(Vector3d const value,
-                    Response const response,
-                    Axis const axis,
+                    InputResponse const response,
+                    FlightAxis const axis,
                     ControlsSettings const& settings) noexcept -> Vector3d {
     return apply_vector_response(value, response, axis, settings);
 }

@@ -860,8 +860,8 @@ auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
     }
 
     capture_error_ = FText::GetEmpty();
-    if (!input::accepts_binding(target->address.mapping,
-                                input::parse_key(to_string(key.GetFName().ToString())))) {
+    if (!accepts_binding(target->address.mapping,
+                                parse_key(to_string(key.GetFName().ToString())))) {
         capture_error_ =
             NSLOCTEXT("OptionsMenu",
                       "PauseButtonRequired",

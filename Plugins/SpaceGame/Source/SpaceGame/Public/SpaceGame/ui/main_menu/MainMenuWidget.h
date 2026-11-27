@@ -4,6 +4,8 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include <ioj/input/menu_navigation.h>
 
+#include <optional>
+
 #include "MainMenuWidget.generated.h"
 
 namespace ioj {
@@ -19,9 +21,9 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     GENERATED_BODY()
   public:
     UMainMenuWidget();
-    auto focused_item() const -> std::optional<input::MainMenuItem>;
-    void focus_item(input::MainMenuItem item);
-    void activate_item(input::MainMenuItem item);
+    auto focused_item() const -> std::optional<MainMenuItem>;
+    void focus_item(MainMenuItem item);
+    void activate_item(MainMenuItem item);
 
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
                           bool focus_level_content,

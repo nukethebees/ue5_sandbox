@@ -9,7 +9,7 @@
 #include <string>
 #include <variant>
 
-namespace ioj::input {
+namespace ioj {
 struct PhysicalButton {
     KeyCode key;
     std::uint32_t character{};

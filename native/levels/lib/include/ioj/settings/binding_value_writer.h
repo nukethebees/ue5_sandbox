@@ -11,9 +11,9 @@ struct TypeWriter<FlightMapping> {
     }
 };
 template <>
-struct TypeWriter<input::KeyCode> {
-    static auto write(SExprIR& ir, input::KeyCode value, input::KeyCode const*) -> Expr {
-        return ir.string(input::serialized_key(value));
+struct TypeWriter<KeyCode> {
+    static auto write(SExprIR& ir, KeyCode value, KeyCode const*) -> Expr {
+        return ir.string(serialized_key(value));
     }
 };
 }

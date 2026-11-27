@@ -98,13 +98,13 @@ auto initialize_presentation(LoadedLevel& level) -> bool {
 auto level_input_route(LoadedLevel const& level) -> InputRoute {
     switch (level.control_context) {
         case levels::ControlContext::Observer:
-            return {input::Context::Observer};
+            return {InputContext::Observer};
         case levels::ControlContext::Benchmark:
-            return {input::Context::Benchmark};
+            return {InputContext::Benchmark};
         case levels::ControlContext::Player: {
             auto const* ship{level.simulation.player_ship_simulation()};
             if (ship && ship->is_alive(level.simulation.entity_tables().health)) {
-                return {input::Context::Gameplay};
+                return {InputContext::Gameplay};
             }
             break;
         }
@@ -267,7 +267,7 @@ struct PlayerInputSession {
         : storage{levels}
         , previous_frame_time{previous_frame}
         , devices{window}
-        , input{controls, devices.focused() ? input::WindowFocus::Gained : input::WindowFocus::Lost} {}
+        , input{controls, devices.focused() ? WindowFocus::Gained : WindowFocus::Lost} {}
 
     void synchronize_input() {
         auto const menu{host::menu_status()};
@@ -335,7 +335,7 @@ struct PlayerInputSession {
                 break;
             }
             for (auto const& action : actions) {
-                if (auto const* item{std::get_if<input::MainMenuItem>(&action)}) {
+                if (auto const* item{std::get_if<MainMenuItem>(&action)}) {
                     host::activate_main_item(*item);
                 } else if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
                     if (auto* level{storage.get()}) {
@@ -353,7 +353,7 @@ struct PlayerInputSession {
                 dispatch(*action);
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
                 auto const focus{host::menu_status().main_focus};
-                using enum input::MenuCommand;
+                using enum MenuCommand;
                 auto* level{storage.get()};
                 if (level && level->pause_menu.view == PauseMenu::View::Sidebar &&
                     !level->pause_menu.options_modal) {
@@ -363,7 +363,7 @@ struct PlayerInputSession {
                     }
                 } else if (focus && (button->command == Up || button->command == Down)) {
                     if (button->down) {
-                        host::focus_main_item(input::move_main_selection(*focus, button->command));
+                        host::focus_main_item(move_main_selection(*focus, button->command));
                     }
                 } else if (focus && button->command == Accept) {
                     if (button->down && !button->repeat) {
@@ -587,7 +587,7 @@ auto Application::play(Window& window,
 
         if (host::presents_level()) {
             level->simulation.append_player_input(
-                input::ship_input_frame(play_input.input.state(), ship_events));
+                ship_input_frame(play_input.input.state(), ship_events));
 
             auto const frame_time{std::chrono::steady_clock::now()};
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&

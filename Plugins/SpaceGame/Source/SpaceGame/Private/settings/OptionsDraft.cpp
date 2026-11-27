@@ -365,11 +365,11 @@ auto UOptionsDraft::tick_display_confirmation(float const delta_seconds) -> bool
 auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> {
     TArray<FControlBindingView> result;
 
-    for (auto const& control : input::flight_controls()) {
-        auto const key{input::bound_key(control, draft_.pending().controls)};
+    for (auto const& control : flight_controls()) {
+        auto const key{bound_key(control, draft_.pending().controls)};
         auto const group{
-            control.group == input::BindingGroup::Utility  ? EControlBindingGroup::Utility
-            : control.group == input::BindingGroup::Combat ? EControlBindingGroup::Combat
+            control.group == BindingGroup::Utility  ? EControlBindingGroup::Utility
+            : control.group == BindingGroup::Combat ? EControlBindingGroup::Combat
                                                            : EControlBindingGroup::Flight};
         auto const device{is_gamepad_mapping(control.mapping)
                               ? FHardwareDeviceIdentifier::DefaultGamepad
@@ -470,7 +470,7 @@ auto UOptionsDraft::set_control_binding(FControlBindingAddress const& address,
         return false;
     }
 
-    if (!input::accepts_binding(address.mapping, native_binding_key(key))) {
+    if (!accepts_binding(address.mapping, native_binding_key(key))) {
         return false;
     }
     auto const conflicts{binding_conflicts(address, key)};

@@ -9,7 +9,7 @@
 #include <array>
 #include <cstdint>
 
-namespace ioj::input {
+namespace ioj {
 using ButtonStateUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -19,17 +19,14 @@ enum class ButtonState : ButtonStateUnderlying {
     Repeated,
 };
 
-} // namespace ioj::input
-
-namespace ioj {
 template <>
-inline constexpr MinMax<input::ButtonState> enum_range<input::ButtonState>{
-    input::ButtonState::Released, input::ButtonState::Repeated};
+inline constexpr MinMax<ButtonState> enum_range<ButtonState>{ButtonState::Released,
+                                                             ButtonState::Repeated};
 
 template <>
-struct EnumTraits<input::ButtonState> {
+struct EnumTraits<ButtonState> {
     static constexpr std::array values{
-        input::ButtonState::Released, input::ButtonState::Pressed, input::ButtonState::Repeated};
+        ButtonState::Released, ButtonState::Pressed, ButtonState::Repeated};
 };
 
 } // namespace ioj

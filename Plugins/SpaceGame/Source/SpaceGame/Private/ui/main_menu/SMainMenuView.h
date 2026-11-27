@@ -13,7 +13,7 @@ class SWidgetSwitcher;
 namespace ioj {
 class SHiveNavigationButton;
 
-DECLARE_DELEGATE_OneParam(FOnMainMenuItem, input::MainMenuItem);
+DECLARE_DELEGATE_OneParam(FOnMainMenuItem, MainMenuItem);
 
 class SMainMenuView final : public SCompoundWidget {
   public:
@@ -36,8 +36,8 @@ class SMainMenuView final : public SCompoundWidget {
     void set_level_content(TSharedRef<SWidget> content);
     void set_navigation_enabled(bool enabled);
     void focus_navigation();
-    auto focused_item() const -> std::optional<input::MainMenuItem>;
-    void focus_item(input::MainMenuItem item);
+    auto focused_item() const -> std::optional<MainMenuItem>;
+    void focus_item(MainMenuItem item);
     void focus_content_on_next_focus();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
@@ -53,7 +53,7 @@ class SMainMenuView final : public SCompoundWidget {
                   EMenuPage page,
                   FText text,
                   EGameUiIcon icon);
-    auto activate_item(input::MainMenuItem item) -> FReply;
+    auto activate_item(MainMenuItem item) -> FReply;
     auto page_content_index(EMenuPage page) const -> int32;
     auto navigation_has_focus() const -> bool;
 

@@ -12,14 +12,6 @@
 #include <utility>
 
 namespace ioj {
-namespace {
-using input::ButtonState;
-using input::Context;
-using input::DigitalAction;
-using input::KeyCode;
-using input::MenuCommand;
-
-}
 namespace game_input_tables {
 struct GamepadAxisKeys {
     PhysicalKey axis;
@@ -51,7 +43,7 @@ constexpr std::array pointer_keys{PhysicalKey::LeftMouseButton,
                                   PhysicalKey::MiddleMouseButton,
                                   PhysicalKey::ThumbMouseButton,
                                   PhysicalKey::ThumbMouseButton2};
-constexpr EnumArray<float, input::ObserverSpeedPreset> observer_speeds{
+constexpr EnumArray<float, ObserverSpeedPreset> observer_speeds{
     std::array{5000.f, 15000.f, 50000.f, 150000.f, 500000.f}};
 
 }
@@ -155,17 +147,17 @@ auto axis_edge(PhysicalInputState& state, KeyCode key, float magnitude)
 }
 }
 
-GameInput::GameInput(ControlsSettings const& controls, input::WindowFocus focus)
+GameInput::GameInput(ControlsSettings const& controls, WindowFocus focus)
     : controls_{controls} {
     physical_.focus = focus;
     flight_.configure(state_, controls_, route_.context);
 }
 auto GameInput::relative_mouse() const -> bool {
-    return route_.context == Context::Gameplay ||
-           state_.observer_look == input::ObserverLookMode::Camera;
+    return route_.context == InputContext::Gameplay ||
+           state_.observer_look == ObserverLookMode::Camera;
 }
 auto GameInput::editing_text() const -> bool {
-    return route_.context == Context::Menu && editing_text_;
+    return route_.context == InputContext::Menu && editing_text_;
 }
 void GameInput::begin_frame() {
     state_.begin_frame();
@@ -178,19 +170,19 @@ void GameInput::release_context(host::InputEvents& output) {
     publish_transitions(output, first);
     routed_buttons_.clear();
     repeat_delays_ = {};
-    state_.observer_look = input::ObserverLookMode::Pointer;
-    state_.axes_2d[input::Axis2DAction::ObserverLookDelta] = {};
+    state_.observer_look = ObserverLookMode::Pointer;
+    state_.axes_2d[Axis2DAction::ObserverLookDelta] = {};
 }
 void GameInput::synchronize(host::InputEvents& output,
                             InputRoute route,
                             host::MenuStatus menu) {
-    auto const mode{menu.capturing_binding || menu.editing_text ? input::MenuInputMode::Raw
-                                                                : input::MenuInputMode::Navigation};
+    auto const mode{menu.capturing_binding || menu.editing_text ? MenuInputMode::Raw
+                                                                : MenuInputMode::Navigation};
     editing_text_ = menu.editing_text;
     if (mode != menu_mode_) {
         menu_mode_ = mode;
         repeat_delays_ = {};
-        if (route_.context == Context::Menu) {
+        if (route_.context == InputContext::Menu) {
             release_context(output);
         }
     }
@@ -204,7 +196,7 @@ void GameInput::refresh_bindings(host::InputEvents& output) {
     auto const first{state_.transitions.size()};
     flight_.configure(state_, controls_, route_.context);
     publish_transitions(output, first);
-    if (route_.context == Context::Gameplay && physical_.focus == input::WindowFocus::Gained) {
+    if (route_.context == InputContext::Gameplay && physical_.focus == WindowFocus::Gained) {
         for (auto key : physical_.held) {
             flight_.sample_axis(state_, key, 1.f, controls_);
         }
@@ -289,9 +281,9 @@ void GameInput::routed_button(host::InputEvents& output,
     publish_transitions(output, first);
     if (action == DigitalAction::ObserverToggleLook && first != state_.transitions.size() &&
         edge == ButtonState::Pressed) {
-        state_.observer_look = state_.observer_look == input::ObserverLookMode::Pointer
-                                 ? input::ObserverLookMode::Camera
-                                 : input::ObserverLookMode::Pointer;
+        state_.observer_look = state_.observer_look == ObserverLookMode::Pointer
+                                 ? ObserverLookMode::Camera
+                                 : ObserverLookMode::Pointer;
     }
 }
 void GameInput::button(host::InputEvents& output,
@@ -300,40 +292,40 @@ void GameInput::button(host::InputEvents& output,
                        std::uint32_t character) {
     auto const down{edge != ButtonState::Released};
     auto const repeat{edge == ButtonState::Repeated};
-    if ((route_.resume_available || route_.context == Context::Observer ||
-         route_.context == Context::Gameplay) &&
-        (route_.context == Context::Gameplay || flight_.is_pause_button(key))) {
+    if ((route_.resume_available || route_.context == InputContext::Observer ||
+         route_.context == InputContext::Gameplay) &&
+        (route_.context == InputContext::Gameplay || flight_.is_pause_button(key))) {
         auto const first{state_.transitions.size()};
         flight_.button(state_, key, edge, controls_);
         publish_transitions(output, first);
         return;
     }
-    if (route_.context == Context::Menu && menu_mode_ == input::MenuInputMode::Raw) {
+    if (route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::Raw) {
         output.emplace_back(host::MenuKey{key, character, down, repeat, physical_.modifiers});
         return;
     }
     if (edge != ButtonState::Pressed) {
         auto const source{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
-        if (source != routed_buttons_.end() && (!repeat || route_.context == Context::Menu)) {
+        if (source != routed_buttons_.end() && (!repeat || route_.context == InputContext::Menu)) {
             routed_button(output, key, source->action, edge);
         }
         return;
     }
     auto const navigation{
         menu_action(key.key,
-                    route_.context == Context::Menu &&
+                    route_.context == InputContext::Menu &&
                         (physical_.modifiers.left_shift() || physical_.modifiers.right_shift()))};
-    if (route_.context == Context::Menu && navigation) {
+    if (route_.context == InputContext::Menu && navigation) {
         routed_button(output, key, *navigation, edge);
         return;
     }
-    if (route_.context == Context::Observer) {
+    if (route_.context == InputContext::Observer) {
         if (auto action{observer_action(key.key)}; action && !repeat) {
             routed_button(output, key, *action, edge);
         }
         return;
     }
-    if (route_.context == Context::Benchmark && !repeat) {
+    if (route_.context == InputContext::Benchmark && !repeat) {
         if (navigation) {
             auto const action{
                 *navigation == DigitalAction::MenuAccept ? DigitalAction::BenchmarkActivate
@@ -345,15 +337,15 @@ void GameInput::button(host::InputEvents& output,
         }
     }
 }
-void GameInput::resolve(host::InputEvents& output, input::PhysicalEvent const& event) {
+void GameInput::resolve(host::InputEvents& output, PhysicalEvent const& event) {
     std::visit([&](auto const& value) { apply(output, value); }, event);
 }
-void GameInput::apply(host::InputEvents& output, input::PhysicalButton event) {
+void GameInput::apply(host::InputEvents& output, PhysicalButton event) {
     if (!is_gamepad_control(event.key.key)) {
         physical_.modifiers = event.modifiers;
     }
     if (!track_button(physical_, event.key, event.state) ||
-        physical_.focus == input::WindowFocus::Lost) {
+        physical_.focus == WindowFocus::Lost) {
         return;
     }
     button(output, event.key, event.state, event.character);
@@ -364,14 +356,14 @@ void GameInput::apply(host::InputEvents& output, input::PhysicalButton event) {
         output.emplace_back(host::MenuText{"\b", modifiers});
     }
 }
-void GameInput::apply(host::InputEvents& output, input::TextInput const& event) {
-    if (physical_.focus == input::WindowFocus::Gained && editing_text()) {
+void GameInput::apply(host::InputEvents& output, TextInput const& event) {
+    if (physical_.focus == WindowFocus::Gained && editing_text()) {
         output.emplace_back(host::MenuText{event.text, physical_.modifiers});
     }
 }
-void GameInput::apply(host::InputEvents& output, input::PhysicalPointerButton event) {
+void GameInput::apply(host::InputEvents& output, PhysicalPointerButton event) {
     if (!track_button(physical_, event.key, event.state) ||
-        physical_.focus == input::WindowFocus::Lost) {
+        physical_.focus == WindowFocus::Lost) {
         return;
     }
     auto const found{std::ranges::find(game_input_tables::pointer_keys, event.key)};
@@ -379,14 +371,14 @@ void GameInput::apply(host::InputEvents& output, input::PhysicalPointerButton ev
     auto const mask{
         static_cast<std::uint8_t>(1u << (found - game_input_tables::pointer_keys.begin()))};
     auto const captured{(pointer_capture_ & mask) != 0};
-    if ((route_.resume_available || route_.context == Context::Observer) &&
+    if ((route_.resume_available || route_.context == InputContext::Observer) &&
         flight_.is_pause_button(event.key) && !captured) {
         button(output, event.key, event.state);
         return;
     }
     auto const down{event.state == ButtonState::Pressed};
     auto const visible{!relative_mouse()};
-    auto const camera_toggle{route_.context == Context::Observer &&
+    auto const camera_toggle{route_.context == InputContext::Observer &&
                              event.key == PhysicalKey::RightMouseButton};
     if ((down && visible && !camera_toggle) || (!down && captured)) {
         auto action{host::PointerAction::Up};
@@ -400,19 +392,19 @@ void GameInput::apply(host::InputEvents& output, input::PhysicalPointerButton ev
         output.emplace_back(host::MenuPointer{
             {action, event.key, event.position.x(), event.position.y(), 0.f}, physical_.modifiers});
     }
-    if (route_.context != Context::Menu &&
-        !(route_.context == Context::Benchmark && event.key == PhysicalKey::LeftMouseButton)) {
+    if (route_.context != InputContext::Menu &&
+        !(route_.context == InputContext::Benchmark && event.key == PhysicalKey::LeftMouseButton)) {
         button(output, event.key, event.state);
     }
 }
-void GameInput::apply(host::InputEvents& output, input::PointerMotion event) {
-    if (physical_.focus == input::WindowFocus::Lost) {
+void GameInput::apply(host::InputEvents& output, PointerMotion event) {
+    if (physical_.focus == WindowFocus::Lost) {
         return;
     }
-    if (route_.context == Context::Gameplay) {
+    if (route_.context == InputContext::Gameplay) {
         flight_.pointer_motion(state_, event.delta, controls_);
-    } else if (state_.observer_look == input::ObserverLookMode::Camera) {
-        auto& look{state_.axes_2d[input::Axis2DAction::ObserverLookDelta]};
+    } else if (state_.observer_look == ObserverLookMode::Camera) {
+        auto& look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         look.x() += event.delta.x();
         look.y() -= event.delta.y();
     } else {
@@ -424,41 +416,41 @@ void GameInput::apply(host::InputEvents& output, input::PointerMotion event) {
                                               physical_.modifiers});
     }
 }
-void GameInput::apply(host::InputEvents& output, input::WheelMotion event) {
-    if (physical_.focus == input::WindowFocus::Lost) {
+void GameInput::apply(host::InputEvents& output, WheelMotion event) {
+    if (physical_.focus == WindowFocus::Lost) {
         return;
     }
-    if (route_.context == Context::Menu) {
+    if (route_.context == InputContext::Menu) {
         output.emplace_back(host::MenuPointer{{host::PointerAction::Wheel,
                                                PhysicalKey::Unbound,
                                                event.position.x(),
                                                event.position.y(),
                                                event.steps},
                                               physical_.modifiers});
-    } else if (route_.context == Context::Observer) {
+    } else if (route_.context == InputContext::Observer) {
         auto const step{(event.steps > 0.f) - (event.steps < 0.f)};
-        state_.observer_speed = static_cast<input::ObserverSpeedPreset>(
+        state_.observer_speed = static_cast<ObserverSpeedPreset>(
             std::clamp<int>(std::to_underlying(state_.observer_speed) + step,
-                            std::to_underlying(enum_min<input::ObserverSpeedPreset>),
-                            std::to_underlying(enum_max<input::ObserverSpeedPreset>)));
-    } else if (route_.context == Context::Gameplay && event.steps != 0.f) {
+                            std::to_underlying(enum_min<ObserverSpeedPreset>),
+                            std::to_underlying(enum_max<ObserverSpeedPreset>)));
+    } else if (route_.context == InputContext::Gameplay && event.steps != 0.f) {
         auto const key{event.steps > 0.f ? PhysicalKey::MouseScrollUp
                                          : PhysicalKey::MouseScrollDown};
         button(output, key, ButtonState::Pressed);
         button(output, key, ButtonState::Released);
     }
 }
-void GameInput::apply(host::InputEvents& output, input::PhysicalAxis event) {
+void GameInput::apply(host::InputEvents& output, PhysicalAxis event) {
     auto const axis{std::ranges::find(
         game_input_tables::gamepad_axes, event.key, &game_input_tables::GamepadAxisKeys::axis)};
     assert(axis != game_input_tables::gamepad_axes.end());
     auto const sample{event.position};
     physical_.gamepad_axes[axis - game_input_tables::gamepad_axes.begin()] = sample;
     auto const edge{axis_edge(physical_, axis->axis, std::abs(sample))};
-    auto const focused{physical_.focus == input::WindowFocus::Gained};
-    if (focused && route_.context == Context::Menu && menu_mode_ == input::MenuInputMode::Raw) {
+    auto const focused{physical_.focus == WindowFocus::Gained};
+    if (focused && route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::Raw) {
         output.emplace_back(host::MenuAxis{event.key, sample, physical_.modifiers});
-    } else if (focused && route_.context == Context::Gameplay) {
+    } else if (focused && route_.context == InputContext::Gameplay) {
         if (edge) {
             flight_.button(state_, event.key, *edge, controls_);
         }
@@ -479,24 +471,24 @@ void GameInput::apply(host::InputEvents& output, input::PhysicalAxis event) {
         direction(axis->negative, -sample);
     }
 }
-void GameInput::apply(host::InputEvents& output, input::GamepadDisconnected) {
+void GameInput::apply(host::InputEvents& output, GamepadDisconnected) {
     for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
         if (physical_.gamepad_axes[i] != 0.f) {
-            apply(output, input::PhysicalAxis{game_input_tables::gamepad_axes[i].axis, 0.f});
+            apply(output, PhysicalAxis{game_input_tables::gamepad_axes[i].axis, 0.f});
         }
     }
     for (auto key : physical_.held) {
-        if (physical_.focus == input::WindowFocus::Gained && is_gamepad_control(key.key)) {
+        if (physical_.focus == WindowFocus::Gained && is_gamepad_control(key.key)) {
             button(output, key, ButtonState::Released);
         }
     }
     std::erase_if(physical_.held, [](KeyCode key) { return is_gamepad_control(key.key); });
 }
-void GameInput::apply(host::InputEvents& output, input::WindowFocus focus) {
+void GameInput::apply(host::InputEvents& output, WindowFocus focus) {
     if (std::exchange(physical_.focus, focus) == focus) {
         return;
     }
-    if (focus == input::WindowFocus::Gained) {
+    if (focus == WindowFocus::Gained) {
         refresh_bindings(output);
         return;
     }
@@ -521,12 +513,12 @@ void GameInput::repeat_navigation(host::InputEvents& output, double seconds) {
     }
 }
 void GameInput::append_frame_commands(double seconds, host::InputEvents& output) const {
-    if (route_.context == Context::Gameplay) {
+    if (route_.context == InputContext::Gameplay) {
         output.emplace_back(host::SteeringIndicator{state_.pointer_steering});
     }
-    if (route_.context == Context::Observer) {
+    if (route_.context == InputContext::Observer) {
         auto const& held{state_.held};
-        auto const look{state_.axes_2d[input::Axis2DAction::ObserverLookDelta]};
+        auto const look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         auto const speed{game_input_tables::observer_speeds[state_.observer_speed] *
                          (held.observer_fast() ? 4.f : 1.f)};
         output.emplace_back(
@@ -536,7 +528,7 @@ void GameInput::append_frame_commands(double seconds, host::InputEvents& output)
                               look.x() * 0.1f,
                               look.y() * 0.1f,
                               speed,
-                              state_.observer_look == input::ObserverLookMode::Camera},
+                              state_.observer_look == ObserverLookMode::Camera},
                              seconds});
     }
 }

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <utility>
 
-namespace ioj::input {
+namespace ioj {
 auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool {
     if (is_gamepad_mapping(mapping) != is_gamepad_control(key.key)) {
         return false;
@@ -156,21 +156,21 @@ constexpr std::array accelerator_mappings{FlightMapping::FlightAccelerateKeyboar
                                           FlightMapping::FlightAccelerateGamepad};
 struct TurnBinding {
     FlightMapping mapping;
-    Axis component;
+    FlightAxis component;
 };
 constexpr TurnBinding pointer_bindings[]{
-    {FlightMapping::FlightPitchKeyboardMouse, Axis::Pitch},
-    {FlightMapping::FlightYawKeyboardMouse, Axis::Yaw},
+    {FlightMapping::FlightPitchKeyboardMouse, FlightAxis::Pitch},
+    {FlightMapping::FlightYawKeyboardMouse, FlightAxis::Yaw},
 };
 constexpr TurnBinding stick_bindings[]{
-    {FlightMapping::FlightPitchGamepad, Axis::Pitch},
-    {FlightMapping::FlightYawGamepad, Axis::Yaw},
+    {FlightMapping::FlightPitchGamepad, FlightAxis::Pitch},
+    {FlightMapping::FlightYawGamepad, FlightAxis::Yaw},
 };
 }
 
-FlightBindings::FlightBindings(ControlsSettings const& controls, Context context) {
+FlightBindings::FlightBindings(ControlsSettings const& controls, InputContext context) {
     for (auto const& control : flight_controls()) {
-        if (context == Context::Gameplay || control.group == BindingGroup::Utility) {
+        if (context == InputContext::Gameplay || control.group == BindingGroup::Utility) {
             auto const key{bound_key(control, controls)};
             bound_keys_[control.mapping] = key.key;
             bound_characters_[control.mapping] = key.codepoint;
@@ -183,7 +183,7 @@ auto FlightBindings::matches(FlightMapping mapping, KeyCode key) const -> bool {
 
 void FlightInputResolver::configure(InputState& state,
                                     ControlsSettings const& controls,
-                                    Context context) {
+                                    InputContext context) {
     reset(state);
     bindings_ = FlightBindings{controls, context};
 }
@@ -236,10 +236,10 @@ void FlightInputResolver::pointer_motion(InputState& state,
         if (state.pointer_steering) {
             for (auto const binding : flight_binding_details::pointer_bindings) {
                 if (bindings_.matches(binding.mapping, key)) {
-                    auto& component{binding.component == Axis::Yaw ? state.pointer_steering->x()
+                    auto& component{binding.component == FlightAxis::Yaw ? state.pointer_steering->x()
                                                                    : state.pointer_steering->y()};
                     component +=
-                        apply_response(motion, Response::TurnPointerDelta, Axis::None, controls);
+                        apply_response(motion, InputResponse::TurnPointerDelta, FlightAxis::None, controls);
                 }
             }
         }
@@ -262,13 +262,13 @@ void FlightInputResolver::sample_axis(InputState& state,
     state.axes_1d[Axis1DAction::Accelerate] = std::clamp(strongest, 0.f, 1.f);
     for (auto binding : flight_binding_details::stick_bindings) {
         if (bindings_.matches(binding.mapping, key)) {
-            (binding.component == Axis::Yaw ? gamepad_turn_.x() : gamepad_turn_.y()) = position;
+            (binding.component == FlightAxis::Yaw ? gamepad_turn_.x() : gamepad_turn_.y()) = position;
         }
     }
     if (key != PhysicalKey::MouseX && key != PhysicalKey::MouseY) {
         for (auto binding : flight_binding_details::pointer_bindings) {
             if (bindings_.matches(binding.mapping, key)) {
-                (binding.component == Axis::Yaw ? pointer_turn_.x() : pointer_turn_.y()) = position;
+                (binding.component == FlightAxis::Yaw ? pointer_turn_.x() : pointer_turn_.y()) = position;
             }
         }
     }
@@ -287,8 +287,8 @@ void FlightInputResolver::update_turn(InputState& state, ControlsSettings const&
         turn.y() =
             static_cast<float>(direction.y() / scale) * (controls.invert_mouse_pitch ? -1.f : 1.f);
     } else {
-        turn.x() = apply_response(gamepad_turn_.x(), Response::GamepadTurn, Axis::Yaw, controls);
-        turn.y() = apply_response(gamepad_turn_.y(), Response::GamepadTurn, Axis::Pitch, controls);
+        turn.x() = apply_response(gamepad_turn_.x(), InputResponse::GamepadTurn, FlightAxis::Yaw, controls);
+        turn.y() = apply_response(gamepad_turn_.y(), InputResponse::GamepadTurn, FlightAxis::Pitch, controls);
     }
 }
 

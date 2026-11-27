@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace ioj::input {
+namespace ioj {
 struct InputState;
 
 auto ship_input_frame(InputState const& state, std::vector<sim::player::PlayerInputKind>& events)
