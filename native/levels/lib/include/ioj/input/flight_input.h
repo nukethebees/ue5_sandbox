@@ -31,6 +31,7 @@ class FlightInputResolver {
                       ControlsSettings const& controls);
     void reset(InputState& state);
   private:
+    void update_turn(InputState& state, ControlsSettings const& controls) const;
     void resolve_digital(InputState& state, KeyCode key, bool down);
 
     FlightBindings bindings_;

@@ -9,7 +9,7 @@
 
 namespace ioj::input {
 auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool {
-    if (key == PhysicalKey::Unbound) {
+    if (is_gamepad_mapping(mapping) != is_gamepad_control(key.key)) {
         return false;
     }
     switch (mapping) {
@@ -17,8 +17,16 @@ auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool {
             return is_gamepad_button(key.key);
         case FlightMapping::GeneralPauseKeyboardMouse:
             return is_keyboard_mouse_button(key.key);
+        case FlightMapping::StarfoxPitchKeyboardMouse:
+        case FlightMapping::StarfoxYawKeyboardMouse:
+            return is_keyboard_mouse_button(key.key) || key == PhysicalKey::MouseX ||
+                   key == PhysicalKey::MouseY;
+        case FlightMapping::StarfoxSteerKeyboardMouse:
+        case FlightMapping::StarfoxAccelerateKeyboardMouse:
+            return is_keyboard_mouse_button(key.key);
         default:
-            return is_gamepad_mapping(mapping) == is_gamepad_control(key.key);
+            return is_gamepad_control(key.key) || is_keyboard_mouse_button(key.key) ||
+                   key == PhysicalKey::MouseScrollUp || key == PhysicalKey::MouseScrollDown;
     }
 }
 auto flight_controls() -> std::span<FlightControl const> {
@@ -233,7 +241,6 @@ void FlightInputResolver::pointer_motion(InputState& state,
                                          ControlsSettings const& controls) {
     for (auto key : {PhysicalKey::MouseX, PhysicalKey::MouseY}) {
         auto const motion{key == PhysicalKey::MouseX ? delta.x() : delta.y()};
-        resolve_digital(state, key, std::abs(motion) >= 0.5f);
         if (state.pointer_steering) {
             for (auto const binding : flight_binding_details::pointer_bindings) {
                 if (bindings_.matches(binding.mapping, key)) {
@@ -244,8 +251,8 @@ void FlightInputResolver::pointer_motion(InputState& state,
                 }
             }
         }
-        restore_axis(state, key, motion, controls);
     }
+    update_turn(state, controls);
 }
 
 void FlightInputResolver::restore_axis(InputState& state,
@@ -273,6 +280,10 @@ void FlightInputResolver::restore_axis(InputState& state,
             }
         }
     }
+    update_turn(state, controls);
+}
+
+void FlightInputResolver::update_turn(InputState& state, ControlsSettings const& controls) const {
     auto& turn{state.axes_2d[Axis2DAction::FlightTurn]};
     if (state.pointer_steering) {
         auto direction{*state.pointer_steering};

@@ -80,6 +80,28 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     }
 }
 
+TEST(FlightInput, TransientPointerMotionCannotHoldFireOrAcceleration) {
+    using enum FlightMapping;
+    EXPECT_TRUE(accepts_binding(StarfoxYawKeyboardMouse, PhysicalKey::MouseY));
+    EXPECT_TRUE(accepts_binding(StarfoxAccelerateGamepad, PhysicalKey::GamepadFaceButtonTop));
+    EXPECT_TRUE(accepts_binding(StarfoxFirePrimaryGamepad, PhysicalKey::GamepadRightTriggerAxis));
+    EXPECT_TRUE(accepts_binding(StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseScrollUp));
+    EXPECT_FALSE(accepts_binding(StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseX));
+    EXPECT_FALSE(accepts_binding(StarfoxAccelerateKeyboardMouse, PhysicalKey::MouseY));
+    EXPECT_FALSE(accepts_binding(StarfoxPitchKeyboardMouse, PhysicalKey::MouseWheelAxis));
+    ControlsSettings controls{};
+    controls.bindings.emplace().push_back({StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseX});
+    controls.bindings->push_back({StarfoxAccelerateKeyboardMouse, PhysicalKey::MouseY});
+    FlightInputResolver flight;
+    InputState state;
+    flight.configure(state, controls, Context::Gameplay);
+    flight.pointer_motion(state, {10.f, 20.f}, controls);
+    EXPECT_TRUE(state.transitions.empty());
+    EXPECT_EQ(state.axes_1d[Axis1DAction::Accelerate], 0.f);
+    flight.button(state, PhysicalKey::LeftMouseButton, ButtonState::Pressed, controls);
+    EXPECT_TRUE(state.held.fire());
+}
+
 TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     ControlsSettings settings{.mouse_turn_sensitivity = 1.f, .gamepad_turn_sensitivity = 1.f};
     FlightInputResolver input;
