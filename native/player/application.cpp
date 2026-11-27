@@ -31,6 +31,7 @@
 #include <expected>
 #include <filesystem>
 #include <print>
+#include <ranges>
 #include <span>
 #include <string>
 #include <utility>
@@ -125,7 +126,6 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     }
 
     Application application{std::move(*profile_manager)};
-    application.scripts_directory_ = scripts_directory;
 
     Window window;
     if (auto result{window.create()}; !result) {
@@ -175,7 +175,8 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     Result play_result;
     try {
-        play_result = application.play(window, args.level_path, args.exit_when_ready);
+        play_result =
+            application.play(window, args.level_path, scripts_directory, args.exit_when_ready);
     } catch (std::exception const& error) {
         play_result = std::unexpected{std::string{error.what()}};
     } catch (...) {
@@ -202,6 +203,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 }
 auto Application::play(Window& window,
                        std::filesystem::path const& level_path,
+                       std::filesystem::path const& scripts_directory,
                        bool exit_when_ready) -> ApplicationResult {
     if (!IojPlayer_GameReady()) {
         return ApplicationResult{std::unexpect,
@@ -226,6 +228,7 @@ auto Application::play(Window& window,
         }
     }
 
+    std::vector<AvailableLevel> available_levels;
     auto const deadline{std::chrono::steady_clock::now() + std::chrono::minutes{2}};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
@@ -286,7 +289,7 @@ auto Application::play(Window& window,
         process_profile_actions(messages.profile_actions);
 
         if (messages.refresh_catalog) {
-            publish_catalog();
+            available_levels = publish_catalog(scripts_directory);
         }
 
         auto const& navigation{messages.navigation_request};
@@ -298,20 +301,17 @@ auto Application::play(Window& window,
 
         if (auto const* selection{std::get_if<host::LevelSelection>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
-            if (catalog_) {
-                auto const entry{std::ranges::find_if(catalog_->levels, [&](auto const& candidate) {
-                    return candidate.definition &&
-                           candidate.definition->metadata().id == selection->id;
-                })};
-                if (entry != catalog_->levels.end()) {
-                    auto result{launch_level(
-                        *entry->definition, path_to_utf8(entry->source_path), selection->options)};
-                    catalog_.reset();
-                    if (!result) {
-                        host::open_menu(selection->id.value, result.error());
-                    }
-                    continue;
+            auto const entry{std::ranges::find_if(available_levels, [&](auto const& candidate) {
+                return candidate.definition.metadata().id == selection->id;
+            })};
+            if (entry != available_levels.end()) {
+                auto result{launch_level(
+                    entry->definition, path_to_utf8(entry->source_path), selection->options)};
+                available_levels = std::vector<AvailableLevel>{};
+                if (!result) {
+                    host::open_menu(selection->id.value, result.error());
                 }
+                continue;
             }
             host::open_menu(selection->id.value, "The selected level is no longer available.");
             continue;
@@ -350,20 +350,30 @@ auto Application::play(Window& window,
     return {};
 }
 
-void Application::publish_catalog() {
+auto Application::publish_catalog(std::filesystem::path const& scripts_directory) const
+    -> std::vector<AvailableLevel> {
     auto loaded{
-        levels::authoring::DefinitionReader{}.read_root_file(scripts_directory_ / "catalog.scm")};
-    auto const directory{path_to_utf8(scripts_directory_)};
+        levels::authoring::DefinitionReader{}.read_root_file(scripts_directory / "catalog.scm")};
+    auto const directory{path_to_utf8(scripts_directory)};
     if (!loaded) {
-        catalog_.reset();
         host::present_catalog({directory, levels::format_diagnostics(loaded.error()), {}, {}});
-        return;
+        return {};
     }
 
-    catalog_.emplace(std::move(*loaded));
     auto const rows{bridge::make_catalog_rows(
-        *catalog_, profiles_.active_records(), settings_.application().unlock_all_levels)};
+        *loaded, profiles_.active_records(), settings_.application().unlock_all_levels)};
     host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
+
+    std::vector<AvailableLevel> available_levels;
+    available_levels.reserve(
+        std::ranges::count(rows.listings, true, &presentation::LevelListing::unlocked));
+    for (auto [entry, row] : std::views::zip(loaded->levels, rows.listings)) {
+        if (row.unlocked) {
+            available_levels.emplace_back(std::move(*entry.definition),
+                                          std::move(entry.source_path));
+        }
+    }
+    return available_levels;
 }
 
 void Application::publish_profiles() const {
