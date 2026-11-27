@@ -255,9 +255,8 @@ auto Application::play(Window& window,
     if (!settings_.applied().controls.bindings) {
         std::vector<KeyBinding> legacy;
         host::read_legacy_key_bindings(
-            &legacy, [](void* destination, std::string_view mapping, std::string_view key) {
-                static_cast<std::vector<KeyBinding>*>(destination)
-                    ->push_back({*input::parse_mapping(mapping), input::parse_key(key)});
+            &legacy, [](void* destination, FlightMapping mapping, input::KeyCode key) {
+                static_cast<std::vector<KeyBinding>*>(destination)->push_back({mapping, key});
             });
         if (!legacy.empty()) {
             auto updated{settings_.applied()};

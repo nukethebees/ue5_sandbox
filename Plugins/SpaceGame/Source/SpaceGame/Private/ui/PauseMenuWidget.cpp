@@ -79,8 +79,7 @@ FReply UPauseMenuWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent co
         auto const key{to_string(event.GetKey().GetFName().ToString())};
         for (auto const& control : input::flight_controls()) {
             if (control.action == input::FlightAction::Pause &&
-                input::binding_name_equal(
-                    input::bound_key(control, player_settings().applied_values.controls), key)) {
+                input::bound_key(control, player_settings().applied_values.controls) == input::parse_key(key)) {
                 handle_toggle_action();
                 return FReply::Handled();
             }

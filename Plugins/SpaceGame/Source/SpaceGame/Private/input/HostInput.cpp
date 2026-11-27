@@ -80,7 +80,8 @@ void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
     }
 
     for (auto const& control : input::flight_controls()) {
-        auto const* row{profile->FindKeyMappingRow(FName{*to_fstring(control.mapping)})};
+        auto const* row{
+            profile->FindKeyMappingRow(FName{*to_fstring(to_serialized_string(control.mapping))})};
         if (!row) {
             continue;
         }
@@ -89,7 +90,8 @@ void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
                 auto const& key{mapping.GetCurrentKey()};
                 sink(destination,
                      control.mapping,
-                     key.IsValid() ? to_string(key.GetFName().ToString()) : std::string{});
+                     key.IsValid() ? input::parse_key(to_string(key.GetFName().ToString()))
+                                   : input::KeyCode{});
             }
         }
     }
@@ -116,7 +118,7 @@ void present_steering(std::optional<Vector2d> steering) {
 void ui_key(
     std::string_view name, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
-    auto const key{binding_key(name)};
+    auto const key{binding_key(input::parse_key(name))};
     if (!key.IsValid()) {
         return;
     }

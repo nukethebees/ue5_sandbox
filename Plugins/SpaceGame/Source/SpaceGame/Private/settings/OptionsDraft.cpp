@@ -371,11 +371,11 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
             control.action == input::FlightAction::Pause  ? EControlBindingGroup::Utility
             : control.action == input::FlightAction::Fire ? EControlBindingGroup::Combat
                                                           : EControlBindingGroup::Flight};
-        auto const device{control.gamepad
+        auto const device{is_gamepad_mapping(control.mapping)
                               ? FHardwareDeviceIdentifier::DefaultGamepad
                               : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};
         result.Add(FControlBindingView{
-            .address = {.mapping = *input::parse_mapping(control.mapping)},
+            .address = {.mapping = control.mapping},
             .display_name = FText::FromString(to_fstring(control.label)),
             .display_category = control_binding_group_label(group),
             .display_group = group,
@@ -470,6 +470,9 @@ auto UOptionsDraft::set_control_binding(FControlBindingAddress const& address,
         return false;
     }
 
+    if (!input::accepts_binding(address.mapping, native_binding_key(key))) {
+        return false;
+    }
     auto const conflicts{binding_conflicts(address, key)};
     if (!conflicts.IsEmpty() && !replace_conflicts) {
         return false;

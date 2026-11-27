@@ -39,7 +39,7 @@ struct ViewerMotion {
 #define IOJ_INPUT_API __declspec(dllimport)
 #endif
 IOJ_INPUT_API auto input_route() -> InputRoute;
-using LegacyBindingSink = void (*)(void*, std::string_view mapping, std::string_view key);
+using LegacyBindingSink = void (*)(void*, FlightMapping mapping, input::KeyCode key);
 IOJ_INPUT_API void read_legacy_key_bindings(void* destination, LegacyBindingSink sink);
 IOJ_INPUT_API void pause_or_exit_viewer();
 IOJ_INPUT_API void present_steering(std::optional<Vector2d> steering);

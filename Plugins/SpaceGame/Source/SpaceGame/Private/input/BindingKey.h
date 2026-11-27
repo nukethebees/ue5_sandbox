@@ -1,25 +1,30 @@
 #pragma once
 
+#include <ioj/input/key_code.h>
+
 #include <SandboxCoreEngine/strings.h>
 
 #include <InputCoreTypes.h>
 
-#include <charconv>
-#include <string_view>
+#include <array>
+#include <utility>
 
 namespace ioj {
-inline auto binding_key(std::string_view name) -> FKey {
-    constexpr std::string_view prefix{"UnknownCharCode_"};
-    if (name.starts_with(prefix)) {
-        auto const digits{name.substr(prefix.size())};
-        uint32 character{};
-        auto const end{digits.data() + digits.size()};
-        auto const parsed{std::from_chars(digits.data(), end, character)};
-        if (parsed.ec == std::errc{} && parsed.ptr == end && character > 32 &&
-            character <= 0x10ffff) {
-            return FInputKeyManager::Get().GetKeyFromCodes(INDEX_NONE, character);
-        }
+inline auto binding_key(input::KeyCode code) -> FKey {
+    if (code.key == PhysicalKey::Character) {
+        return FInputKeyManager::Get().GetKeyFromCodes(INDEX_NONE, code.codepoint);
     }
-    return FKey{FName{*to_fstring(name)}};
+
+    static auto const keys = [] {
+        std::array<FKey, EnumTraits<PhysicalKey>::values.size()> result{};
+        for (auto key : EnumTraits<PhysicalKey>::values) {
+            if (key != PhysicalKey::Unbound && key != PhysicalKey::Character) {
+                result[std::to_underlying(key)] =
+                    FKey{FName{*to_fstring(to_serialized_string(key))}};
+            }
+        }
+        return result;
+    }();
+    return keys[std::to_underlying(code.key)];
 }
 }

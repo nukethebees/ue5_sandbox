@@ -7,62 +7,83 @@
 #include <cmath>
 
 namespace ioj::input {
-auto binding_name_equal(std::string_view left, std::string_view right) -> bool {
-    // Existing profiles use FName identifiers, whose spelling is case-insensitive.
-    auto const fold = [](char value) {
-        return value >= 'A' && value <= 'Z' ? value + ('a' - 'A') : int{value};
-    };
-    return std::ranges::equal(left, right, {}, fold, fold);
+auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool {
+    if (key == PhysicalKey::Unbound) {
+        return false;
+    }
+    switch (mapping) {
+        case FlightMapping::GeneralPauseGamepad:
+            return is_gamepad_button(key.key);
+        case FlightMapping::GeneralPauseKeyboardMouse:
+            return is_keyboard_mouse_button(key.key);
+        default:
+            return is_gamepad_mapping(mapping) == is_gamepad_control(key.key);
+    }
 }
-
 auto flight_controls() -> std::span<FlightControl const> {
     using enum FlightAction;
     static constexpr FlightControl controls[]{
-        {"General.Pause.KeyboardMouse", Pause, "Escape", "Pause", 10, false},
-        {"General.Pause.Gamepad", Pause, "Gamepad_Special_Right", "Pause", 10, true},
-        {"Starfox.Pitch.KeyboardMouse", PointerPitch, "MouseY", "Pitch", 10, false},
-        {"Starfox.Pitch.Gamepad", Pitch, "Gamepad_LeftY", "Pitch", 10, true},
-        {"Starfox.Yaw.KeyboardMouse", PointerYaw, "MouseX", "Yaw", 20, false},
-        {"Starfox.Yaw.Gamepad", Yaw, "Gamepad_LeftX", "Yaw", 20, true},
-        {"Starfox.Steer.KeyboardMouse", Steer, "RightMouseButton", "Hold to steer", 30, false},
-        {"Starfox.Accelerate.KeyboardMouse", Accelerate, "W", "Accelerate", 40, false},
-        {"Starfox.Accelerate.Gamepad",
+        {FlightMapping::GeneralPauseKeyboardMouse, Pause, PhysicalKey::Escape, "Pause", 10},
+        {FlightMapping::GeneralPauseGamepad, Pause, PhysicalKey::GamepadSpecialRight, "Pause", 10},
+        {FlightMapping::StarfoxPitchKeyboardMouse, PointerPitch, PhysicalKey::MouseY, "Pitch", 10},
+        {FlightMapping::StarfoxPitchGamepad, Pitch, PhysicalKey::GamepadLeftY, "Pitch", 10},
+        {FlightMapping::StarfoxYawKeyboardMouse, PointerYaw, PhysicalKey::MouseX, "Yaw", 20},
+        {FlightMapping::StarfoxYawGamepad, Yaw, PhysicalKey::GamepadLeftX, "Yaw", 20},
+        {FlightMapping::StarfoxSteerKeyboardMouse,
+         Steer,
+         PhysicalKey::RightMouseButton,
+         "Hold to steer",
+         30},
+        {FlightMapping::StarfoxAccelerateKeyboardMouse,
          Accelerate,
-         "Gamepad_LeftTriggerAxis",
+         PhysicalKey::W,
          "Accelerate",
-         40,
-         true},
-        {"Starfox.Brake.KeyboardMouse", Brake, "S", "Brake", 50, false},
-        {"Starfox.Brake.Gamepad", Brake, "Gamepad_LeftShoulder", "Brake", 50, true},
-        {"Starfox.Boost.KeyboardMouse", Boost, "LeftShift", "Boost", 60, false},
-        {"Starfox.Boost.Gamepad", Boost, "Gamepad_RightShoulder", "Boost", 60, true},
-        {"Starfox.EmergencyBrake.KeyboardMouse", EmergencyBrake, "X", "Emergency Brake", 70, false},
-        {"Starfox.EmergencyBrake.Gamepad",
+         40},
+        {FlightMapping::StarfoxAccelerateGamepad,
+         Accelerate,
+         PhysicalKey::GamepadLeftTriggerAxis,
+         "Accelerate",
+         40},
+        {FlightMapping::StarfoxBrakeKeyboardMouse, Brake, PhysicalKey::S, "Brake", 50},
+        {FlightMapping::StarfoxBrakeGamepad, Brake, PhysicalKey::GamepadLeftShoulder, "Brake", 50},
+        {FlightMapping::StarfoxBoostKeyboardMouse, Boost, PhysicalKey::LeftShift, "Boost", 60},
+        {FlightMapping::StarfoxBoostGamepad, Boost, PhysicalKey::GamepadRightShoulder, "Boost", 60},
+        {FlightMapping::StarfoxEmergencyBrakeKeyboardMouse,
          EmergencyBrake,
-         "Gamepad_FaceButton_Left",
+         PhysicalKey::X,
          "Emergency Brake",
-         70,
-         true},
-        {"Starfox.FirePrimary.KeyboardMouse", Fire, "LeftMouseButton", "Fire Primary", 100, false},
-        {"Starfox.FirePrimary.Gamepad",
+         70},
+        {FlightMapping::StarfoxEmergencyBrakeGamepad,
+         EmergencyBrake,
+         PhysicalKey::GamepadFaceButtonLeft,
+         "Emergency Brake",
+         70},
+        {FlightMapping::StarfoxFirePrimaryKeyboardMouse,
          Fire,
-         "Gamepad_RightTriggerAxis",
+         PhysicalKey::LeftMouseButton,
          "Fire Primary",
-         100,
-         true},
+         100},
+        {FlightMapping::StarfoxFirePrimaryGamepad,
+         Fire,
+         PhysicalKey::GamepadRightTriggerAxis,
+         "Fire Primary",
+         100},
     };
     return controls;
 }
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string {
+auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> KeyCode {
     if (settings.bindings) {
-        auto const found{std::ranges::find_if(*settings.bindings, [&](auto const& entry) {
-            return entry.mapping == *parse_mapping(control.mapping);
-        })};
+        auto const found{
+            std::ranges::find(*settings.bindings, control.mapping, &KeyBinding::mapping)};
         if (found != settings.bindings->end()) {
-            return serialized_key(found->key);
+            if (found->key == PhysicalKey::Unbound) {
+                return {};
+            }
+            auto const key{found->key};
+            return accepts_binding(control.mapping, key) ? key : control.default_key;
         }
     }
-    return std::string{control.default_key};
+    return control.default_key;
 }
 FlightInput::FlightInput()
     : events_{*std::pmr::get_default_resource()} {}
@@ -70,11 +91,10 @@ void FlightInput::configure(ControlsSettings const& controls, Context context) {
     reset();
     bindings_.clear();
     for (auto const& control : flight_controls()) {
-        if (context == Context::Gameplay ||
-            (context == Context::BenchmarkViewer && control.action == FlightAction::Pause)) {
+        if (context == Context::Gameplay || control.action == FlightAction::Pause) {
             auto const key{bound_key(control, controls)};
-            if (!key.empty()) {
-                bindings_.push_back({control.action, std::string{key}, 0.f});
+            if (key != PhysicalKey::Unbound) {
+                bindings_.push_back({control.action, key, 0.f});
             }
         }
     }
@@ -88,27 +108,31 @@ auto FlightInput::value(FlightAction action) const -> float {
     }
     return strongest;
 }
-void FlightInput::restore_axis(std::string_view key, float position, ControlsSettings const& controls) {
+auto FlightInput::is_pause_button(KeyCode key) const -> bool {
+    return std::ranges::any_of(bindings_, [&](auto const& binding) {
+        return binding.action == FlightAction::Pause && binding.key == key;
+    });
+}
+void FlightInput::restore_axis(KeyCode key, float position, ControlsSettings const& controls) {
     for (auto& binding : bindings_) {
         if ((binding.action == FlightAction::Pitch || binding.action == FlightAction::Yaw ||
              binding.action == FlightAction::Accelerate) &&
-            binding_name_equal(binding.key, key)) {
+            binding.key == key) {
             binding.value = position;
         }
     }
     update_axes(controls);
 }
-auto FlightInput::update(std::string_view key, float next, ControlsSettings const& controls)
-    -> bool {
+auto FlightInput::update(KeyCode key, float next, ControlsSettings const& controls) -> bool {
     using enum FlightAction;
     bool pause{};
     for (auto& binding : bindings_) {
-        if (!binding_name_equal(binding.key, key)) {
+        if (binding.key != key) {
             continue;
         }
 
         if ((binding.action == PointerPitch || binding.action == PointerYaw) &&
-            (key == "MouseX" || key == "MouseY")) {
+            (key == PhysicalKey::MouseX || key == PhysicalKey::MouseY)) {
             if (steering_) {
                 auto const delta{
                     apply_response(next, Response::TurnPointerDelta, Axis::None, controls)};

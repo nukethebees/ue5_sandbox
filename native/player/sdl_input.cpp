@@ -264,7 +264,7 @@ void SdlInput::synchronize() {
         flight_.configure(controls_, current.context);
         if (current.context == input::Context::Gameplay) {
             for (std::size_t axis{}; axis < axes_.size(); ++axis) {
-                flight_.restore_axis(axis_names[axis], axes_[axis], controls_);
+                flight_.restore_axis(input::parse_key(axis_names[axis]), axes_[axis], controls_);
             }
         }
     }
@@ -292,14 +292,14 @@ void SdlInput::key(std::string_view name, bool down, bool repeat, Uint32 charact
         return;
     }
     if (route_.context == input::Context::Gameplay) {
-        if (flight_.update(name, down ? 1.f : 0.f, controls_)) {
+        if (flight_.update(input::parse_key(name), down ? 1.f : 0.f, controls_)) {
             host::pause_or_exit_viewer();
         }
         return;
     }
 
     if (down && ((!route_.movable_viewer && name == "Escape") ||
-                 (route_.movable_viewer && flight_.update(name, 1.f, controls_)))) {
+                 (route_.movable_viewer && flight_.update(input::parse_key(name), 1.f, controls_)))) {
         host::pause_or_exit_viewer();
         return;
     }
@@ -307,7 +307,7 @@ void SdlInput::key(std::string_view name, bool down, bool repeat, Uint32 charact
         return;
     }
     if (!down) {
-        flight_.update(name, 0.f, controls_);
+        flight_.update(input::parse_key(name), 0.f, controls_);
     }
     if (name == "RightMouseButton" && down) {
         viewer_looking_ = !viewer_looking_;
@@ -409,8 +409,8 @@ void SdlInput::handle(SDL_Event const& event) {
         }
         case SDL_EVENT_MOUSE_MOTION:
             if (route_.context == input::Context::Gameplay) {
-                flight_.update("MouseX", event.motion.xrel, controls_);
-                flight_.update("MouseY", event.motion.yrel, controls_);
+                flight_.update(PhysicalKey::MouseX, event.motion.xrel, controls_);
+                flight_.update(PhysicalKey::MouseY, event.motion.yrel, controls_);
             } else if (viewer_looking_) {
                 viewer_dx_ += event.motion.xrel;
                 viewer_dy_ -= event.motion.yrel;
@@ -476,7 +476,7 @@ void SdlInput::axis_value(std::size_t axis, float value) {
     if (route_.context == input::Context::Menu) {
         host::ui_axis(axis_names[axis], value, modifiers_);
     } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
-               flight_.update(axis_names[axis], value, controls_)) {
+               flight_.update(input::parse_key(axis_names[axis]), value, controls_)) {
         host::pause_or_exit_viewer();
     }
     // Digital aliases are independently rebindable in the Controls menu.

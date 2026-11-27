@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/input/flight_mapping.h>
+#include <ioj/input/key_code.h>
 #include <ioj/settings/controls_settings.h>
 #include <ioj/sim/player/player_events.h>
 #include <ioj/vector.h>
@@ -29,20 +31,19 @@ enum class FlightAction {
 };
 
 struct FlightControl {
-    std::string_view mapping;
+    FlightMapping mapping;
     FlightAction action;
-    std::string_view default_key;
+    KeyCode default_key;
     std::string_view label;
     int display_order;
-    bool gamepad;
 };
-auto binding_name_equal(std::string_view left, std::string_view right) -> bool;
+auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool;
 auto flight_controls() -> std::span<FlightControl const>;
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string;
+auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> KeyCode;
 
 struct FlightBinding {
     FlightAction action;
-    std::string key;
+    KeyCode key;
     float value{};
 };
 
@@ -51,9 +52,10 @@ class FlightInput {
     FlightInput();
 
     void configure(ControlsSettings const& controls, Context context);
-    void restore_axis(std::string_view key, float position, ControlsSettings const& controls);
+    auto is_pause_button(KeyCode key) const -> bool;
+    void restore_axis(KeyCode key, float position, ControlsSettings const& controls);
     // Returns true on the rising edge of the pause action.
-    auto update(std::string_view key, float next, ControlsSettings const& controls) -> bool;
+    auto update(KeyCode key, float next, ControlsSettings const& controls) -> bool;
     void reset();
     void begin_frame();
     auto frame() const -> sim::player::PlayerInputFrame { return events_.view(); }

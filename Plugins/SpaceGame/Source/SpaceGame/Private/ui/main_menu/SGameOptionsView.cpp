@@ -4,6 +4,7 @@
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
+#include <ioj/input/flight_input.h>
 #include <ioj/system_capabilities.h>
 
 #include "SandboxUI/slate/SlateSlots.h"
@@ -856,6 +857,15 @@ auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
     }
 
     capture_error_ = FText::GetEmpty();
+    if (!input::accepts_binding(target->address.mapping,
+                                input::parse_key(to_string(key.GetFName().ToString())))) {
+        capture_error_ =
+            NSLOCTEXT("OptionsMenu",
+                      "PauseButtonRequired",
+                      "Choose a keyboard key, mouse button, or controller button for Pause.");
+        return FReply::Handled();
+    }
+
     auto const conflicts{settings->binding_conflicts(captured_binding_.GetValue(), key)};
     capture_prompt_->SetVisibility(EVisibility::Collapsed);
     if (!conflicts.IsEmpty()) {
