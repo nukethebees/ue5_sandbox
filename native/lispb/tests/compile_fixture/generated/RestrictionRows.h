@@ -18,17 +18,8 @@ namespace codegen_compile_fixture {
 struct SingleRestrictionRows
     : ioj::soa_storage_detail::OwnerRowOperations<
           SingleRestrictionRows,
-          single_restriction_rows::ColumnTypes,
           ioj::native_soa::Owner<single_restriction_rows::CompactView,
                                  single_restriction_rows::CompactConstView>> {
-    using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
-        SingleRestrictionRows,
-        single_restriction_rows::ColumnTypes,
-        ioj::native_soa::Owner<single_restriction_rows::CompactView,
-                               single_restriction_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto restricted(this auto& self) { return self.view().restricted(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace codegen_compile_fixture

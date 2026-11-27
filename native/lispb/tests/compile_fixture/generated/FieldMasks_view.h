@@ -35,6 +35,8 @@ namespace f_mask_rows8 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -44,41 +46,31 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask8, std::int32
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows8::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows8
@@ -106,6 +98,8 @@ namespace f_mask_rows9 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -115,42 +109,34 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask9, std::int32
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values(), source.tail());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto tail(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
-    auto tail() const { return this->template column<2LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows9::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows9
@@ -177,6 +163,8 @@ namespace f_mask_rows16 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -186,41 +174,31 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask16, std::int3
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows16::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows16
@@ -247,6 +225,8 @@ namespace f_mask_rows17 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -256,41 +236,31 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask17, std::int3
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows17::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows17
@@ -317,6 +287,8 @@ namespace f_mask_rows32 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -326,41 +298,31 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask32, std::int3
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows32::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows32
@@ -387,6 +349,8 @@ namespace f_mask_rows33 {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -396,41 +360,31 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask33, std::int3
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.masks(), source.values());
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<0LL>(); }
-    auto values() const { return this->template column<1LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::f_mask_rows33::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace f_mask_rows33

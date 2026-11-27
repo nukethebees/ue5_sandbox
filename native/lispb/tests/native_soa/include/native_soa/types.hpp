@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 #include "native_soa/aligned256.h"
@@ -13,7 +12,6 @@
 #include "native_soa/types_compact_view.hpp"
 
 #include <array>
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::native_soa_fixture {
@@ -26,16 +24,8 @@ namespace ioj::native_soa_fixture {
 struct Counts
     : soa_storage_detail::OwnerRowOperations<
           Counts,
-          counts::ColumnTypes,
           native_soa::Owner<counts::CompactView, counts::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Counts,
-        counts::ColumnTypes,
-        native_soa::Owner<counts::CompactView, counts::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto count(this auto& self) { return self.view().count(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 struct Second {
@@ -54,16 +44,8 @@ struct First {
 struct PointerA
     : soa_storage_detail::OwnerRowOperations<
           PointerA,
-          pointer_a::ColumnTypes,
           native_soa::Owner<pointer_a::CompactView, pointer_a::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PointerA,
-        pointer_a::ColumnTypes,
-        native_soa::Owner<pointer_a::CompactView, pointer_a::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto others(this auto& self) { return self.view().others(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -74,16 +56,8 @@ struct PointerA
 struct PointerB
     : soa_storage_detail::OwnerRowOperations<
           PointerB,
-          pointer_b::ColumnTypes,
           native_soa::Owner<pointer_b::CompactView, pointer_b::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PointerB,
-        pointer_b::ColumnTypes,
-        native_soa::Owner<pointer_b::CompactView, pointer_b::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto others(this auto& self) { return self.view().others(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -94,16 +68,8 @@ struct PointerB
 struct MixedRows
     : soa_storage_detail::OwnerRowOperations<
           MixedRows,
-          mixed_rows::ColumnTypes,
           native_soa::Owner<mixed_rows::CompactView, mixed_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        MixedRows,
-        mixed_rows::ColumnTypes,
-        native_soa::Owner<mixed_rows::CompactView, mixed_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto records(this auto& self) { return self.view().records(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 struct Envelope {
@@ -121,17 +87,8 @@ struct Envelope {
 struct PairRows
     : soa_storage_detail::OwnerRowOperations<
           PairRows,
-          pair_rows::ColumnTypes,
           native_soa::Owner<pair_rows::CompactView, pair_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PairRows,
-        pair_rows::ColumnTypes,
-        native_soa::Owner<pair_rows::CompactView, pair_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto pairs(this auto& self) { return self.view().pairs(); }
-    auto pointers(this auto& self) { return self.view().pointers(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -144,18 +101,8 @@ struct PairRows
 struct Vectors
     : soa_storage_detail::OwnerRowOperations<
           Vectors,
-          vectors::ColumnTypes,
           native_soa::Owner<vectors::CompactView, vectors::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Vectors,
-        vectors::ColumnTypes,
-        native_soa::Owner<vectors::CompactView, vectors::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto xs(this auto& self) { return self.view().xs(); }
-    auto ys(this auto& self) { return self.view().ys(); }
-    auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -172,18 +119,8 @@ struct Vectors
 struct SingleRows
     : soa_storage_detail::OwnerRowOperations<
           SingleRows,
-          single_rows::ColumnTypes,
           native_soa::Owner<single_rows::CompactView, single_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SingleRows,
-        single_rows::ColumnTypes,
-        native_soa::Owner<single_rows::CompactView, single_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto values(this auto& self) { return self.view().values(); }
-    auto view_positions(this auto& self) { return self.view().view_positions(); }
-    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -205,23 +142,9 @@ struct SingleRows
 struct SingleAlignmentRows
     : soa_storage_detail::OwnerRowOperations<
           SingleAlignmentRows,
-          single_alignment_rows::ColumnTypes,
           native_soa::Owner<single_alignment_rows::CompactView,
                             single_alignment_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SingleAlignmentRows,
-        single_alignment_rows::ColumnTypes,
-        native_soa::Owner<single_alignment_rows::CompactView,
-                          single_alignment_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto bytes(this auto& self) { return self.view().bytes(); }
-    auto view_odd(this auto& self) { return self.view().view_odd(); }
-    auto aligned32(this auto& self) { return self.view().aligned32(); }
-    auto view_nested(this auto& self) { return self.view().view_nested(); }
-    auto aligned64(this auto& self) { return self.view().aligned64(); }
-    auto aligned256(this auto& self) { return self.view().aligned256(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -235,36 +158,8 @@ struct SingleAlignmentRows
 struct NATIVE_SOA_FIXTURE_API ApiOwner
     : soa_storage_detail::OwnerRowOperations<
           ApiOwner,
-          api_owner::ColumnTypes,
           native_soa::Owner<api_owner::CompactView, api_owner::CompactConstView>> {
-    using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
-        ApiOwner,
-        ioj::native_soa_fixture::api_owner::ColumnTypes,
-        ioj::native_soa::Owner<ioj::native_soa_fixture::api_owner::CompactView,
-                               ioj::native_soa_fixture::api_owner::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto values(this auto& self) { return self.view().values(); }
-    auto masks(this auto& self) { return self.view().masks(); }
-    auto view_positions(this auto& self) { return self.view().view_positions(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             float const new_values,
-             ApiMask const new_masks,
-             ioj::native_soa_fixture::ApiPair const new_positions) {
-        assert((index < num()));
-        view().values()[index] = new_values;
-        view().masks()[index] = new_masks;
-        view().view_positions().set(index, new_positions);
-    }
-    size_type add(float const new_values,
-                  ApiMask const new_masks,
-                  ioj::native_soa_fixture::ApiPair const new_positions) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_values, new_masks, new_positions);
-        return index;
-    }
+    using implementation_type::implementation_type;
     using Value = float;
     auto append_value(float row) {
         auto const row_{this->num()};
@@ -293,21 +188,8 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
 struct EquivalentOwner
     : soa_storage_detail::OwnerRowOperations<
           EquivalentOwner,
-          equivalent_owner::ColumnTypes,
           native_soa::Owner<equivalent_owner::CompactView, equivalent_owner::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EquivalentOwner,
-        equivalent_owner::ColumnTypes,
-        native_soa::Owner<equivalent_owner::CompactView, equivalent_owner::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto xs(this auto& self) { return self.view().xs(); }
-    auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, ApiPair const value) { set(index, value.x, value.y); }
-    size_type add(ApiPair const value) { return add(value.x, value.y); }
-    using equivalent_type = ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
+    using implementation_type::implementation_type;
 };
 
 struct ApiReference {
@@ -324,21 +206,7 @@ struct ApiReference {
 struct AccessorOwner
     : soa_storage_detail::OwnerRowOperations<
           AccessorOwner,
-          accessor_owner::ColumnTypes,
           native_soa::Owner<accessor_owner::CompactView, accessor_owner::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        AccessorOwner,
-        accessor_owner::ColumnTypes,
-        native_soa::Owner<accessor_owner::CompactView, accessor_owner::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto horizontal(this auto& self) { return self.view().horizontal(); }
-    auto vertical(this auto& self) { return self.view().vertical(); }
-    auto depth(this auto& self) { return self.view().depth(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }
-    size_type add(Vector3f const value) { return add(value.x(), value.y(), value.z()); }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::native_soa_fixture

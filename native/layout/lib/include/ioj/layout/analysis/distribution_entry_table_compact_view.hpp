@@ -9,11 +9,7 @@
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include "codegen/schema/packed_integer_value.h"
-
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace distribution_entry_table {
@@ -31,61 +27,17 @@ struct Layout
     static constexpr std::size_t weighted_slack_bytes_column{6ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = distribution_entry_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto component() const {
-        return this->template column<std::optional<std::size_t>>(Layout::component_column);
-    }
-    auto value() const {
-        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
-            Layout::value_column);
-    }
-    auto weight() const { return this->template column<std::uint64_t>(Layout::weight_column); }
-    auto extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column);
-    }
-    auto slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
-    }
-    auto weighted_extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::weighted_extent_bytes_column);
-    }
-    auto weighted_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::weighted_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::distribution_entry_table::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

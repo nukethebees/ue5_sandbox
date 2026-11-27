@@ -29,22 +29,8 @@ namespace ioj::sim {
 struct EntityFrameChanges
     : soa_storage_detail::OwnerRowOperations<
           EntityFrameChanges,
-          entity_frame_changes::ColumnTypes,
           native_soa::Owner<entity_frame_changes::CompactView,
                             entity_frame_changes::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityFrameChanges,
-        entity_frame_changes::ColumnTypes,
-        native_soa::Owner<entity_frame_changes::CompactView,
-                          entity_frame_changes::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto kinds(this auto& self) { return self.view().kinds(); }
-    auto indices(this auto& self) { return self.view().indices(); }
-    auto locations(this auto& self) { return self.view().locations(); }
-    auto rotations(this auto& self) { return self.view().rotations(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    auto ids(this auto& self) { return self.view().ids(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

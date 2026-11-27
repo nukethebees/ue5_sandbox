@@ -7,11 +7,9 @@
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
-#include "ioj/vector.h"
 #include "motions_view.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 namespace ioj {
@@ -25,46 +23,17 @@ struct Layout
     static constexpr std::size_t deltas_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Strided views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<Vector2f, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<Vector2f, Const>;
-    using Base::Base;
-    using Layout = physical_motions_rows::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::positions_column, Layout::deltas_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto positions() const { return this->column(0LL); }
-    auto deltas() const { return this->column(1LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactConstView>);
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                            ioj::physical_motions_rows::ColumnTypes,
-                                                            CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactView>);
 

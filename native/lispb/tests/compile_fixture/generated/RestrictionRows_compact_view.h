@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "compile_fixture/restricted_leaf.hpp"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
@@ -11,7 +10,6 @@
 #include "RestrictionRows_view.h"
 
 #include <cstddef>
-#include <type_traits>
 
 namespace codegen_compile_fixture {
 namespace single_restriction_rows {
@@ -24,42 +22,18 @@ struct Layout
     static constexpr std::size_t restricted_column{0ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = single_restriction_rows::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto restricted() const {
-        return this->template column<RestrictedLeaf>(Layout::restricted_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::single_restriction_rows::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 

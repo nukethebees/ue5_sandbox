@@ -28,23 +28,8 @@ namespace ioj::layout {
 struct DistributionEntryTable
     : soa_storage_detail::OwnerRowOperations<
           DistributionEntryTable,
-          distribution_entry_table::ColumnTypes,
           native_soa::Owner<distribution_entry_table::CompactView,
                             distribution_entry_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        DistributionEntryTable,
-        distribution_entry_table::ColumnTypes,
-        native_soa::Owner<distribution_entry_table::CompactView,
-                          distribution_entry_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto component(this auto& self) { return self.view().component(); }
-    auto value(this auto& self) { return self.view().value(); }
-    auto weight(this auto& self) { return self.view().weight(); }
-    auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
-    auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
-    auto weighted_extent_bytes(this auto& self) { return self.view().weighted_extent_bytes(); }
-    auto weighted_slack_bytes(this auto& self) { return self.view().weighted_slack_bytes(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::layout

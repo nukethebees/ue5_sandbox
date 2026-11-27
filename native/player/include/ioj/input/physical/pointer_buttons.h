@@ -25,20 +25,8 @@ namespace ioj {
 struct PhysicalPointerButtonsRows
     : soa_storage_detail::OwnerRowOperations<
           PhysicalPointerButtonsRows,
-          physical_pointer_buttons_rows::ColumnTypes,
           native_soa::Owner<physical_pointer_buttons_rows::CompactView,
                             physical_pointer_buttons_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalPointerButtonsRows,
-        physical_pointer_buttons_rows::ColumnTypes,
-        native_soa::Owner<physical_pointer_buttons_rows::CompactView,
-                          physical_pointer_buttons_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto positions(this auto& self) { return self.view().positions(); }
-    auto keys(this auto& self) { return self.view().keys(); }
-    auto states(this auto& self) { return self.view().states(); }
-    auto clicks(this auto& self) { return self.view().clicks(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

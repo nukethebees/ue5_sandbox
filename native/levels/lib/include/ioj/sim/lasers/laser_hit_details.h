@@ -3,13 +3,10 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/operations.h"
 #include "laser_hit_details_compact_view.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -27,36 +24,7 @@ namespace ioj::sim {
 struct LaserHitDetails
     : soa_storage_detail::OwnerRowOperations<
           LaserHitDetails,
-          laser_hit_details::ColumnTypes,
           native_soa::Owner<laser_hit_details::CompactView, laser_hit_details::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LaserHitDetails,
-        laser_hit_details::ColumnTypes,
-        native_soa::Owner<laser_hit_details::CompactView, laser_hit_details::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_emission_directions(this auto& self) {
-        return self.view().view_emission_directions();
-    }
-    auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Vector3f const new_emission_directions,
-             LaserSource const new_sources) {
-        assert((index < num()));
-        view().view_locations().set(index, new_locations);
-        view().view_emission_directions().set(index, new_emission_directions);
-        view().sources()[index] = new_sources;
-    }
-    size_type add(Vector3f const new_locations,
-                  Vector3f const new_emission_directions,
-                  LaserSource const new_sources) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_locations, new_emission_directions, new_sources);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

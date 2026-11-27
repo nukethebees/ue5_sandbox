@@ -4,15 +4,12 @@
 #pragma once
 
 #include "entity_overlaps_view.h"
-#include "ioj/sim/collision/collision_types.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 namespace ioj::sim::collision {
@@ -26,53 +23,17 @@ struct Layout
     static constexpr std::size_t second_entities_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Strided views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<EntityId, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<EntityId, Const>;
-    using Base::Base;
-    using Layout = entity_entity_overlaps::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{
-              soa_storage_detail::make_strided_view<Base, Layout>(state,
-                                                                  offset,
-                                                                  count,
-                                                                  Layout::first_entities_column,
-                                                                  Layout::second_entities_column)} {
-
-    }
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto first_entities() const { return this->column(0LL); }
-    auto second_entities() const { return this->column(1LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactConstView>);
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::entity_entity_overlaps::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactView>);
 
@@ -88,43 +49,17 @@ struct Layout
     static constexpr std::size_t static_geometry_indices_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_static_overlaps::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
-    auto static_geometry_indices() const {
-        return this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::entity_static_overlaps::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

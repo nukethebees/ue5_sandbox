@@ -4,19 +4,14 @@
 #pragma once
 
 #include "entity_cell_data_view.h"
-#include "ioj/math_types.h"
-#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/collision/cell_coords_compact_view.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_compact_view.h"
 
-#include <cassert>
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::sim::collision {
 namespace entity_cell_data {
@@ -40,93 +35,17 @@ struct Layout
     static constexpr std::size_t entity_ids_column{12ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_cell_data::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::min_points_xs_column,
-                    Layout::min_points_ys_column);
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::max_points_xs_column,
-                    Layout::max_points_ys_column);
-    }
-    auto view_min_cells() const
-        -> std::conditional_t<Const, cell_coords::CompactConstView, cell_coords::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, cell_coords::CompactConstView, cell_coords::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::min_cells_xs_column,
-                    Layout::min_cells_ys_column);
-    }
-    auto view_max_cells() const
-        -> std::conditional_t<Const, cell_coords::CompactConstView, cell_coords::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, cell_coords::CompactConstView, cell_coords::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::max_cells_xs_column,
-                    Layout::max_cells_ys_column);
-    }
-    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::entity_cell_data::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_min_points,
-             Vector3f const new_max_points,
-             ioj::sim::collision::CellCoord const new_min_cells,
-             ioj::sim::collision::CellCoord const new_max_cells,
-             EntityId const new_entity_ids) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-        this->view_min_cells().set(index, new_min_cells);
-        this->view_max_cells().set(index, new_max_cells);
-        this->entity_ids()[index] = new_entity_ids;
-    }
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

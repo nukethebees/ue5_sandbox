@@ -26,19 +26,7 @@ namespace ioj::sim {
 struct EntityHistory
     : soa_storage_detail::OwnerRowOperations<
           EntityHistory,
-          entity_history::ColumnTypes,
           native_soa::Owner<entity_history::CompactView, entity_history::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityHistory,
-        entity_history::ColumnTypes,
-        native_soa::Owner<entity_history::CompactView, entity_history::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto teams(this auto& self) { return self.view().teams(); }
-    auto kills(this auto& self) { return self.view().kills(); }
-    auto life_state(this auto& self) { return self.view().life_state(); }
-    auto death_ticks(this auto& self) { return self.view().death_ticks(); }
-    auto death_locations(this auto& self) { return self.view().death_locations(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

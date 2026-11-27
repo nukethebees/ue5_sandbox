@@ -14,6 +14,7 @@
 
 namespace lispb::codegen::detail {
 
+auto schema_rows(LoweringContext& ctx, DeclarationHandle schema) -> Nodes;
 auto soa_row_operations(LoweringContext& ctx,
                         DeclarationHandle schema,
                         SoaReceiver receiver,

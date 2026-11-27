@@ -3,22 +3,13 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analysis/soa_column_table_view.hpp"
-#include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include "lispb/indices.h"
-#include "lispb/schema/indices.h"
-
 #include <cstddef>
-#include <cstdint>
-#include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace soa_column_table {
@@ -44,87 +35,17 @@ struct Layout
     static constexpr std::size_t cache_line_tiling_column{14ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = soa_column_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
-    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
-    auto semantic_type() const {
-        return this->template column<lispb::schema::TypeId>(Layout::semantic_type_column);
-    }
-    auto schema_type() const {
-        return this->template column<lispb::StringId>(Layout::schema_type_column);
-    }
-    auto physical_type() const {
-        return this->template column<lispb::StringId>(Layout::physical_type_column);
-    }
-    auto overridden() const {
-        return this->template column<std::uint8_t>(Layout::overridden_column);
-    }
-    auto type_facts() const {
-        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-            Layout::type_facts_column);
-    }
-    auto total_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::total_bytes_column);
-    }
-    auto allocation_offset_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::allocation_offset_bytes_column);
-    }
-    auto padding_before_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::padding_before_bytes_column);
-    }
-    auto minimum_cache_lines() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::minimum_cache_lines_column);
-    }
-    auto elements_per_cache_line() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::elements_per_cache_line_column);
-    }
-    auto minimum_pages() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::minimum_pages_column);
-    }
-    auto complete_elements_per_page() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::complete_elements_per_page_column);
-    }
-    auto cache_line_tiling() const {
-        return this->template column<std::optional<ioj::layout::CacheLineTiling>>(
-            Layout::cache_line_tiling_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::soa_column_table::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

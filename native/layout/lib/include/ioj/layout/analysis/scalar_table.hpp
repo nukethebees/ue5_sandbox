@@ -37,28 +37,8 @@ namespace ioj::layout {
 struct ScalarTable
     : soa_storage_detail::OwnerRowOperations<
           ScalarTable,
-          scalar_table::ColumnTypes,
           native_soa::Owner<scalar_table::CompactView, scalar_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        ScalarTable,
-        scalar_table::ColumnTypes,
-        native_soa::Owner<scalar_table::CompactView, scalar_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto type(this auto& self) { return self.view().type(); }
-    auto integer_domain(this auto& self) { return self.view().integer_domain(); }
-    auto enum_domain(this auto& self) { return self.view().enum_domain(); }
-    auto optional_sentinel_encoding(this auto& self) {
-        return self.view().optional_sentinel_encoding();
-    }
-    auto optional_presence_encoding(this auto& self) {
-        return self.view().optional_presence_encoding();
-    }
-    auto quantized_encoding(this auto& self) { return self.view().quantized_encoding(); }
-    auto fixed_encoding(this auto& self) { return self.view().fixed_encoding(); }
-    auto float_encoding(this auto& self) { return self.view().float_encoding(); }
-    auto varint_encoding(this auto& self) { return self.view().varint_encoding(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append(lispb::schema::TypeId value);
     std::size_t find(lispb::schema::TypeId value) const;
 };

@@ -40,6 +40,8 @@ namespace counts {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -48,38 +50,27 @@ using Pointers = soa_storage_detail::ColumnPointers<std::uint32_t>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.count());
+    }
+    auto count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto count() const { return this->template column<0LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::counts::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace counts
@@ -98,6 +89,8 @@ namespace pointer_a {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -106,38 +99,27 @@ using Pointers = soa_storage_detail::ColumnPointers<PointerB*>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.others());
+    }
+    auto others(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto others() const { return this->template column<0LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::pointer_a::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace pointer_a
@@ -146,6 +128,8 @@ namespace pointer_b {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -154,38 +138,27 @@ using Pointers = soa_storage_detail::ColumnPointers<PointerA*>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.others());
+    }
+    auto others(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto others() const { return this->template column<0LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::pointer_b::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace pointer_b
@@ -194,6 +167,8 @@ namespace mixed_rows {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -202,38 +177,27 @@ using Pointers = soa_storage_detail::ColumnPointers<MixedRecord*>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.records());
+    }
+    auto records(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto records() const { return this->template column<0LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::mixed_rows::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace mixed_rows
@@ -246,6 +210,8 @@ namespace pair_rows {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -254,39 +220,30 @@ using Pointers = soa_storage_detail::ColumnPointers<Pair, Node*>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.pairs(), source.pointers());
+    }
+    auto pairs(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto pointers(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto pairs() const { return this->template column<0LL>(); }
-    auto pointers() const { return this->template column<1LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::pair_rows::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace pair_rows
@@ -295,6 +252,8 @@ namespace vectors {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -303,40 +262,33 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys(), source.zs());
+    }
+    auto xs(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto ys(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto zs(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->template column<0LL>(); }
-    auto ys() const { return this->template column<1LL>(); }
-    auto zs() const { return this->template column<2LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::vectors::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace vectors
@@ -345,6 +297,8 @@ namespace odd_pairs {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -353,39 +307,30 @@ using Pointers = soa_storage_detail::ColumnPointers<OddBytes, OddBytes>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.first(), source.second());
+    }
+    auto first(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto second(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto first() const { return this->template column<0LL>(); }
-    auto second() const { return this->template column<1LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::odd_pairs::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace odd_pairs
@@ -394,6 +339,8 @@ namespace vector_groups {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -402,7 +349,9 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, 
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& starts_view{source.view_starts()};
@@ -414,46 +363,25 @@ struct Schema {
                     ends_view.ys(),
                     ends_view.zs());
     }
+    auto view_starts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::vectors::Schema, 0ULL>();
+    }
+    auto view_ends(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::vectors::Schema, 3ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_starts() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->template column<0LL>().data(),
-                this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->num()};
-    }
-    auto view_ends() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->num()};
-    }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::native_soa_fixture::vector_groups::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace vector_groups
@@ -462,6 +390,8 @@ namespace single_rows {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -471,7 +401,9 @@ using Pointers =
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& positions_view{source.view_positions()};
@@ -484,45 +416,28 @@ struct Schema {
                     velocities_view.ys(),
                     velocities_view.zs());
     }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto view_positions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::vectors::Schema, 1ULL>();
+    }
+    auto view_velocities(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::vectors::Schema, 4ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto values() const { return this->template column<0LL>(); }
-    auto view_positions() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->template column<3LL>().data(),
-                this->num()};
-    }
-    auto view_velocities() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->template column<6LL>().data(),
-                this->num()};
-    }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::single_rows::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace single_rows
@@ -531,6 +446,8 @@ namespace single_alignment_rows {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -550,7 +467,9 @@ using Pointers = soa_storage_detail::ColumnPointers<std::uint8_t,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& odd_view{source.view_odd()};
@@ -570,52 +489,37 @@ struct Schema {
                     source.aligned64(),
                     source.aligned256());
     }
+    auto bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto view_odd(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::odd_pairs::Schema, 1ULL>();
+    }
+    auto aligned32(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto view_nested(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::vector_groups::Schema, 4ULL>();
+    }
+    auto aligned64(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
+    }
+    auto aligned256(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto bytes() const { return this->template column<0LL>(); }
-    auto view_odd() const -> std::conditional_t<Const, odd_pairs::ConstView, odd_pairs::View> {
-        return {
-            this->template column<1LL>().data(), this->template column<2LL>().data(), this->num()};
-    }
-    auto aligned32() const { return this->template column<3LL>(); }
-    auto view_nested() const
-        -> std::conditional_t<Const, vector_groups::ConstView, vector_groups::View> {
-        return {this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->template column<6LL>().data(),
-                this->template column<7LL>().data(),
-                this->template column<8LL>().data(),
-                this->template column<9LL>().data(),
-                this->num()};
-    }
-    auto aligned64() const { return this->template column<10LL>(); }
-    auto aligned256() const { return this->template column<11LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::native_soa_fixture::single_alignment_rows::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace single_alignment_rows
@@ -631,6 +535,8 @@ namespace api_coordinates {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -639,50 +545,42 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys());
     }
+    auto xs(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto ys(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    using equivalent_type = ioj::native_soa_fixture::ApiPair;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{columns.xs()[index], columns.ys()[index]};
+    }
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.x, value.y);
+    }
+    using row_types = ioj::soa_storage_detail::
+        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->template column<0LL>(); }
-    auto ys() const { return this->template column<1LL>(); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
     float x_at(std::uint32_t index) const;
-    using equivalent_type = ioj::native_soa_fixture::ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index]};
-    }
 };
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::native_soa_fixture::api_coordinates::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, ioj::native_soa_fixture::ApiPair const value) const {
-        set(index, value.x, value.y);
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
     float x_at(std::uint32_t index) const;
     void shift_x(float amount) {
         auto xs = this->xs();
@@ -690,11 +588,6 @@ struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<
         for (std::uint32_t i{}; i < count; ++i) {
             xs[i] += amount;
         }
-    }
-    using equivalent_type = ioj::native_soa_fixture::ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index]};
     }
 };
 
@@ -718,6 +611,8 @@ namespace api_owner {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -726,59 +621,44 @@ using Pointers = soa_storage_detail::ColumnPointers<float, ApiMask, float, float
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& positions_view{source.view_positions()};
         return func(source.values(), source.masks(), positions_view.xs(), positions_view.ys());
     }
+    auto values(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto masks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto view_positions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::native_soa_fixture::api_coordinates::Schema, 2ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.values(), source.masks(), source.view_positions());
+    }
+    using row_types = ioj::soa_storage_detail::RowTypes<
+        column_types,
+        ioj::soa_storage_detail::ColumnTypes<float, ApiMask, ioj::native_soa_fixture::ApiPair>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = ioj::native_soa_fixture::api_owner::View;
-    using const_view_type = ioj::native_soa_fixture::api_owner::ConstView;
-    using soa_schema = ioj::native_soa_fixture::api_owner::Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto values() const { return this->template column<0LL>(); }
-    auto masks() const { return this->template column<1LL>(); }
-    auto view_positions() const
-        -> std::conditional_t<Const,
-                              ioj::native_soa_fixture::api_coordinates::ConstView,
-                              ioj::native_soa_fixture::api_coordinates::View> {
-        return {
-            this->template column<2LL>().data(), this->template column<3LL>().data(), this->num()};
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
     using Value = float;
     [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
 };
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::native_soa_fixture::api_owner::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             float const new_values,
-             ApiMask const new_masks,
-             ioj::native_soa_fixture::ApiPair const new_positions) const {
-        assert((index < num()));
-        this->values()[index] = new_values;
-        this->masks()[index] = new_masks;
-        this->view_positions().set(index, new_positions);
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
     using Value = float;
     [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
@@ -792,6 +672,8 @@ namespace equivalent_owner {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -800,54 +682,41 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys());
     }
+    auto xs(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto ys(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    using equivalent_type = ioj::native_soa_fixture::ApiPair;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{columns.xs()[index], columns.ys()[index]};
+    }
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.x, value.y);
+    }
+    using row_types = ioj::soa_storage_detail::
+        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->template column<0LL>(); }
-    auto ys() const { return this->template column<1LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = ioj::native_soa_fixture::ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index]};
-    }
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::native_soa_fixture::equivalent_owner::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, ioj::native_soa_fixture::ApiPair const value) const {
-        set(index, value.x, value.y);
-    }
-    using equivalent_type = ioj::native_soa_fixture::ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index]};
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace equivalent_owner
@@ -856,6 +725,8 @@ namespace accessor_owner {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -864,55 +735,45 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.horizontal(), source.vertical(), source.depth());
     }
+    auto horizontal(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto vertical(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto depth(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    using equivalent_type = ioj::Vector3f;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{
+            columns.horizontal()[index], columns.vertical()[index], columns.depth()[index]};
+    }
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.x(), value.y(), value.z());
+    }
+    using row_types = ioj::soa_storage_detail::
+        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto horizontal() const { return this->template column<0LL>(); }
-    auto vertical() const { return this->template column<1LL>(); }
-    auto depth() const { return this->template column<2LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = ioj::Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
-    }
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::native_soa_fixture::accessor_owner::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, ioj::Vector3f const value) const {
-        set(index, value.x(), value.y(), value.z());
-    }
-    using equivalent_type = ioj::Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace accessor_owner

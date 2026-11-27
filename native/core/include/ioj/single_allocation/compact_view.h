@@ -57,8 +57,23 @@ auto view_column_data(State* state, std::uint32_t offset, std::size_t byte_offse
     return view_column_data_unchecked<T>(state, offset, byte_offset);
 }
 
-template <bool Const>
-struct CompactViewBase : ViewOperations {
+template <typename View, typename Layout, typename State>
+auto make_strided_view(
+    State* state, std::uint32_t offset, std::uint32_t count, std::size_t first, std::size_t second)
+    -> View {
+    using T = typename View::element_type;
+    validate_view(state, offset, count);
+    if (!state || !state->data_) {
+        return {};
+    }
+    auto const blocks{view_capacity_blocks(state)};
+    auto const first_offset{Layout::offset(first, blocks)};
+    auto const stride{Layout::offset(second, blocks) - first_offset};
+    return View{view_column_data_unchecked<T>(state, offset, first_offset), stride, count};
+}
+
+template <bool Const, typename Schema>
+struct CompactViewBase : ViewOperations<Schema> {
     using size_type = std::uint32_t;
     using Storage = StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
@@ -90,33 +105,44 @@ struct CompactViewBase : ViewOperations {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         return Self{self.state_, self.offset_ + offset, count};
     }
+    template <std::size_t Index, typename Self>
+    auto column_at(this Self const& self) {
+        using T = typename Self::Layout::column_types::template at<Index>;
+        return std::span<Element<T>>{
+            view_column_data<T>(self.state_,
+                                self.offset_,
+                                Self::Layout::offset(Index, view_capacity_blocks(self.state_))),
+            self.count_};
+    }
+
+    template <typename Child, std::size_t First, typename Self>
+    auto nested_at(this Self const& self) {
+        if constexpr (Child::strided) {
+            return make_strided_view<typename Child::template compact<Const>,
+                                     typename Self::Layout>(
+                self.state_, self.offset_, self.count_, First, First + 1);
+        } else {
+            return nested_resolved_view<Child, Const, First>(self);
+        }
+    }
   protected:
-    template <bool>
+    template <bool, typename>
     friend struct CompactViewBase;
 
     template <bool Enabled = Const>
         requires Enabled
-    CompactViewBase(CompactViewBase<false> const& other)
+    CompactViewBase(CompactViewBase<false, Schema> const& other)
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-
-    template <typename T, typename Self>
-    auto column(this Self const& self, std::size_t index) {
-        return std::span<Element<T>>{
-            view_column_data<T>(self.state_,
-                                self.offset_,
-                                Self::Layout::offset(index, view_capacity_blocks(self.state_))),
-            self.count_};
-    }
 
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
 
-template <typename T, bool Const>
-struct StridedViewBase : ViewOperations {
+template <typename T, bool Const, typename Schema>
+struct StridedViewBase : ViewOperations<Schema> {
     using size_type = std::uint32_t;
     template <typename U>
     using Element = std::conditional_t<Const, U const, U>;
@@ -153,13 +179,27 @@ struct StridedViewBase : ViewOperations {
         result.count_ = count;
         return result;
     }
+    template <std::size_t Index>
+    auto column_at() const {
+        return column(Index);
+    }
+
+    template <typename Child, std::size_t First>
+    auto nested_at(this auto const& self) {
+        if constexpr (Child::strided) {
+            return typename Child::template compact<Const>{
+                self.column(First).data(), self.byte_stride(), self.num()};
+        } else {
+            return nested_resolved_view<Child, Const, First>(self);
+        }
+    }
   protected:
-    template <typename, bool>
+    template <typename, bool, typename>
     friend struct StridedViewBase;
 
     template <bool Enabled = Const>
         requires Enabled
-    StridedViewBase(StridedViewBase<T, false> const& other)
+    StridedViewBase(StridedViewBase<T, false, Schema> const& other)
         : first_{other.first_}
         , stride_{other.stride_}
         , count_{other.count_} {}
@@ -204,19 +244,30 @@ struct StridedViewBase : ViewOperations {
     size_type count_{};
 };
 
-template <typename View, typename Layout, typename State>
-auto make_strided_view(
-    State* state, std::uint32_t offset, std::uint32_t count, std::size_t first, std::size_t second)
-    -> View {
-    using T = typename View::element_type;
-    validate_view(state, offset, count);
-    if (!state || !state->data_) {
-        return {};
-    }
-    auto const blocks{view_capacity_blocks(state)};
-    auto const first_offset{Layout::offset(first, blocks)};
-    auto const stride{Layout::offset(second, blocks) - first_offset};
-    return View{view_column_data_unchecked<T>(state, offset, first_offset), stride, count};
-}
+template <typename Schema, bool Const>
+using CompactStorage = std::conditional_t<
+    Schema::strided,
+    StridedViewBase<typename Schema::column_types::template at<0>, Const, Schema>,
+    CompactViewBase<Const, Schema>>;
 
+template <typename Schema, typename ColumnLayout, bool Const>
+struct CompactView : CompactStorage<Schema, Const> {
+    using implementation_type = CompactView;
+    using Base = CompactStorage<Schema, Const>;
+    using Base::Base;
+    using soa_schema = Schema;
+    using Layout = ColumnLayout;
+    using view_type = typename Schema::template compact<false>;
+    using const_view_type = typename Schema::template compact<true>;
+    using resolved_view_type = typename Schema::template resolved<Const>;
+    using State = std::conditional_t<Const, StorageState const, StorageState>;
+
+    CompactView(State* state, std::uint32_t offset, std::uint32_t count)
+        requires Schema::strided
+        : Base{make_strided_view<Base, Layout>(state, offset, count, 0, 1)} {}
+    template <bool Enabled = Const>
+        requires Enabled
+    CompactView(CompactView<Schema, Layout, false> const& other)
+        : Base{other} {}
+};
 } // namespace ioj::soa_storage_detail

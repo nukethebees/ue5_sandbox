@@ -4,11 +4,8 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/rotators3f_compact_view.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cstdint>
 
 namespace ioj {
 
@@ -22,23 +19,7 @@ namespace ioj {
 struct Rotators3f
     : soa_storage_detail::OwnerRowOperations<
           Rotators3f,
-          rotators3f::ColumnTypes,
           native_soa::Owner<rotators3f::CompactView, rotators3f::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Rotators3f,
-        rotators3f::ColumnTypes,
-        native_soa::Owner<rotators3f::CompactView, rotators3f::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto pitches(this auto& self) { return self.view().pitches(); }
-    auto yaws(this auto& self) { return self.view().yaws(); }
-    auto rolls(this auto& self) { return self.view().rolls(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, Rotator3f const value) {
-        set(index, value.pitch, value.yaw, value.roll);
-    }
-    size_type add(Rotator3f const value) { return add(value.pitch, value.yaw, value.roll); }
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

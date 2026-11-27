@@ -15,6 +15,4 @@ auto is_strided_schema(LoweringContext& ctx, DeclarationHandle schema) -> bool;
 auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
     -> SingleAllocationModelId;
 
-auto column_for(LoweringContext& ctx, SingleAllocationModelId model, LoweringPathId path)
-    -> SingleAllocationColumnId;
 } // namespace lispb::codegen::detail

@@ -28,20 +28,8 @@ namespace ioj::layout {
 struct CodeTable
     : soa_storage_detail::OwnerRowOperations<
           CodeTable,
-          code_table::ColumnTypes,
           native_soa::Owner<code_table::CompactView, code_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        CodeTable,
-        code_table::ColumnTypes,
-        native_soa::Owner<code_table::CompactView, code_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto name(this auto& self) { return self.view().name(); }
-    auto sentinel(this auto& self) { return self.view().sentinel(); }
-    auto count_sentinel(this auto& self) { return self.view().count_sentinel(); }
-    auto code(this auto& self) { return self.view().code(); }
-    auto integer_value(this auto& self) { return self.view().integer_value(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append();
 };
 } // namespace ioj::layout

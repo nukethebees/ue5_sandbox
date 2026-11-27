@@ -28,21 +28,8 @@ namespace ioj::layout {
 struct PhysicalFactTable
     : soa_storage_detail::OwnerRowOperations<
           PhysicalFactTable,
-          physical_fact_table::ColumnTypes,
           native_soa::Owner<physical_fact_table::CompactView,
                             physical_fact_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalFactTable,
-        physical_fact_table::ColumnTypes,
-        native_soa::Owner<physical_fact_table::CompactView, physical_fact_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto size_bytes(this auto& self) { return self.view().size_bytes(); }
-    auto alignment_bytes(this auto& self) { return self.view().alignment_bytes(); }
-    auto signedness(this auto& self) { return self.view().signedness(); }
-    auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
-    auto provenance(this auto& self) { return self.view().provenance(); }
-    auto origin(this auto& self) { return self.view().origin(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::layout

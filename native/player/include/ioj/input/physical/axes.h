@@ -19,17 +19,8 @@ namespace ioj {
 struct PhysicalAxesRows
     : soa_storage_detail::OwnerRowOperations<
           PhysicalAxesRows,
-          physical_axes_rows::ColumnTypes,
           native_soa::Owner<physical_axes_rows::CompactView,
                             physical_axes_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalAxesRows,
-        physical_axes_rows::ColumnTypes,
-        native_soa::Owner<physical_axes_rows::CompactView, physical_axes_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto keys(this auto& self) { return self.view().keys(); }
-    auto positions(this auto& self) { return self.view().positions(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

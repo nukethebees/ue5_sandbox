@@ -4,18 +4,12 @@
 #pragma once
 
 #include "ioj/layout/analysis/physical_fact_table_view.hpp"
-#include "ioj/layout/fact_origin.hpp"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include "lispb/indices.h"
-#include "lispb/schema/enum_signedness.h"
-
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace physical_fact_table {
@@ -32,56 +26,17 @@ struct Layout
     static constexpr std::size_t origin_column{5ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = physical_fact_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto size_bytes() const {
-        return this->template column<std::uint64_t>(Layout::size_bytes_column);
-    }
-    auto alignment_bytes() const {
-        return this->template column<std::uint64_t>(Layout::alignment_bytes_column);
-    }
-    auto signedness() const {
-        return this->template column<lispb::schema::EnumSignedness>(Layout::signedness_column);
-    }
-    auto unsigned_value_bits() const {
-        return this->template column<std::optional<std::uint32_t>>(
-            Layout::unsigned_value_bits_column);
-    }
-    auto provenance() const {
-        return this->template column<lispb::StringId>(Layout::provenance_column);
-    }
-    auto origin() const { return this->template column<FactOrigin>(Layout::origin_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::physical_fact_table::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

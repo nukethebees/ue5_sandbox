@@ -10,8 +10,6 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace codegen_compile_fixture {
 namespace f_mask_rows8 {
@@ -25,41 +23,18 @@ struct Layout
     static constexpr std::size_t values_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows8::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask8>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows8::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
@@ -77,42 +52,18 @@ struct Layout
     static constexpr std::size_t tail_column{2ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows9::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask9>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-    auto tail() const { return this->template column<std::int32_t>(Layout::tail_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows9::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
@@ -129,41 +80,18 @@ struct Layout
     static constexpr std::size_t values_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows16::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask16>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows16::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
@@ -180,41 +108,18 @@ struct Layout
     static constexpr std::size_t values_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows17::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask17>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows17::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
@@ -231,41 +136,18 @@ struct Layout
     static constexpr std::size_t values_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows32::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask32>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows32::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
@@ -282,41 +164,18 @@ struct Layout
     static constexpr std::size_t values_column{1ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = f_mask_rows33::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto masks() const { return this->template column<FFieldMask33>(Layout::masks_column); }
-    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : ioj::soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        codegen_compile_fixture::f_mask_rows33::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 

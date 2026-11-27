@@ -23,18 +23,8 @@ namespace ioj::sim {
 struct LevelSpawnGroups
     : soa_storage_detail::OwnerRowOperations<
           LevelSpawnGroups,
-          level_spawn_groups::ColumnTypes,
           native_soa::Owner<level_spawn_groups::CompactView,
                             level_spawn_groups::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LevelSpawnGroups,
-        level_spawn_groups::ColumnTypes,
-        native_soa::Owner<level_spawn_groups::CompactView, level_spawn_groups::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto types(this auto& self) { return self.view().types(); }
-    auto offsets(this auto& self) { return self.view().offsets(); }
-    auto counts(this auto& self) { return self.view().counts(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

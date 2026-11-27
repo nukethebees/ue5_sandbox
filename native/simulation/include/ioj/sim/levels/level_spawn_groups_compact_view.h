@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/levels/level_event_count.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
@@ -12,8 +10,6 @@
 #include "level_spawn_groups_view.h"
 
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace level_spawn_groups {
@@ -27,42 +23,17 @@ struct Layout
     static constexpr std::size_t counts_column{2ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = level_spawn_groups::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto types() const { return this->template column<EntityType>(Layout::types_column); }
-    auto offsets() const { return this->template column<std::int32_t>(Layout::offsets_column); }
-    auto counts() const { return this->template column<LevelEventCount>(Layout::counts_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::level_spawn_groups::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

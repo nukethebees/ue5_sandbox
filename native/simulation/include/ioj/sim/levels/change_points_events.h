@@ -20,18 +20,8 @@ namespace ioj::sim {
 struct ChangePointsEvents
     : soa_storage_detail::OwnerRowOperations<
           ChangePointsEvents,
-          change_points_events::ColumnTypes,
           native_soa::Owner<change_points_events::CompactView,
                             change_points_events::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        ChangePointsEvents,
-        change_points_events::ColumnTypes,
-        native_soa::Owner<change_points_events::CompactView,
-                          change_points_events::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto deltas(this auto& self) { return self.view().deltas(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

@@ -16,6 +16,8 @@ namespace distribution_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -33,7 +35,9 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.analysis(),
@@ -47,42 +51,47 @@ struct Schema {
                     source.expected_selected_extent_bytes(),
                     source.expected_selected_slack_bytes());
     }
+    auto analysis(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto entries(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto element_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto total_weight(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto total_extent_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto total_slack_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
+    auto expected_extent_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
+    }
+    auto expected_slack_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    auto expected_selected_extent_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
+    }
+    auto expected_selected_slack_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->template column<0LL>(); }
-    auto entries() const { return this->template column<1LL>(); }
-    auto element_count() const { return this->template column<2LL>(); }
-    auto total_weight() const { return this->template column<3LL>(); }
-    auto total_extent_bytes() const { return this->template column<4LL>(); }
-    auto total_slack_bytes() const { return this->template column<5LL>(); }
-    auto expected_extent_bytes() const { return this->template column<6LL>(); }
-    auto expected_slack_bytes() const { return this->template column<7LL>(); }
-    auto expected_selected_extent_bytes() const { return this->template column<8LL>(); }
-    auto expected_selected_slack_bytes() const { return this->template column<9LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::distribution_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace distribution_table

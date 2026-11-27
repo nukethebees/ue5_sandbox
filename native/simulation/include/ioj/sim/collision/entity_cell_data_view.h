@@ -11,15 +11,15 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim::collision {
 namespace entity_cell_data {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -40,7 +40,9 @@ using Pointers = soa_storage_detail::ColumnPointers<float,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& min_points_view{source.view_min_points()};
@@ -61,76 +63,50 @@ struct Schema {
                     max_cells_view.zs(),
                     source.entity_ids());
     }
+    auto view_min_points(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    }
+    auto view_max_points(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 3ULL>();
+    }
+    auto view_min_cells(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::sim::collision::cell_coords::Schema, 6ULL>();
+    }
+    auto view_max_cells(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::sim::collision::cell_coords::Schema, 9ULL>();
+    }
+    auto entity_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.view_min_points(),
+                    source.view_max_points(),
+                    source.view_min_cells(),
+                    source.view_max_cells(),
+                    source.entity_ids());
+    }
+    using row_types = ioj::soa_storage_detail::RowTypes<
+        column_types,
+        ioj::soa_storage_detail::ColumnTypes<Vector3f,
+                                             Vector3f,
+                                             ioj::sim::collision::CellCoord,
+                                             ioj::sim::collision::CellCoord,
+                                             EntityId>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<0LL>().data(),
-                this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->num()};
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->num()};
-    }
-    auto view_min_cells() const
-        -> std::conditional_t<Const, cell_coords::ConstView, cell_coords::View> {
-        return {this->template column<6LL>().data(),
-                this->template column<7LL>().data(),
-                this->template column<8LL>().data(),
-                this->num()};
-    }
-    auto view_max_cells() const
-        -> std::conditional_t<Const, cell_coords::ConstView, cell_coords::View> {
-        return {this->template column<9LL>().data(),
-                this->template column<10LL>().data(),
-                this->template column<11LL>().data(),
-                this->num()};
-    }
-    auto entity_ids() const { return this->template column<12LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::collision::entity_cell_data::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_min_points,
-             Vector3f const new_max_points,
-             ioj::sim::collision::CellCoord const new_min_cells,
-             ioj::sim::collision::CellCoord const new_max_cells,
-             EntityId const new_entity_ids) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-        this->view_min_cells().set(index, new_min_cells);
-        this->view_max_cells().set(index, new_max_cells);
-        this->entity_ids()[index] = new_entity_ids;
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace entity_cell_data

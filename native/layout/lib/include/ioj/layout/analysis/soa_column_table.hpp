@@ -41,32 +41,8 @@ namespace ioj::layout {
 struct SoaColumnTable
     : soa_storage_detail::OwnerRowOperations<
           SoaColumnTable,
-          soa_column_table::ColumnTypes,
           native_soa::Owner<soa_column_table::CompactView, soa_column_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SoaColumnTable,
-        soa_column_table::ColumnTypes,
-        native_soa::Owner<soa_column_table::CompactView, soa_column_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto parent(this auto& self) { return self.view().parent(); }
-    auto name(this auto& self) { return self.view().name(); }
-    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
-    auto schema_type(this auto& self) { return self.view().schema_type(); }
-    auto physical_type(this auto& self) { return self.view().physical_type(); }
-    auto overridden(this auto& self) { return self.view().overridden(); }
-    auto type_facts(this auto& self) { return self.view().type_facts(); }
-    auto total_bytes(this auto& self) { return self.view().total_bytes(); }
-    auto allocation_offset_bytes(this auto& self) { return self.view().allocation_offset_bytes(); }
-    auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
-    auto minimum_cache_lines(this auto& self) { return self.view().minimum_cache_lines(); }
-    auto elements_per_cache_line(this auto& self) { return self.view().elements_per_cache_line(); }
-    auto minimum_pages(this auto& self) { return self.view().minimum_pages(); }
-    auto complete_elements_per_page(this auto& self) {
-        return self.view().complete_elements_per_page();
-    }
-    auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append();
 };
 } // namespace ioj::layout

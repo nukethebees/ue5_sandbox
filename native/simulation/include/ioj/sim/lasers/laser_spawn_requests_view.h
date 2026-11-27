@@ -12,15 +12,15 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim::lasers {
 namespace laser_spawn_requests {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -42,7 +42,9 @@ using Pointers = soa_storage_detail::ColumnPointers<float,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -63,79 +65,64 @@ struct Schema {
                     source.instigator_ids(),
                     source.sources());
     }
+    auto view_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    }
+    auto view_rotations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::rotators3f::Schema, 3ULL>();
+    }
+    auto view_base_velocities(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 6ULL>();
+    }
+    auto damages(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
+    auto speeds(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
+    }
+    auto max_distances(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
+    auto instigator_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    auto sources(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.view_locations(),
+                    source.view_rotations(),
+                    source.view_base_velocities(),
+                    source.damages(),
+                    source.speeds(),
+                    source.max_distances(),
+                    source.instigator_ids(),
+                    source.sources());
+    }
+    using row_types = ioj::soa_storage_detail::RowTypes<
+        column_types,
+        ioj::soa_storage_detail::ColumnTypes<Vector3f,
+                                             Rotator3f,
+                                             Vector3f,
+                                             std::int32_t,
+                                             float,
+                                             float,
+                                             EntityId,
+                                             ioj::sim::LaserSource>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<0LL>().data(),
-                this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->num()};
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->num()};
-    }
-    auto view_base_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<6LL>().data(),
-                this->template column<7LL>().data(),
-                this->template column<8LL>().data(),
-                this->num()};
-    }
-    auto damages() const { return this->template column<9LL>(); }
-    auto speeds() const { return this->template column<10LL>(); }
-    auto max_distances() const { return this->template column<11LL>(); }
-    auto instigator_ids() const { return this->template column<12LL>(); }
-    auto sources() const { return this->template column<13LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::lasers::laser_spawn_requests::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             Vector3f const new_base_velocities,
-             std::int32_t const new_damages,
-             float const new_speeds,
-             float const new_max_distances,
-             EntityId const new_instigator_ids,
-             ioj::sim::LaserSource const new_sources) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->view_base_velocities().set(index, new_base_velocities);
-        this->damages()[index] = new_damages;
-        this->speeds()[index] = new_speeds;
-        this->max_distances()[index] = new_max_distances;
-        this->instigator_ids()[index] = new_instigator_ids;
-        this->sources()[index] = new_sources;
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace laser_spawn_requests

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
@@ -11,9 +10,7 @@
 #include "ioj/vectors3f_compact_view.h"
 #include "world_aabbs_view.h"
 
-#include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 namespace ioj::sim::collision {
@@ -31,58 +28,17 @@ struct Layout
     static constexpr std::size_t max_points_zs_column{5ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Strided views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<float, Const>;
-    using Base::Base;
-    using Layout = world_aabbs::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return {this->column(0LL).data(), this->byte_stride(), this->num()};
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return {this->column(3LL).data(), this->byte_stride(), this->num()};
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactConstView>);
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::collision::world_aabbs::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-    }
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactView>);
 

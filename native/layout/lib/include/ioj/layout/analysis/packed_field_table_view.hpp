@@ -22,6 +22,8 @@ namespace packed_field_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -54,7 +56,9 @@ using Pointers =
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),
@@ -82,56 +86,89 @@ struct Schema {
                     source.unused_codes(),
                     source.codes());
     }
+    auto parent(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto segment(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto name(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto semantic_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto logical_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto kind(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
+    auto reserved(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
+    }
+    auto schema_bit_width(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    auto schema_bit_width_auto(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
+    }
+    auto bit_width(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
+    auto overridden(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
+    }
+    auto least_significant_bit(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
+    auto most_significant_bit(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    auto maximum_unsigned_value(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
+    }
+    auto minimum_signed_value(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
+    }
+    auto maximum_signed_value(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
+    }
+    auto minimum_semantic_value(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<16ULL>();
+    }
+    auto maximum_semantic_value(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<17ULL>();
+    }
+    auto semantic_value_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<18ULL>();
+    }
+    auto sentinel_code_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<19ULL>();
+    }
+    auto required_code_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<20ULL>();
+    }
+    auto minimum_required_bits(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<21ULL>();
+    }
+    auto unused_codes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<22ULL>();
+    }
+    auto codes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<23ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<0LL>(); }
-    auto segment() const { return this->template column<1LL>(); }
-    auto name() const { return this->template column<2LL>(); }
-    auto semantic_type() const { return this->template column<3LL>(); }
-    auto logical_type() const { return this->template column<4LL>(); }
-    auto kind() const { return this->template column<5LL>(); }
-    auto reserved() const { return this->template column<6LL>(); }
-    auto schema_bit_width() const { return this->template column<7LL>(); }
-    auto schema_bit_width_auto() const { return this->template column<8LL>(); }
-    auto bit_width() const { return this->template column<9LL>(); }
-    auto overridden() const { return this->template column<10LL>(); }
-    auto least_significant_bit() const { return this->template column<11LL>(); }
-    auto most_significant_bit() const { return this->template column<12LL>(); }
-    auto maximum_unsigned_value() const { return this->template column<13LL>(); }
-    auto minimum_signed_value() const { return this->template column<14LL>(); }
-    auto maximum_signed_value() const { return this->template column<15LL>(); }
-    auto minimum_semantic_value() const { return this->template column<16LL>(); }
-    auto maximum_semantic_value() const { return this->template column<17LL>(); }
-    auto semantic_value_count() const { return this->template column<18LL>(); }
-    auto sentinel_code_count() const { return this->template column<19LL>(); }
-    auto required_code_count() const { return this->template column<20LL>(); }
-    auto minimum_required_bits() const { return this->template column<21LL>(); }
-    auto unused_codes() const { return this->template column<22LL>(); }
-    auto codes() const { return this->template column<23LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::packed_field_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace packed_field_table

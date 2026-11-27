@@ -4,14 +4,11 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 #include "turret_entity_data_compact_view.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim {
@@ -46,95 +43,8 @@ namespace ioj::sim {
 struct TurretEntityData
     : soa_storage_detail::OwnerRowOperations<
           TurretEntityData,
-          turret_entity_data::ColumnTypes,
           native_soa::Owner<turret_entity_data::CompactView,
                             turret_entity_data::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        TurretEntityData,
-        turret_entity_data::ColumnTypes,
-        native_soa::Owner<turret_entity_data::CompactView, turret_entity_data::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    auto integral_biases(this auto& self) { return self.view().integral_biases(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_fire_point_locations(this auto& self) {
-        return self.view().view_fire_point_locations();
-    }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    auto laser_cooldowns(this auto& self) { return self.view().laser_cooldowns(); }
-    auto laser_damages(this auto& self) { return self.view().laser_damages(); }
-    auto target_refresh_countdowns_periods(this auto& self) {
-        return self.view().target_refresh_countdowns_periods();
-    }
-    auto target_refresh_countdowns_remaining_ticks(this auto& self) {
-        return self.view().target_refresh_countdowns_remaining_ticks();
-    }
-    auto target_ids(this auto& self) { return self.view().target_ids(); }
-    auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
-    auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             Vector3f const new_locations,
-             Vector3f const new_fire_point_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities) {
-        assert((index < num()));
-        view().entity_ids()[index] = new_entity_ids;
-        view().integral_biases()[index] = new_integral_biases;
-        view().view_locations().set(index, new_locations);
-        view().view_fire_point_locations().set(index, new_fire_point_locations);
-        view().view_rotations().set(index, new_rotations);
-        view().teams()[index] = new_teams;
-        view().laser_cooldowns()[index] = new_laser_cooldowns;
-        view().laser_damages()[index] = new_laser_damages;
-        view().target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
-        view().target_refresh_countdowns_remaining_ticks()[index] =
-            new_target_refresh_countdowns_remaining_ticks;
-        view().target_ids()[index] = new_target_ids;
-        view().view_target_locations().set(index, new_target_locations);
-        view().view_target_velocities().set(index, new_target_velocities);
-    }
-    size_type add(EntityId const new_entity_ids,
-                  std::uint32_t const new_integral_biases,
-                  Vector3f const new_locations,
-                  Vector3f const new_fire_point_locations,
-                  Rotator3f const new_rotations,
-                  ::ioj::Team const new_teams,
-                  std::int16_t const new_laser_cooldowns,
-                  std::int32_t const new_laser_damages,
-                  std::int16_t const new_target_refresh_countdowns_periods,
-                  std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-                  EntityId const new_target_ids,
-                  Vector3f const new_target_locations,
-                  Vector3f const new_target_velocities) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entity_ids,
-            new_integral_biases,
-            new_locations,
-            new_fire_point_locations,
-            new_rotations,
-            new_teams,
-            new_laser_cooldowns,
-            new_laser_damages,
-            new_target_refresh_countdowns_periods,
-            new_target_refresh_countdowns_remaining_ticks,
-            new_target_ids,
-            new_target_locations,
-            new_target_velocities);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

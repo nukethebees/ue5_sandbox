@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/operations.h"
 #include "laser_spawn_requests_compact_view.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim::lasers {
@@ -37,64 +34,8 @@ namespace ioj::sim::lasers {
 struct LaserSpawnRequests
     : soa_storage_detail::OwnerRowOperations<
           LaserSpawnRequests,
-          laser_spawn_requests::ColumnTypes,
           native_soa::Owner<laser_spawn_requests::CompactView,
                             laser_spawn_requests::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LaserSpawnRequests,
-        laser_spawn_requests::ColumnTypes,
-        native_soa::Owner<laser_spawn_requests::CompactView,
-                          laser_spawn_requests::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
-    auto view_base_velocities(this auto& self) { return self.view().view_base_velocities(); }
-    auto damages(this auto& self) { return self.view().damages(); }
-    auto speeds(this auto& self) { return self.view().speeds(); }
-    auto max_distances(this auto& self) { return self.view().max_distances(); }
-    auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
-    auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             Vector3f const new_base_velocities,
-             std::int32_t const new_damages,
-             float const new_speeds,
-             float const new_max_distances,
-             EntityId const new_instigator_ids,
-             LaserSource const new_sources) {
-        assert((index < num()));
-        view().view_locations().set(index, new_locations);
-        view().view_rotations().set(index, new_rotations);
-        view().view_base_velocities().set(index, new_base_velocities);
-        view().damages()[index] = new_damages;
-        view().speeds()[index] = new_speeds;
-        view().max_distances()[index] = new_max_distances;
-        view().instigator_ids()[index] = new_instigator_ids;
-        view().sources()[index] = new_sources;
-    }
-    size_type add(Vector3f const new_locations,
-                  Rotator3f const new_rotations,
-                  Vector3f const new_base_velocities,
-                  std::int32_t const new_damages,
-                  float const new_speeds,
-                  float const new_max_distances,
-                  EntityId const new_instigator_ids,
-                  LaserSource const new_sources) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_locations,
-            new_rotations,
-            new_base_velocities,
-            new_damages,
-            new_speeds,
-            new_max_distances,
-            new_instigator_ids,
-            new_sources);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim::lasers

@@ -129,7 +129,6 @@ class SingleAllocationModelLowering : public CppIRBuilder {
                 columns.flattened_identifier[column_row] = store_text(flattened);
                 columns.type[column_row] = type;
                 columns.member_path[column_row] = path;
-                storage.column_lookup.emplace(std::pair{result, path}, column);
                 column_ids.push_back(column);
                 dependencies.insert(dependencies.end(),
                                     type_dependencies(type).begin(),
@@ -143,20 +142,12 @@ class SingleAllocationModelLowering : public CppIRBuilder {
         models.dependencies[row] = storage.save(std::span<TypeDependencyId const>{dependencies});
         return result;
     }
-    auto column_for(SingleAllocationModelId model, LoweringPathId path)
-        -> SingleAllocationColumnId {
-        return lowering_storage().column_lookup.at({model, path});
-    }
 };
 } // namespace
 
 auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
     -> SingleAllocationModelId {
     return SingleAllocationModelLowering{ctx.ir}.build_single_allocation_model(ctx, schema);
-}
-auto column_for(LoweringContext& ctx, SingleAllocationModelId model, LoweringPathId path)
-    -> SingleAllocationColumnId {
-    return SingleAllocationModelLowering{ctx.ir}.column_for(model, path);
 }
 
 } // namespace lispb::codegen::detail

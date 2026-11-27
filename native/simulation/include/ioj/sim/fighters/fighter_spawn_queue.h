@@ -5,12 +5,9 @@
 
 #include "fighter_spawn_queue_compact_view.h"
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -29,39 +26,8 @@ namespace ioj::sim {
 struct FighterSpawnQueue
     : soa_storage_detail::OwnerRowOperations<
           FighterSpawnQueue,
-          fighter_spawn_queue::ColumnTypes,
           native_soa::Owner<fighter_spawn_queue::CompactView,
                             fighter_spawn_queue::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        FighterSpawnQueue,
-        fighter_spawn_queue::ColumnTypes,
-        native_soa::Owner<fighter_spawn_queue::CompactView, fighter_spawn_queue::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_indices(this auto& self) { return self.view().entity_indices(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_directions(this auto& self) { return self.view().view_directions(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             Vector3f const new_directions,
-             ::ioj::Team const new_teams) {
-        assert((index < num()));
-        view().entity_indices()[index] = new_entity_indices;
-        view().view_locations().set(index, new_locations);
-        view().view_directions().set(index, new_directions);
-        view().teams()[index] = new_teams;
-    }
-    size_type add(LevelEntityRef const new_entity_indices,
-                  Vector3f const new_locations,
-                  Vector3f const new_directions,
-                  ::ioj::Team const new_teams) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_entity_indices, new_locations, new_directions, new_teams);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

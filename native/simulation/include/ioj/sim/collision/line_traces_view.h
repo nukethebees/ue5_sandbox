@@ -8,14 +8,13 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
-#include <type_traits>
-
 namespace ioj::sim {
 namespace line_traces {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -24,7 +23,9 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, 
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& starts_view{source.view_starts()};
@@ -36,49 +37,31 @@ struct Schema {
                     ends_view.ys(),
                     ends_view.zs());
     }
+    auto view_starts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 0ULL>();
+    }
+    auto view_ends(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 3ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.view_starts(), source.view_ends());
+    }
+    using row_types =
+        ioj::soa_storage_detail::RowTypes<column_types,
+                                          ioj::soa_storage_detail::ColumnTypes<Vector3f, Vector3f>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_starts() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<0LL>().data(),
-                this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->num()};
-    }
-    auto view_ends() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->num()};
-    }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::line_traces::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
-        assert((index < num()));
-        this->view_starts().set(index, new_starts);
-        this->view_ends().set(index, new_ends);
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace line_traces

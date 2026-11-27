@@ -32,24 +32,11 @@ namespace ioj::layout {
 struct TypeAnalysisTable
     : soa_storage_detail::OwnerRowOperations<
           TypeAnalysisTable,
-          type_analysis_table::ColumnTypes,
           native_soa::Owner<type_analysis_table::CompactView,
                             type_analysis_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        TypeAnalysisTable,
-        type_analysis_table::ColumnTypes,
-        native_soa::Owner<type_analysis_table::CompactView, type_analysis_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto schema_type(this auto& self) { return self.view().schema_type(); }
-    auto scenario(this auto& self) { return self.view().scenario(); }
-    auto physical(this auto& self) { return self.view().physical(); }
-    auto enum_backing(this auto& self) { return self.view().enum_backing(); }
-    auto aggregate(this auto& self) { return self.view().aggregate(); }
-    auto packed(this auto& self) { return self.view().packed(); }
-    auto soa(this auto& self) { return self.view().soa(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);
-    AnalysisId find(lispb::schema::TypeId type, ScenarioId scenario_id) const;
+    using implementation_type::implementation_type;
+    ioj::layout::AnalysisId append(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id);
+    ioj::layout::AnalysisId find(lispb::schema::TypeId type,
+                                 ioj::layout::ScenarioId scenario_id) const;
 };
 } // namespace ioj::layout

@@ -21,6 +21,8 @@ namespace soa_column_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -43,7 +45,9 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),
@@ -62,47 +66,62 @@ struct Schema {
                     source.complete_elements_per_page(),
                     source.cache_line_tiling());
     }
+    auto parent(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto name(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto semantic_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto schema_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto physical_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto overridden(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
+    auto type_facts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
+    }
+    auto total_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    auto allocation_offset_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
+    }
+    auto padding_before_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
+    auto minimum_cache_lines(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
+    }
+    auto elements_per_cache_line(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
+    auto minimum_pages(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    auto complete_elements_per_page(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
+    }
+    auto cache_line_tiling(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<0LL>(); }
-    auto name() const { return this->template column<1LL>(); }
-    auto semantic_type() const { return this->template column<2LL>(); }
-    auto schema_type() const { return this->template column<3LL>(); }
-    auto physical_type() const { return this->template column<4LL>(); }
-    auto overridden() const { return this->template column<5LL>(); }
-    auto type_facts() const { return this->template column<6LL>(); }
-    auto total_bytes() const { return this->template column<7LL>(); }
-    auto allocation_offset_bytes() const { return this->template column<8LL>(); }
-    auto padding_before_bytes() const { return this->template column<9LL>(); }
-    auto minimum_cache_lines() const { return this->template column<10LL>(); }
-    auto elements_per_cache_line() const { return this->template column<11LL>(); }
-    auto minimum_pages() const { return this->template column<12LL>(); }
-    auto complete_elements_per_page() const { return this->template column<13LL>(); }
-    auto cache_line_tiling() const { return this->template column<14LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::soa_column_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace soa_column_table

@@ -117,29 +117,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const& models{lowering_storage().single_allocation_models};
         auto const schema{models.schema[models.index(model)]};
         auto const strided{is_strided_schema(ctx, schema)};
-        result.add(forward_declaration(store_text("CompactView")))
-            .new_lines(1)
-            .add(forward_declaration(store_text("CompactConstView")))
-            .new_lines(1);
-        result.new_lines(2)
-            .append(section_header(strided ? "Strided views" : "Compact views"))
-            .new_lines(1)
-            .add(compact_view_node(ctx, model))
-            .new_lines(1);
+        result.append(section_header(strided ? "Strided views" : "Compact views")).new_lines(1);
         for (bool const is_const : {true, false}) {
             std::string const name{is_const ? "CompactConstView" : "CompactView"};
             auto const receiver{is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view};
-            auto const base{
-                soa_row_operations(ctx,
-                                   schema,
-                                   receiver,
-                                   name,
-                                   template_type(named_type("CompactViewImpl"),
-                                                 {intern_type(is_const ? "true" : "false")}))};
+            auto const base{view_base(ctx, schema, receiver, name, false)};
             auto children{node_list()};
-            children.add(using_declaration(store_text("Base"), base))
-                .new_lines(1)
-                .add(using_import(named_type("Base::Base")))
+            children.add(using_import(named_type("implementation_type::implementation_type")))
                 .new_lines(1);
             auto api{lower_soa_api(ctx, schema, receiver, name, base)};
             children.append(api.header);
@@ -151,7 +135,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
                  .children = children.build(),
                  .bases = {base},
                  .export_specifier =
-                     ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)]})};
+                     ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)],
+                 .dependencies = child_dependencies(ctx, schema, true)})};
             result.add(record_id)
                 .new_lines(1)
                 .append(view_validation_nodes(name, strided))
@@ -177,9 +162,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                            named_type(scope + "::CompactConstView", NameOrigin::global)})};
         auto const base{
             soa_row_operations(ctx, schema, SoaReceiver::owner, ctx.text(owner_name), owner)};
-        children.add(using_declaration(store_text("RowOperations"), base))
-            .new_lines(1)
-            .add(using_import(named_type("RowOperations::RowOperations")))
+        children.add(using_import(named_type("implementation_type::implementation_type")))
             .new_lines(1);
         auto api{lower_soa_api(ctx, schema, SoaReceiver::owner, ctx.text(owner_name), base)};
         children.append(api.header);
@@ -190,73 +173,15 @@ class SingleAllocationEmitter : public CppIRBuilder {
              .bases = {base},
              .export_specifier = ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(
                  model_store.schema[model_store_index])],
-             .dependencies = {std::from_range,
-                              lowering_storage().items(
-                                  model_store.dependencies[model_store_index])},
-             .scope_bindings =
-                 compact_scope_bindings(ctx, model_store.schema[model_store_index])})};
+             .dependencies = {
+                 std::from_range,
+                 lowering_storage().items(model_store.dependencies[model_store_index])}})};
         return created_record;
     }
   private:
     /* **************************************** */
     // Construction helpers
     /* **************************************** */
-    auto compact_scope_bindings(LoweringContext& ctx, DeclarationHandle schema)
-        -> std::optional<std::vector<StringId>> {
-        if (!ctx.declarations.soas.using_declarations[ctx.declarations.soas.index(schema)]
-                 .empty()) {
-            return std::nullopt;
-        }
-        // Describe inherited runtime members and declarations retained as generated raw C++.
-        std::vector<StringId> names;
-        for (auto const name : {"StorageState",
-                                "StorageOperations",
-                                "CompactViewBase",
-                                "StridedViewBase",
-                                "ViewBase",
-                                "Element",
-                                "Pointers",
-                                "apply_permutation",
-                                "Operations",
-                                "Layout",
-                                "size_type",
-                                "byte_size_type",
-                                "capacity_granularity",
-                                "allocation_alignment",
-                                "capacity_block_bound",
-                                "max_capacity",
-                                "layout_bytes",
-                                "data_",
-                                "num_",
-                                "capacity_",
-                                "release_storage",
-                                "take_storage",
-                                "move_assign",
-                                "allocate_storage",
-                                "reallocate",
-                                "num",
-                                "capacity",
-                                "is_empty",
-                                "allocated_bytes",
-                                "reserve",
-                                "reset",
-                                "set_num",
-                                "add_defaulted",
-                                "add_uninitialised",
-                                "remove_at_swap",
-                                "copy_element",
-                                "copy_elements",
-                                "append_from",
-                                "validate",
-                                "view",
-                                "const_view",
-                                "slice",
-                                "left",
-                                "right"}) {
-            names.push_back(store_text(name));
-        }
-        return names;
-    }
     auto adjacent(Nodes const& nodes) -> Nodes {
         auto result{node_list()};
         auto const count{nodes.size()};
@@ -320,25 +245,6 @@ class SingleAllocationEmitter : public CppIRBuilder {
                            {dependency("ColumnPointers", "ioj/single_allocation/column_types.h")}),
                 types));
     }
-    auto layout_column(LoweringContext& ctx, SingleAllocationColumnId column) -> Expr {
-        auto const& columns{lowering_storage().single_allocation_columns};
-        return scope_member(named_type("Layout"),
-                            ctx.text(columns.flattened_identifier[columns.index(column)]) +
-                                "_column");
-    }
-    auto member_columns(SingleAllocationModelId model, StringId member)
-        -> std::vector<SingleAllocationColumnId> {
-        auto const& storage{lowering_storage()};
-        auto const& models{storage.single_allocation_models};
-        auto const& columns{storage.single_allocation_columns};
-        std::vector<SingleAllocationColumnId> result;
-        for (auto const column : storage.items(models.columns[models.index(model)])) {
-            if (storage.paths.items(columns.member_path[columns.index(column)]).front() == member) {
-                result.push_back(column);
-            }
-        }
-        return result;
-    }
     auto schema_node(LoweringContext& ctx, SingleAllocationModelId model) -> NodeId {
         auto const& models{lowering_storage().single_allocation_models};
         auto const& columns{lowering_storage().single_allocation_columns};
@@ -360,183 +266,113 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .template_declaration =
                 template_declaration({type_template_parameter(store_text("Columns")),
                                       type_template_parameter(store_text("Func"))})};
-        return add_record({.name = this->name(store_text("Schema")),
-                           .children = {header_function(add_function(function))}});
-    }
-    auto shared_view_type(LoweringContext& ctx, DeclarationHandle schema, bool resolved)
-        -> CppTypeId {
-        auto const scope{schema_namespace(ctx, schema)};
-        auto const target{ctx.for_declaration(schema).module};
-        std::vector<TypeDependencyId> dependencies;
-        if (target != ctx.module) {
-            auto const header{source_include(ctx, ctx.declarations.module_settings(target))};
-            dependencies.push_back(
-                dependency(scope, soa_header_path(header, resolved ? "_view" : "_compact_view")));
-        }
-        return template_type(std_types().conditional_t,
-                             {named_type("Const"),
-                              named_type(scope + (resolved ? "::ConstView" : "::CompactConstView"),
-                                         NameOrigin::global,
-                                         dependencies),
-                              named_type(scope + (resolved ? "::View" : "::CompactView"),
-                                         NameOrigin::global,
-                                         dependencies)});
-    }
-    auto view_accessor_nodes(LoweringContext& ctx, SingleAllocationModelId model, bool resolved)
-        -> Nodes {
-        auto const& models{lowering_storage().single_allocation_models};
-        auto const& columns{lowering_storage().single_allocation_columns};
+        auto const schema{models.schema[models.index(model)]};
         auto const& members{ctx.declarations.soa_members};
-        auto const model_row{models.index(model)};
-        auto const schema{models.schema[model_row]};
-        auto const schema_row{ctx.declarations.soas.index(schema)};
-        auto const selected{lowering_storage().items(models.columns[model_row])};
-        auto const strided{is_strided_schema(ctx, schema)};
+        auto const selected{lowering_storage().items(models.columns[models.index(model)])};
         auto children{node_list()};
-        auto accessor = [&](std::string_view name, Syntax value, CppTypeId type = {}) {
-            FunctionDefinition const function{
+        children.add(header_function(add_function(function))).new_lines(1);
+        std::size_t index{};
+        for (auto member : ctx.declarations.items(ctx.declarations.soas.members[schema])) {
+            auto name{ctx.text(members.name[member])};
+            auto const nested{members.kind[member] == SoaMemberKind::nested};
+            std::vector<Syntax> args;
+            if (nested) {
+                auto const child{ctx.for_declaration(schema).nested_declaration(member)};
+                args.push_back(type_reference(
+                    named_type(schema_namespace(ctx, child) + "::Schema", NameOrigin::global)));
+                name = "view_" + name;
+            }
+            args.push_back(literal(index));
+            auto const self{static_cast_expr(intern_type("decltype(self)&&"), named("self"))};
+            auto const access{template_call(
+                member_access(self, nested ? "template nested_at" : "template column_at"),
+                args,
+                {})};
+            FunctionDefinition const accessor{
                 .name = this->name(name),
-                .return_type = type.value != 0 ? type : intern_type("auto"),
-                .return_syntax = type.value != 0 ? ReturnSyntax::trailing : ReturnSyntax::direct,
+                .return_type = intern_type("auto"),
+                .parameters = {parameter(decorate_type(intern_type("auto"), "this ", "&&"),
+                                         "self")},
                 .implementation = {.kind = FunctionImplementationKind::body,
-                                   .body = {return_stmt(value)}},
-                .receiver = FunctionReceiver::const_,
-                .flags = {.is_inline = true, .define_in_header = true},
+                                   .body = {return_stmt(access)}},
+                .flags = {.define_in_header = true},
                 .formatting = {.body_layout = FunctionBodyLayout::compact}};
-            children.new_lines(1).add(header_function(add_function(function)));
-        };
-        auto column_span = [&](SingleAllocationColumnId column) {
-            auto const index{std::find(selected.begin(), selected.end(), column) -
-                             selected.begin()};
-            if (resolved) {
-                return template_call(this_member("template column"), {literal(index)}, {});
+            children.add(header_function(add_function(accessor))).new_lines(1);
+            do {
+                ++index;
+            } while (index < selected.size() &&
+                     lowering_storage()
+                             .paths.items(columns.member_path[columns.index(selected[index])])
+                             .front() == members.name[member]);
+        }
+        children.append(schema_rows(ctx, schema));
+        auto const base{
+            template_type(named_type("ioj::soa_storage_detail::ViewTypes",
+                                     NameOrigin::global,
+                                     {dependency("ViewTypes", "ioj/single_allocation/view.h")}),
+                          {named_type("View"),
+                           named_type("ConstView"),
+                           named_type("CompactView"),
+                           named_type("CompactConstView"),
+                           named_type("ColumnTypes"),
+                           intern_type(is_strided_schema(ctx, schema) ? "true" : "false")})};
+        return add_record({.name = this->name(store_text("Schema")),
+                           .children = children.build(),
+                           .bases = {base},
+                           .dependencies = child_dependencies(ctx, schema, false)});
+    }
+    auto child_dependencies(LoweringContext& ctx, DeclarationHandle schema, bool compact)
+        -> std::vector<TypeDependencyId> {
+        std::vector<TypeDependencyId> deps;
+        for (auto member : ctx.declarations.items(ctx.declarations.soas.members[schema])) {
+            if (ctx.declarations.soa_members.kind[member] != SoaMemberKind::nested) {
+                continue;
             }
-            if (strided) {
-                return this_member_call("column", {literal(index)});
-            }
-            return template_call(this_member("template column"),
-                                 {type_reference(columns.type[columns.index(column)])},
-                                 {layout_column(ctx, column)});
-        };
-        for (auto const member :
-             ctx.declarations.items(ctx.declarations.soas.members[schema_row])) {
-            auto const row{members.index(member)};
-            auto const name{ctx.text(members.name[row])};
-            if (members.kind[row] == SoaMemberKind::nested) {
-                auto const nested{ctx.for_declaration(schema).nested_declaration(member)};
-                auto const nested_columns{member_columns(model, members.name[row])};
-                auto const nested_strided{is_strided_schema(ctx, nested)};
-                auto const type{shared_view_type(ctx, nested, resolved || !nested_strided)};
-                if (!resolved && nested_strided && strided) {
-                    accessor("view_" + name,
-                             init_list({member_call(column_span(nested_columns.front()), "data"),
-                                        this_member_call("byte_stride"),
-                                        this_member_call("num")}),
-                             type);
-                } else if (!resolved && nested_strided) {
-                    auto const factory{template_id(
-                        type_reference(named_type("ioj::soa_storage_detail::make_strided_view",
-                                                  NameOrigin::global)),
-                        {type_reference(type), type_reference(intern_type("Layout"))})};
-                    accessor("view_" + name,
-                             call(factory,
-                                  {this_member("state_"),
-                                   this_member("offset_"),
-                                   this_member_call("num"),
-                                   layout_column(ctx, nested_columns[0]),
-                                   layout_column(ctx, nested_columns[1])}),
-                             type);
-                } else {
-                    std::vector<Syntax> pointers;
-                    for (auto const column : nested_columns) {
-                        pointers.push_back(member_call(column_span(column), "data"));
-                    }
-                    pointers.push_back(this_member_call("num"));
-                    accessor("view_" + name, init_list(pointers), type);
-                }
-            } else {
-                auto const column{
-                    column_for(ctx, model, lowering_storage().paths.append({}, members.name[row]))};
-                accessor(name, column_span(column));
+            auto const child{ctx.for_declaration(schema).nested_declaration(member)};
+            auto const target{ctx.for_declaration(child).module};
+            if (target != ctx.module && (!compact || is_strided_schema(ctx, child))) {
+                deps.push_back(dependency(
+                    schema_namespace(ctx, child),
+                    soa_header_path(source_include(ctx, ctx.declarations.module_settings(target)),
+                                    compact ? "_compact_view" : "_view")));
             }
         }
-        return children.build();
+        return deps;
+    }
+    auto view_base(LoweringContext& ctx,
+                   DeclarationHandle schema,
+                   SoaReceiver receiver,
+                   std::string const& name,
+                   bool resolved) -> CppTypeId {
+        auto const scope{schema_namespace(ctx, schema)};
+        std::vector<CppTypeId> args{named_type(scope + "::Schema", NameOrigin::global)};
+        if (!resolved) {
+            args.push_back(named_type(scope + "::Layout", NameOrigin::global));
+        }
+        args.push_back(intern_type(receiver == SoaReceiver::const_view ? "true" : "false"));
+        auto const base{template_type(named_type(resolved ? "ioj::soa_storage_detail::ResolvedView"
+                                                          : "ioj::soa_storage_detail::CompactView",
+                                                 NameOrigin::global),
+                                      args)};
+        return soa_row_operations(ctx, schema, receiver, name, base);
     }
     auto emit_pointer_views(LoweringContext& ctx,
                             SingleAllocationModelId model,
                             NodeListBuilder& source,
                             NodeListBuilder& declarations) -> Nodes {
-        auto& storage{lowering_storage()};
-        auto const& models{storage.single_allocation_models};
+        auto const& models{lowering_storage().single_allocation_models};
         auto const schema{models.schema[models.index(model)]};
-        std::string const mutable_name{"View"};
-        std::string const const_name{"ConstView"};
-        std::string const implementation{"ViewImpl"};
+        for (auto name : {"View", "ConstView", "CompactView", "CompactConstView"}) {
+            declarations.add(forward_declaration(store_text(name))).new_lines(1);
+        }
         auto result{node_list()};
-        declarations.add(forward_declaration(store_text(mutable_name)))
-            .new_lines(1)
-            .add(forward_declaration(store_text(const_name)))
-            .new_lines(1);
         result.append(section_header("Views")).new_lines(1);
-
-        auto const scope{schema_namespace(ctx, schema)};
-        auto const base{
-            template_type(named_type("ioj::soa_storage_detail::ViewBase",
-                                     NameOrigin::global,
-                                     {dependency("ViewBase", "ioj/single_allocation/view.h")}),
-                          {named_type("ColumnTypes"), named_type("Const")})};
-        auto children{node_list()};
-        children.append(adjacent(
-            {using_declaration(store_text("Base"), base),
-             using_import(named_type("Base::Base")),
-             using_declaration(store_text("view_type"),
-                               named_type(scope + "::" + mutable_name, NameOrigin::global)),
-             using_declaration(store_text("const_view_type"),
-                               named_type(scope + "::" + const_name, NameOrigin::global)),
-             using_declaration(store_text("soa_schema"),
-                               named_type(scope + "::Schema", NameOrigin::global))}));
-
-        FunctionDefinition const conversion{
-            .name = this->name(store_text(implementation)),
-            .kind = FunctionKind::constructor,
-            .parameters = {parameter(
-                decorate_type(template_type(named_type(implementation), {intern_type("false")}),
-                              "",
-                              " const&"),
-                "other")},
-            .implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {},
-                               .initializers = {member_initializer(store_text("Base"),
-                                                                   named("other"))}},
-            .flags = {.is_inline = true, .define_in_header = true},
-            .template_declaration = template_declaration({value_template_parameter(
-                std_types().bool_, store_text("Enabled"), named("Const"))}),
-            .requires_clause = named("Enabled")};
-        children.new_lines(1).add(header_function(add_function(conversion)));
-
-        children.append(view_accessor_nodes(ctx, model, true));
-        auto const record_id{
-            add_record({.name = this->name(store_text(implementation)),
-                        .children = children.build(),
-                        .bases = {base},
-                        .template_declaration = template_declaration(
-                            {value_template_parameter(std_types().bool_, store_text("Const"))}),
-                        .scope_bindings = compact_scope_bindings(ctx, schema)})};
-        result.add(record_id).new_lines(1);
         for (bool const is_const : {true, false}) {
-            auto const name{is_const ? const_name : mutable_name};
+            std::string const name{is_const ? "ConstView" : "View"};
             auto const receiver{is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view};
-            auto const base{
-                soa_row_operations(ctx,
-                                   schema,
-                                   receiver,
-                                   name,
-                                   template_type(named_type(implementation),
-                                                 {intern_type(is_const ? "true" : "false")}))};
+            auto const base{view_base(ctx, schema, receiver, name, true)};
             auto wrapper{node_list()};
-            wrapper.add(using_declaration(store_text("Base"), base))
-                .new_lines(1)
-                .add(using_import(named_type("Base::Base")))
+            wrapper.add(using_import(named_type("implementation_type::implementation_type")))
                 .new_lines(1);
             auto api{lower_soa_api(ctx, schema, receiver, name, base)};
             wrapper.append(api.header);
@@ -549,96 +385,6 @@ class SingleAllocationEmitter : public CppIRBuilder {
             result.add(type).new_lines(1);
         }
         return result.build();
-    }
-    auto compact_view_node(LoweringContext& ctx, SingleAllocationModelId model) -> NodeId {
-        auto const& models{lowering_storage().single_allocation_models};
-        auto const& columns{lowering_storage().single_allocation_columns};
-        auto const model_row{models.index(model)};
-        auto const schema{models.schema[model_row]};
-        auto const schema_row{ctx.declarations.soas.index(schema)};
-        auto const scope{schema_namespace(ctx, schema)};
-        auto const selected{lowering_storage().items(models.columns[model_row])};
-        auto const strided{is_strided_schema(ctx, schema)};
-        auto const base{
-            strided
-                ? template_type(
-                      named_type("ioj::soa_storage_detail::StridedViewBase", NameOrigin::global),
-                      {columns.type[columns.index(selected.front())], named_type("Const")})
-                : template_type(
-                      named_type("ioj::soa_storage_detail::CompactViewBase", NameOrigin::global),
-                      {named_type("Const")})};
-        auto children{node_list()};
-        children.append(adjacent(
-            {using_declaration(
-                 store_text("soa_schema"),
-                 named_type(schema_namespace(ctx, schema) + "::Schema", NameOrigin::global)),
-             using_declaration(store_text("Base"), base),
-             using_import(named_type("Base::Base")),
-             using_declaration(store_text("Layout"),
-                               named_type(scope + "::Layout", NameOrigin::global)),
-             using_declaration(store_text("view_type"),
-                               named_type(scope + "::CompactView", NameOrigin::global)),
-             using_declaration(store_text("const_view_type"),
-                               named_type(scope + "::CompactConstView", NameOrigin::global)),
-             using_declaration(store_text("resolved_view_type"),
-                               shared_view_type(ctx, schema, true))}));
-        if (strided && !ctx.declarations.soas.layout_only[schema_row]) {
-            auto const state{
-                named_type("ioj::soa_storage_detail::StorageState", NameOrigin::global)};
-            children.new_lines(1).add(using_declaration(
-                store_text("State"),
-                template_type(std_types().conditional_t,
-                              {named_type("Const"), decorate_type(state, "", " const"), state})));
-            std::vector<Syntax> arguments{named("state"), named("offset"), named("count")};
-            for (auto const column : selected.first(2)) {
-                arguments.push_back(layout_column(ctx, column));
-            }
-            FunctionDefinition const constructor{
-                .name = this->name(store_text("CompactViewImpl")),
-                .kind = FunctionKind::constructor,
-                .parameters = {parameter("State*", "state"),
-                               parameter(std_types().u32, "offset"),
-                               parameter(std_types().u32, "count")},
-                .implementation = {.kind = FunctionImplementationKind::body,
-                                   .body = {},
-                                   .initializers = {member_initializer(
-                                       store_text("Base"),
-                                       template_call(
-                                           type_reference(named_type(
-                                               "ioj::soa_storage_detail::make_strided_view",
-                                               NameOrigin::global)),
-                                           {type_reference(named_type("Base")),
-                                            type_reference(named_type("Layout"))},
-                                           arguments))}},
-                .flags = {.is_inline = true, .define_in_header = true}};
-            children.new_lines(1).add(header_function(add_function(constructor)));
-        }
-        FunctionDefinition const conversion{
-            .name = this->name(store_text("CompactViewImpl")),
-            .kind = FunctionKind::constructor,
-            .parameters = {parameter(
-                decorate_type(template_type(named_type("CompactViewImpl"), {intern_type("false")}),
-                              "",
-                              " const&"),
-                "other")},
-            .implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {},
-                               .initializers = {member_initializer(store_text("Base"),
-                                                                   named("other"))}},
-            .flags = {.is_inline = true, .define_in_header = true},
-            .template_declaration = template_declaration({value_template_parameter(
-                std_types().bool_, store_text("Enabled"), named("Const"))}),
-            .requires_clause = named("Enabled")};
-        children.new_lines(1).add(header_function(add_function(conversion)));
-        children.append(view_accessor_nodes(ctx, model, false));
-        auto const record_id{
-            add_record({.name = this->name(store_text("CompactViewImpl")),
-                        .children = children.build(),
-                        .bases = {base},
-                        .template_declaration = template_declaration(
-                            {value_template_parameter(std_types().bool_, store_text("Const"))}),
-                        .scope_bindings = compact_scope_bindings(ctx, schema)})};
-        return record_id;
     }
     auto view_validation_nodes(std::string const& name, bool strided) -> Nodes {
         auto const validation{template_id(

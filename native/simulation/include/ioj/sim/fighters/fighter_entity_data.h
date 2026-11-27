@@ -5,13 +5,11 @@
 
 #include "fighter_entity_data_compact_view.h"
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim {
@@ -72,190 +70,8 @@ namespace ioj::sim {
 struct FighterEntityData
     : soa_storage_detail::OwnerRowOperations<
           FighterEntityData,
-          fighter_entity_data::ColumnTypes,
           native_soa::Owner<fighter_entity_data::CompactView,
                             fighter_entity_data::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        FighterEntityData,
-        fighter_entity_data::ColumnTypes,
-        native_soa::Owner<fighter_entity_data::CompactView, fighter_entity_data::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    auto integral_biases(this auto& self) { return self.view().integral_biases(); }
-    auto float_biases(this auto& self) { return self.view().float_biases(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_desired_move_locations(this auto& self) {
-        return self.view().view_desired_move_locations();
-    }
-    auto view_aim_directions(this auto& self) { return self.view().view_aim_directions(); }
-    auto view_planned_aim_directions(this auto& self) {
-        return self.view().view_planned_aim_directions();
-    }
-    auto view_desired_aiming_directions(this auto& self) {
-        return self.view().view_desired_aiming_directions();
-    }
-    auto view_movement_directions(this auto& self) {
-        return self.view().view_movement_directions();
-    }
-    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    auto move_distances(this auto& self) { return self.view().move_distances(); }
-    auto speeds(this auto& self) { return self.view().speeds(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    auto navigation_update_countdowns_remaining_ticks(this auto& self) {
-        return self.view().navigation_update_countdowns_remaining_ticks();
-    }
-    auto navigation_update_countdowns_periods(this auto& self) {
-        return self.view().navigation_update_countdowns_periods();
-    }
-    auto view_separation_steering(this auto& self) {
-        return self.view().view_separation_steering();
-    }
-    auto navigation_risk_tiers(this auto& self) { return self.view().navigation_risk_tiers(); }
-    auto navigation_lower_risk_scan_counts(this auto& self) {
-        return self.view().navigation_lower_risk_scan_counts();
-    }
-    auto avoidance_choice_indices(this auto& self) {
-        return self.view().avoidance_choice_indices();
-    }
-    auto avoidance_clear_scan_counts(this auto& self) {
-        return self.view().avoidance_clear_scan_counts();
-    }
-    auto attack_cooldowns(this auto& self) { return self.view().attack_cooldowns(); }
-    auto target_ids(this auto& self) { return self.view().target_ids(); }
-    auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
-    auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
-    auto intercept_times(this auto& self) { return self.view().intercept_times(); }
-    auto target_distance_sq(this auto& self) { return self.view().target_distance_sq(); }
-    auto target_distances(this auto& self) { return self.view().target_distances(); }
-    auto target_radii(this auto& self) { return self.view().target_radii(); }
-    auto carrier_launched(this auto& self) { return self.view().carrier_launched(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_float_biases,
-             Vector3f const new_locations,
-             Vector3f const new_desired_move_locations,
-             Vector3f const new_aim_directions,
-             Vector3f const new_planned_aim_directions,
-             Vector3f const new_desired_aiming_directions,
-             Vector3f const new_movement_directions,
-             Vector3f const new_velocities,
-             float const new_move_distances,
-             float const new_speeds,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
-             std::int16_t const new_navigation_update_countdowns_periods,
-             Vector3f const new_separation_steering,
-             fighters::NavigationRiskCode const new_navigation_risk_tiers,
-             fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
-             fighters::AvoidanceChoice const new_avoidance_choice_indices,
-             fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_cooldowns,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities,
-             float const new_intercept_times,
-             float const new_target_distance_sq,
-             float const new_target_distances,
-             float const new_target_radii,
-             std::uint8_t const new_carrier_launched) {
-        assert((index < num()));
-        view().entity_ids()[index] = new_entity_ids;
-        view().integral_biases()[index] = new_integral_biases;
-        view().float_biases()[index] = new_float_biases;
-        view().view_locations().set(index, new_locations);
-        view().view_desired_move_locations().set(index, new_desired_move_locations);
-        view().view_aim_directions().set(index, new_aim_directions);
-        view().view_planned_aim_directions().set(index, new_planned_aim_directions);
-        view().view_desired_aiming_directions().set(index, new_desired_aiming_directions);
-        view().view_movement_directions().set(index, new_movement_directions);
-        view().view_velocities().set(index, new_velocities);
-        view().move_distances()[index] = new_move_distances;
-        view().speeds()[index] = new_speeds;
-        view().teams()[index] = new_teams;
-        view().navigation_update_countdowns_remaining_ticks()[index] =
-            new_navigation_update_countdowns_remaining_ticks;
-        view().navigation_update_countdowns_periods()[index] =
-            new_navigation_update_countdowns_periods;
-        view().view_separation_steering().set(index, new_separation_steering);
-        view().navigation_risk_tiers()[index] = new_navigation_risk_tiers;
-        view().navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
-        view().avoidance_choice_indices()[index] = new_avoidance_choice_indices;
-        view().avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        view().attack_cooldowns()[index] = new_attack_cooldowns;
-        view().target_ids()[index] = new_target_ids;
-        view().view_target_locations().set(index, new_target_locations);
-        view().view_target_velocities().set(index, new_target_velocities);
-        view().intercept_times()[index] = new_intercept_times;
-        view().target_distance_sq()[index] = new_target_distance_sq;
-        view().target_distances()[index] = new_target_distances;
-        view().target_radii()[index] = new_target_radii;
-        view().carrier_launched()[index] = new_carrier_launched;
-    }
-    size_type add(EntityId const new_entity_ids,
-                  std::uint32_t const new_integral_biases,
-                  float const new_float_biases,
-                  Vector3f const new_locations,
-                  Vector3f const new_desired_move_locations,
-                  Vector3f const new_aim_directions,
-                  Vector3f const new_planned_aim_directions,
-                  Vector3f const new_desired_aiming_directions,
-                  Vector3f const new_movement_directions,
-                  Vector3f const new_velocities,
-                  float const new_move_distances,
-                  float const new_speeds,
-                  ::ioj::Team const new_teams,
-                  std::int16_t const new_navigation_update_countdowns_remaining_ticks,
-                  std::int16_t const new_navigation_update_countdowns_periods,
-                  Vector3f const new_separation_steering,
-                  fighters::NavigationRiskCode const new_navigation_risk_tiers,
-                  fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
-                  fighters::AvoidanceChoice const new_avoidance_choice_indices,
-                  fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-                  std::int16_t const new_attack_cooldowns,
-                  EntityId const new_target_ids,
-                  Vector3f const new_target_locations,
-                  Vector3f const new_target_velocities,
-                  float const new_intercept_times,
-                  float const new_target_distance_sq,
-                  float const new_target_distances,
-                  float const new_target_radii,
-                  std::uint8_t const new_carrier_launched) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entity_ids,
-            new_integral_biases,
-            new_float_biases,
-            new_locations,
-            new_desired_move_locations,
-            new_aim_directions,
-            new_planned_aim_directions,
-            new_desired_aiming_directions,
-            new_movement_directions,
-            new_velocities,
-            new_move_distances,
-            new_speeds,
-            new_teams,
-            new_navigation_update_countdowns_remaining_ticks,
-            new_navigation_update_countdowns_periods,
-            new_separation_steering,
-            new_navigation_risk_tiers,
-            new_navigation_lower_risk_scan_counts,
-            new_avoidance_choice_indices,
-            new_avoidance_clear_scan_counts,
-            new_attack_cooldowns,
-            new_target_ids,
-            new_target_locations,
-            new_target_velocities,
-            new_intercept_times,
-            new_target_distance_sq,
-            new_target_distances,
-            new_target_radii,
-            new_carrier_launched);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

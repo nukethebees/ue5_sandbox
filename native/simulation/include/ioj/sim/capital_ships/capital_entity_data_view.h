@@ -12,14 +12,13 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
-#include <type_traits>
-
 namespace ioj::sim {
 namespace capital_entity_data {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -29,7 +28,9 @@ using Pointers = soa_storage_detail::
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -43,59 +44,38 @@ struct Schema {
                     rotations_view.rolls(),
                     source.teams());
     }
+    auto entity_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto view_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 1ULL>();
+    }
+    auto view_rotations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::rotators3f::Schema, 4ULL>();
+    }
+    auto teams(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(
+            source.entity_ids(), source.view_locations(), source.view_rotations(), source.teams());
+    }
+    using row_types = ioj::soa_storage_detail::RowTypes<
+        column_types,
+        ioj::soa_storage_detail::ColumnTypes<EntityId, Vector3f, Rotator3f, ::ioj::Team>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<0LL>(); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<1LL>().data(),
-                this->template column<2LL>().data(),
-                this->template column<3LL>().data(),
-                this->num()};
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->template column<6LL>().data(),
-                this->num()};
-    }
-    auto teams() const { return this->template column<7LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::capital_entity_data::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace capital_entity_data

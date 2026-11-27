@@ -94,27 +94,23 @@ class SoaApiLowering : public CppIRBuilder {
         }
         auto const operations{receiver == SoaReceiver::owner ? "OwnerRowOperations"
                                                              : "ViewRowOperations"};
-        return template_type(
-            named_type(
-                "ioj::soa_storage_detail::" + std::string{operations},
-                NameOrigin::global,
-                {dependency(operations,
-                            receiver == SoaReceiver::owner ? "ioj/single_allocation/operations.h"
-                                                           : "ioj/single_allocation/view.h")}),
-            {named_type(type_name),
-             named_type(schema_namespace(ctx, schema) + "::ColumnTypes", NameOrigin::global),
-             base});
+        return template_type(named_type("ioj::soa_storage_detail::" + std::string{operations},
+                                        NameOrigin::global,
+                                        {dependency(operations,
+                                                    receiver == SoaReceiver::owner
+                                                        ? "ioj/single_allocation/operations.h"
+                                                        : "ioj/single_allocation/view.h")}),
+                             {named_type(type_name), base});
     }
     auto lower_soa_api(LoweringContext& parent_context,
                        DeclarationHandle schema,
                        SoaReceiver const receiver,
                        std::string const& type_name,
-                       CppTypeId base) -> LoweredSoa {
+                       CppTypeId) -> LoweredSoa {
         auto ctx{parent_context.for_declaration(schema)};
         auto const& soas{ctx.declarations.soas};
         auto header{node_list()};
         auto source{node_list()};
-        header.append(compact_row_api(ctx, schema, receiver, base));
         for (auto const alias : ctx.declarations.items(soas.using_declarations[schema])) {
             header.add(raw("using " + ctx.text(alias) + ";")).new_lines(1);
         }
@@ -192,43 +188,139 @@ class SoaApiLowering : public CppIRBuilder {
                 append(soas.mutable_view_functions[schema]);
             }
         }
+        return {header.build(), source.build()};
+    }
+    auto schema_rows(LoweringContext& ctx, DeclarationHandle schema) -> Nodes {
+        auto const& soas{ctx.declarations.soas};
+        auto const& members{ctx.declarations.soa_members};
+        auto result{node_list()};
         if (soas.equivalent_type[schema]) {
-            auto const equivalent{ctx.resolve(*soas.equivalent_type[schema])};
-            header.add(using_declaration(store_text("equivalent_type"), equivalent)).new_lines(1);
-            Expr expression;
-            if (receiver == SoaReceiver::owner) {
-                expression = subscript(call(this->name("const_view")), named("index"));
-            } else {
-                auto const constructor_id{soas.equivalent_constructor[schema]};
-                std::vector<Syntax> arguments;
-                for (auto const member : ctx.declarations.items(soas.members[schema])) {
-                    std::vector<std::string> const path{
-                        ctx.text(ctx.declarations.soa_members.name[member])};
-                    arguments.push_back(
-                        subscript(logical_column_access(ctx, schema, path), named("index")));
+            result
+                .add(using_declaration(store_text("equivalent_type"),
+                                       ctx.resolve(*soas.equivalent_type[schema])))
+                .new_lines(1);
+            std::vector<Syntax> args;
+            for (auto member : ctx.declarations.items(soas.members[schema])) {
+                auto name{ctx.text(members.name[member])};
+                if (members.kind[member] == SoaMemberKind::nested) {
+                    name = "view_" + name;
                 }
-                expression =
-                    constructor_id
-                        ? call(reference_type(intern_type(ctx.text(*constructor_id))), arguments)
-                        : init_list(arguments, named_type("equivalent_type"));
+                args.push_back(subscript(member_call(named("columns"), name), named("index")));
             }
-            auto body{node_list()};
-            if (receiver != SoaReceiver::owner) {
-                body.add(assertion(
-                    binary(BinaryOperator::less, named("index"), call(this->name("num")))));
-            }
-            body.add(return_stmt(expression));
+            auto const constructor{soas.equivalent_constructor[schema]};
+            auto const value{constructor
+                                 ? call(reference_type(intern_type(ctx.text(*constructor))), args)
+                                 : init_list(args, named_type("equivalent_type"))};
             FunctionDefinition const function{
                 .name = this->name("operator[]"),
-                .return_type = intern_type("equivalent_type"),
+                .return_type = named_type("equivalent_type"),
                 .return_syntax = ReturnSyntax::trailing,
-                .parameters = {parameter(std_types().u32, "index")},
-                .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
-                .receiver = FunctionReceiver::const_,
-                .flags = {.is_inline = true, .define_in_header = true}};
-            header.add(header_function(add_function(function))).new_lines(1);
+                .parameters = {parameter("this auto const&", "self"),
+                               parameter(std_types().u32, "index")},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {assertion(binary(BinaryOperator::less,
+                                                             named("index"),
+                                                             member_call(named("self"), "num"))),
+                                            variable("auto const&",
+                                                     "columns",
+                                                     member_call(named("self"), "view")),
+                                            return_stmt(value)}},
+                .flags = {.define_in_header = true}};
+            result.add(header_function(add_function(function))).new_lines(1);
         }
-        return {header.build(), source.build()};
+
+        auto mapping = [&](std::string_view name,
+                           CppTypeId argument_type,
+                           std::string_view argument,
+                           std::vector<Syntax> const& values) {
+            FunctionDefinition const function{
+                .name = this->name(name),
+                .return_type = intern_type("decltype(auto)"),
+                .parameters = {parameter(argument_type, argument), parameter("auto&&", "func")},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {return_stmt(call(this->name("func"), values))}},
+                .receiver = FunctionReceiver::static_,
+                .flags = {.define_in_header = true}};
+            result.add(header_function(add_function(function))).new_lines(1);
+        };
+        auto mapped = [&](auto&& self, DeclarationHandle current) -> bool {
+            for (auto member : ctx.declarations.items(soas.members[current])) {
+                if (!members.equivalent_member[member] ||
+                    (members.kind[member] == SoaMemberKind::nested &&
+                     !self(self, ctx.for_declaration(current).nested_declaration(member)))) {
+                    return false;
+                }
+            }
+            return soas.equivalent_type[current].has_value();
+        };
+        bool grouped{};
+        std::vector<CppTypeId> logical_types;
+        std::vector<Syntax> logical_columns;
+        auto collect = [&](auto&& self, DeclarationHandle current, Expr source) -> void {
+            for (auto member : ctx.declarations.items(soas.members[current])) {
+                auto local{ctx.for_declaration(current)};
+                auto name{ctx.text(members.name[member])};
+                auto type{members.type[member]};
+                if (members.kind[member] == SoaMemberKind::nested) {
+                    auto child{local.nested_declaration(member)};
+                    name = "view_" + name;
+                    if (!mapped(mapped, child)) {
+                        self(self, child, member_call(source, name));
+                        continue;
+                    }
+                    grouped = true;
+                    local.module = ctx.for_declaration(child).module;
+                    type = *soas.equivalent_type[child];
+                }
+                logical_types.push_back(local.resolve(type));
+                logical_columns.push_back(member_call(source, name));
+            }
+        };
+        collect(collect, schema, named("source"));
+        std::vector<CppTypeId> shapes{named_type("column_types")};
+        auto const equivalent{mapped(mapped, schema)};
+        if (grouped || equivalent) {
+            if (!grouped) {
+                logical_types.clear();
+            }
+            shapes.push_back(template_type(
+                named_type("ioj::soa_storage_detail::ColumnTypes", NameOrigin::global),
+                logical_types));
+            if (grouped) {
+                mapping("logical_columns", intern_type("auto const&"), "source", logical_columns);
+            }
+            if (equivalent) {
+                shapes.push_back(named_type("equivalent_type"));
+                std::vector<Syntax> values;
+                auto flatten = [&](auto&& self, DeclarationHandle current, Expr parent) -> void {
+                    for (auto member : ctx.declarations.items(soas.members[current])) {
+                        auto value{member_access(parent, *members.equivalent_member[member])};
+                        if (members.equivalent_accessor[member]) {
+                            value = call(value);
+                        }
+                        if (members.kind[member] == SoaMemberKind::nested) {
+                            self(self,
+                                 ctx.for_declaration(current).nested_declaration(member),
+                                 value);
+                        } else {
+                            values.push_back(value);
+                        }
+                    }
+                };
+                flatten(flatten, schema, named("value"));
+                mapping("equivalent_values",
+                        decorate_type(named_type("equivalent_type"), "", " const&"),
+                        "value",
+                        values);
+            }
+            result
+                .add(using_declaration(store_text("row_types"),
+                                       template_type(named_type("ioj::soa_storage_detail::RowTypes",
+                                                                NameOrigin::global),
+                                                     shapes)))
+                .new_lines(1);
+        }
+        return result.build();
     }
   private:
     /* **************************************** */
@@ -246,170 +338,6 @@ class SoaApiLowering : public CppIRBuilder {
         return std::ranges::any_of(decls.items(functions), [&](auto function_id) {
             return ctx.text(decls.functions.name[function_id]) == name;
         });
-    }
-    auto compact_row_api(LoweringContext& ctx,
-                         DeclarationHandle schema,
-                         SoaReceiver receiver,
-                         CppTypeId) -> Nodes {
-        auto const& decls{ctx.declarations};
-        auto const& soas{decls.soas};
-        auto const& members{decls.soa_members};
-        auto result{node_list()};
-        auto const owner{receiver == SoaReceiver::owner};
-        auto const mutable_view{receiver == SoaReceiver::mutable_view};
-        auto custom = [&](std::string_view name) {
-            return has_custom_row_function(ctx, schema, receiver, name);
-        };
-        auto emit =
-            [&](std::string_view name, std::vector<FunctionParameterId> parameters, Nodes body) {
-                if (name == "set") {
-                    parameters.insert(parameters.begin(), parameter("size_type", "index"));
-                }
-                FunctionDefinition const function{
-                    .name = this->name(name),
-                    .return_type = name == "set" ? std_types().void_ : named_type("size_type"),
-                    .parameters = std::move(parameters),
-                    .implementation = {.kind = FunctionImplementationKind::body,
-                                       .body = std::move(body)},
-                    .receiver = name == "set" && mutable_view ? FunctionReceiver::const_
-                                                              : FunctionReceiver::unqualified,
-                    .flags = {.is_inline = true, .define_in_header = true}};
-                result.add(header_function(add_function(function))).new_lines(1);
-            };
-
-        if (owner) {
-            for (auto member : decls.items(soas.members[schema])) {
-                auto const row{members.index(member)};
-                auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
-                                ctx.text(members.name[row])};
-                FunctionDefinition const function{
-                    .name = this->name(name),
-                    .return_type = intern_type("auto"),
-                    .parameters = {parameter(decorate_type(intern_type("auto"), "this ", "&"),
-                                             "self")},
-                    .implementation = {.kind = FunctionImplementationKind::body,
-                                       .body = {return_stmt(
-                                           member_call(member_call(named("self"), "view"), name))}},
-                    .flags = {.define_in_header = true},
-                    .formatting = {.body_layout = FunctionBodyLayout::compact}};
-                result.add(header_function(add_function(function))).new_lines(1);
-            }
-        }
-        if ((!owner && !mutable_view) || custom("set")) {
-            return result.build();
-        }
-        result.add(using_import(named_type(owner ? "RowOperations::set" : "Base::set")))
-            .new_lines(1);
-        if (owner && !custom("add")) {
-            result.add(using_import(named_type("RowOperations::add"))).new_lines(1);
-        }
-
-        std::vector<CppTypeId> parameter_types;
-        std::vector<Syntax> equivalent_arguments;
-        auto mapped{soas.equivalent_type[schema].has_value()};
-        auto collect = [&](auto&& self, DeclarationHandle current, Expr value) -> void {
-            for (auto member : decls.items(soas.members[current])) {
-                auto const row{members.index(member)};
-                auto component{value};
-                if (members.equivalent_member[row]) {
-                    component = member_access(component, *members.equivalent_member[row]);
-                    if (members.equivalent_accessor[row]) {
-                        component = call(component);
-                    }
-                } else {
-                    mapped = false;
-                }
-                if (members.kind[row] == SoaMemberKind::nested) {
-                    self(self, ctx.for_declaration(current).nested_declaration(member), component);
-                    continue;
-                }
-                auto const type{ctx.for_declaration(current).resolve(members.type[row])};
-                parameter_types.push_back(decorate_type(type, "", " const"));
-                equivalent_arguments.push_back(component);
-            }
-        };
-        collect(collect, schema, named("value"));
-        auto can_assign_equivalent = [&](auto&& self, DeclarationHandle current) -> bool {
-            if (!soas.equivalent_type[current]) {
-                return false;
-            }
-            for (auto const member : decls.items(soas.members[current])) {
-                auto const row{members.index(member)};
-                if (!members.equivalent_member[row]) {
-                    return false;
-                }
-                if (members.kind[row] == SoaMemberKind::nested &&
-                    !self(self, ctx.for_declaration(current).nested_declaration(member))) {
-                    return false;
-                }
-            }
-            return true;
-        };
-        std::vector<FunctionParameterId> logical_parameters;
-        std::vector<Syntax> logical_arguments{named("index")};
-        auto logical_assignments{node_list()};
-        logical_assignments.add(
-            assertion(binary(BinaryOperator::less, named("index"), call(this->name("num")))));
-        auto collect_logical = [&](auto&& self,
-                                   DeclarationHandle current,
-                                   std::vector<std::string> const& path) -> void {
-            for (auto const member : decls.items(soas.members[current])) {
-                auto const row{members.index(member)};
-                auto column{path};
-                column.push_back(ctx.text(members.name[row]));
-                auto member_context{ctx.for_declaration(current)};
-                auto type_reference_value{members.type[row]};
-                bool const nested{members.kind[row] == SoaMemberKind::nested};
-                if (nested) {
-                    auto const child{member_context.nested_declaration(member)};
-                    if (!can_assign_equivalent(can_assign_equivalent, child)) {
-                        self(self, child, column);
-                        continue;
-                    }
-                    member_context.module = ctx.for_declaration(child).module;
-                    type_reference_value = *soas.equivalent_type[child];
-                }
-                auto const name{"new_" + join(column, "_")};
-                auto const type{member_context.resolve(type_reference_value)};
-                logical_parameters.push_back(parameter(decorate_type(type, "", " const"), name));
-                logical_arguments.push_back(named(name));
-                auto const visibility{logical_column_access(
-                    ctx, schema, column, owner ? call(this->name("view")) : named("this"), !owner)};
-                logical_assignments.add(
-                    nested
-                        ? expr_stmt(member_call(visibility, "set", {named("index"), named(name)}))
-                        : assignment(subscript(visibility, named("index")), named(name)));
-            }
-        };
-        collect_logical(collect_logical, schema, {});
-        auto const same_parameters{std::ranges::equal(
-            parameter_types,
-            logical_parameters,
-            {},
-            [&](auto type) { return type_spelling(type); },
-            [&](auto parameter_id) { return type_spelling(get_view(parameter_id).type); })};
-        if (!same_parameters) {
-            emit("set", logical_parameters, logical_assignments.build());
-            if (owner && !custom("add")) {
-                emit("add",
-                     logical_parameters,
-                     {variable("auto const", "index", call(this->name("num"))),
-                      expr_stmt(call(this->name("add_uninitialised"), {literal(1)})),
-                      expr_stmt(call(this->name("set"), logical_arguments)),
-                      return_stmt(named("index"))});
-            }
-        }
-        if (mapped) {
-            auto const equivalent{ctx.resolve(*soas.equivalent_type[schema])};
-            auto const value{parameter(decorate_type(equivalent, "", " const"), "value")};
-            auto set_arguments{equivalent_arguments};
-            set_arguments.insert(set_arguments.begin(), named("index"));
-            emit("set", {value}, {expr_stmt(call(this->name("set"), set_arguments))});
-            if (owner && !custom("add")) {
-                emit("add", {value}, {return_stmt(call(this->name("add"), equivalent_arguments))});
-            }
-        }
-        return result.build();
     }
     auto expand_columns(LoweringContext& ctx,
                         std::string_view const body,
@@ -437,6 +365,9 @@ class SoaApiLowering : public CppIRBuilder {
 
 } // namespace
 
+auto schema_rows(LoweringContext& ctx, DeclarationHandle schema) -> Nodes {
+    return SoaApiLowering{ctx.ir}.schema_rows(ctx, schema);
+}
 auto logical_column_access(LoweringContext& ctx,
                            DeclarationHandle schema,
                            std::span<std::string const> const path,

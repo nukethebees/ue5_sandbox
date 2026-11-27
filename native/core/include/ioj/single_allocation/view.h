@@ -8,6 +8,7 @@
 #include <limits>
 #include <span>
 #include <type_traits>
+#include <utility>
 
 namespace ioj::soa_storage_detail {
 
@@ -32,30 +33,75 @@ void validate_column_sizes([[maybe_unused]] std::uint32_t const count,
 // reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.
 // Accessors trust this contract; they do not detect stale borrows.
 
-template <typename Self, typename... Ts>
-void assign_row(Self& self, std::uint32_t index, Ts const&... values) {
-    assert(index < self.num());
-    auto const view{self.view()};
-    Self::soa_schema::with_columns(view,
-                                   [&](auto... columns) { ((columns[index] = values), ...); });
+struct NoEquivalentRow {};
+
+template <typename Physical,
+          typename Logical = ColumnTypes<>,
+          typename Equivalent = NoEquivalentRow>
+struct RowTypes {};
+
+template <typename Column, typename T>
+void assign_column(Column column, std::uint32_t index, T const& value) {
+    if constexpr (requires { column.set(index, value); }) {
+        column.set(index, value);
+    } else {
+        column[index] = value;
+    }
 }
 
-template <typename Self, typename Columns, typename Base>
+template <typename View, typename... Ts>
+void assign_row(View const& view, std::uint32_t index, Ts const&... values) {
+    using Schema = typename View::soa_schema;
+    assert(index < view.num());
+    if constexpr (std::is_same_v<ColumnTypes<Ts...>, typename Schema::column_types>) {
+        auto const& resolved{view.resolve()};
+        auto const& [... columns]{resolved.pointers()};
+        ((columns[index] = values), ...);
+    } else if constexpr (requires {
+                             Schema::equivalent_values(values..., [](auto const&...) {});
+                         }) {
+        Schema::equivalent_values(
+            values..., [&](auto const&... fields) { assign_row(view, index, fields...); });
+    } else {
+        Schema::logical_columns(
+            view, [&](auto... columns) { (assign_column(columns, index, values), ...); });
+    }
+}
+
+template <typename Self, typename Base, typename Rows = typename Base::soa_schema::row_types>
 struct ViewRowOperations;
 
-template <typename Self, typename Base, typename... Ts>
-struct ViewRowOperations<Self, ColumnTypes<Ts...>, Base> : Base {
+template <typename Self, typename Base, typename... Ts, typename... Logical, typename Equivalent>
+struct ViewRowOperations<Self,
+                         Base,
+                         RowTypes<ColumnTypes<Ts...>, ColumnTypes<Logical...>, Equivalent>> : Base {
     using Base::Base;
-    void set(std::uint32_t index, Ts const... values) const {
+    using implementation_type = ViewRowOperations;
+    static constexpr bool generated_set{true};
+    void set(std::uint32_t index, Ts... values) const {
         assign_row(static_cast<Self const&>(*this), index, values...);
+    }
+    void set(std::uint32_t index, Logical... values) const
+        requires (sizeof...(Logical) != 0)
+    {
+        assign_row(static_cast<Self const&>(*this), index, values...);
+    }
+    void set(std::uint32_t index, Equivalent value) const
+        requires (!std::is_same_v<Equivalent, NoEquivalentRow>)
+    {
+        assign_row(static_cast<Self const&>(*this), index, value);
     }
 };
 
-struct ViewOperations {
+template <typename Schema>
+struct ViewOperations : Schema {
     template <typename Self, typename Func>
     void each_column(this Self const& self, Func&& func) {
-        Self::soa_schema::with_columns(
-            self, [&](auto const&... columns) { (func(std::span{columns}), ...); });
+        auto const& resolved{self.resolve()};
+        auto const count{self.num()};
+        template for (auto* column : resolved.pointers()) {
+            func(std::span{column, count});
+        }
     }
     auto is_empty(this auto const& self) noexcept -> bool { return self.num() == 0; }
     auto view(this auto const& self) { return self; }
@@ -86,11 +132,36 @@ struct ViewOperations {
     }
 };
 
-template <typename Columns, bool Const>
+template <class View,
+          class ConstView,
+          class Compact,
+          class ConstCompact,
+          class Columns,
+          bool Strided>
+struct ViewTypes {
+    using column_types = Columns;
+    using row_types = RowTypes<Columns>;
+    static constexpr bool generated_set{false};
+    static constexpr bool strided{Strided};
+    template <bool Const>
+    using resolved = std::conditional_t<Const, ConstView, View>;
+    template <bool Const>
+    using compact = std::conditional_t<Const, ConstCompact, Compact>;
+};
+
+template <typename Child, bool Const, std::size_t First, typename Self>
+auto nested_resolved_view(Self const& self) {
+    using Result = typename Child::template resolved<Const>;
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+        return Result{self.template column_at<First + I>().data()..., self.num()};
+    }(std::make_index_sequence<Child::column_types::size>{});
+}
+
+template <typename Columns, bool Const, typename Schema>
 struct ViewBase;
 
-template <bool Const, typename... Ts>
-struct ViewBase<ColumnTypes<Ts...>, Const> : ViewOperations {
+template <bool Const, typename Schema, typename... Ts>
+struct ViewBase<ColumnTypes<Ts...>, Const, Schema> : ViewOperations<Schema> {
     using size_type = std::uint32_t;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -99,12 +170,12 @@ struct ViewBase<ColumnTypes<Ts...>, Const> : ViewOperations {
     ViewBase() = default;
     ViewBase(PointerStorage columns, size_type count)
         : columns_{columns}
-        , column_count_{count} {}
-    ViewBase(Element<Ts>*... pointers, size_type column_count)
-        : columns_{pointers...}
-        , column_count_{column_count} {
-        validate_column_pointers(column_count_, pointers...);
+        , column_count_{count} {
+        auto const& [... pointers]{columns};
+        validate_column_pointers(count, pointers...);
     }
+    ViewBase(Element<Ts>*... pointers, size_type column_count)
+        : ViewBase{PointerStorage{pointers...}, column_count} {}
     ViewBase(std::span<Element<Ts>>... columns)
         : ViewBase{columns.data()..., [](auto const& first, auto const&...) {
                        return checked_row_count(first.size());
@@ -114,29 +185,48 @@ struct ViewBase<ColumnTypes<Ts...>, Const> : ViewOperations {
 
     auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
+    auto pointers() const noexcept -> PointerStorage const& { return columns_; }
 
     template <typename Self>
     auto slice(this Self const& self, size_type offset, size_type count) -> Self {
         assert(offset <= self.column_count_ && count <= self.column_count_ - offset);
         return Self{offset_columns(self.columns_, offset), count};
     }
+    template <std::size_t Index>
+    auto column_at() const {
+        return std::span{columns_.template get<Index>(), column_count_};
+    }
+
+    template <typename Child, std::size_t First>
+    auto nested_at(this auto const& self) {
+        return nested_resolved_view<Child, Const, First>(self);
+    }
   protected:
-    template <typename, bool>
+    template <typename, bool, typename>
     friend struct ViewBase;
 
     template <bool Enabled = Const>
         requires Enabled
-    ViewBase(ViewBase<ColumnTypes<Ts...>, false> const& other)
+    ViewBase(ViewBase<ColumnTypes<Ts...>, false, Schema> const& other)
         : columns_{convert_pointers<PointerStorage>(other.columns_)}
         , column_count_{other.column_count_} {}
-
-    template <std::size_t Index>
-    auto column() const {
-        return std::span{columns_.template get<Index>(), column_count_};
-    }
 
     PointerStorage columns_{};
     size_type column_count_{};
 };
 
+template <typename Schema, bool Const>
+struct ResolvedView : ViewBase<typename Schema::column_types, Const, Schema> {
+    using implementation_type = ResolvedView;
+    using Base = ViewBase<typename Schema::column_types, Const, Schema>;
+    using Base::Base;
+    using soa_schema = Schema;
+    using view_type = typename Schema::template resolved<false>;
+    using const_view_type = typename Schema::template resolved<true>;
+
+    template <bool Enabled = Const>
+        requires Enabled
+    ResolvedView(ResolvedView<Schema, false> const& other)
+        : Base{other} {}
+};
 } // namespace ioj::soa_storage_detail

@@ -3,16 +3,13 @@
 
 #pragma once
 
-#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/collision/cell_coords_view.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 namespace ioj::sim::collision {
@@ -27,61 +24,17 @@ struct Layout
     static constexpr std::size_t zs_column{2ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Strided views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<std::int32_t, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<std::int32_t, Const>;
-    using Base::Base;
-    using Layout = cell_coords::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::xs_column, Layout::ys_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(0LL); }
-    auto ys() const { return this->column(1LL); }
-    auto zs() const { return this->column(2LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = ioj::sim::collision::CellCoord;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactConstView>);
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::collision::cell_coords::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, ioj::sim::collision::CellCoord const value) const {
-        set(index, value.x(), value.y(), value.z());
-    }
-    using equivalent_type = ioj::sim::collision::CellCoord;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(std::is_trivially_copyable_v<CompactView>);
 

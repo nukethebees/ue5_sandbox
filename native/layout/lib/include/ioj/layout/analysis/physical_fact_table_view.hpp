@@ -18,6 +18,8 @@ namespace physical_fact_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -31,7 +33,9 @@ using Pointers = soa_storage_detail::ColumnPointers<std::uint64_t,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.size_bytes(),
@@ -41,38 +45,35 @@ struct Schema {
                     source.provenance(),
                     source.origin());
     }
+    auto size_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto alignment_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto signedness(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto unsigned_value_bits(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto provenance(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto origin(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto size_bytes() const { return this->template column<0LL>(); }
-    auto alignment_bytes() const { return this->template column<1LL>(); }
-    auto signedness() const { return this->template column<2LL>(); }
-    auto unsigned_value_bits() const { return this->template column<3LL>(); }
-    auto provenance() const { return this->template column<4LL>(); }
-    auto origin() const { return this->template column<5LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::physical_fact_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace physical_fact_table

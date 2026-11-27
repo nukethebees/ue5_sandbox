@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/line_traces_compact_view.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -25,27 +22,7 @@ namespace ioj::sim {
 struct LineTraces
     : soa_storage_detail::OwnerRowOperations<
           LineTraces,
-          line_traces::ColumnTypes,
           native_soa::Owner<line_traces::CompactView, line_traces::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LineTraces,
-        line_traces::ColumnTypes,
-        native_soa::Owner<line_traces::CompactView, line_traces::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto view_starts(this auto& self) { return self.view().view_starts(); }
-    auto view_ends(this auto& self) { return self.view().view_ends(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {
-        assert((index < num()));
-        view().view_starts().set(index, new_starts);
-        view().view_ends().set(index, new_ends);
-    }
-    size_type add(Vector3f const new_starts, Vector3f const new_ends) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_starts, new_ends);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

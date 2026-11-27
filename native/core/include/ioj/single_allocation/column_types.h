@@ -1,48 +1,29 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
 #include <type_traits>
-#include <utility>
 
 namespace ioj::soa_storage_detail {
-// Each level contains its pointers as members, preserving standard layout for borrowed views.
-template <typename T, typename... Rest>
+// All columns in a resolved view have the same access mode. Erase only the element
+// type in storage, retaining constness and one address per column.
+template <typename... Ts>
 struct ColumnPointers {
+    using Address = std::conditional_t<(std::is_const_v<Ts> && ...), void const*, void*>;
+    template <template <typename...> typename Result>
+    using apply = Result<Ts...>;
+
     ColumnPointers() = default;
-    explicit ColumnPointers(T* first, Rest*... rest) noexcept
-        : first_{first}
-        , rest_{rest...} {}
+    explicit ColumnPointers(Ts*... columns) noexcept
+        : columns_{columns...} {}
 
-    template <std::size_t Index>
-    auto get(this auto&& self) noexcept -> decltype(auto) {
-        if constexpr (Index == 0) {
-            return std::forward_like<decltype(self)>(self.first_);
-        } else {
-            return std::forward_like<decltype(self)>(self.rest_).template get<Index - 1>();
-        }
-    }
+  template <std::size_t Index>
+      auto get() const noexcept -> Ts... [Index] *
+  { return static_cast<Ts...[Index]*>(columns_[Index]); }
 
-  private:
-    T* first_{};
-    ColumnPointers<Rest...> rest_{};
-};
-
-template <typename T>
-struct ColumnPointers<T> {
-    ColumnPointers() = default;
-    explicit ColumnPointers(T* pointer) noexcept
-        : pointer_{pointer} {}
-
-    template <std::size_t Index>
-        requires (Index == 0)
-    auto get(this auto&& self) noexcept -> decltype(auto) {
-        return std::forward_like<decltype(self)>(self.pointer_);
-    }
-
-  private:
-    T* pointer_{};
+      private : std::array<Address, sizeof...(Ts)> columns_ {};
 };
 }
 
@@ -60,15 +41,13 @@ struct tuple_element<Index, ioj::soa_storage_detail::ColumnPointers<Ts...>> {
 namespace ioj::soa_storage_detail {
 template <typename... Ts>
 struct ColumnTypes {
+    static constexpr std::size_t size{sizeof...(Ts)};
     template <std::size_t Index>
     using at = Ts...[Index];
 };
 
 template <template <typename...> typename Result, typename Pointers>
-using FromPointers = typename decltype([] {
-    auto [... columns]{Pointers{}};
-    return std::type_identity<Result<std::remove_pointer_t<decltype(columns)>...>>{};
-}())::type;
+using FromPointers = typename Pointers::template apply<Result>;
 
 template <typename Result>
 auto convert_pointers(auto const& data) noexcept -> Result {
@@ -77,12 +56,8 @@ auto convert_pointers(auto const& data) noexcept -> Result {
 }
 
 template <typename Data>
-auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {
-    template for (auto& column : pointers) {
-        if (column) {
-            column += offset;
-        }
-    }
-    return pointers;
+auto offset_columns(Data const& pointers, std::uint32_t offset) noexcept -> Data {
+    auto const& [... columns]{pointers};
+    return Data{(columns ? columns + offset : nullptr)...};
 }
 }

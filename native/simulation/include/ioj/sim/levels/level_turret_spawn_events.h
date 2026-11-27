@@ -5,15 +5,11 @@
 
 #include "ioj/constrained_numbers.h"
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/operations.h"
 #include "level_turret_spawn_events_compact_view.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -34,54 +30,8 @@ namespace ioj::sim {
 struct LevelTurretSpawnEvents
     : soa_storage_detail::OwnerRowOperations<
           LevelTurretSpawnEvents,
-          level_turret_spawn_events::ColumnTypes,
           native_soa::Owner<level_turret_spawn_events::CompactView,
                             level_turret_spawn_events::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LevelTurretSpawnEvents,
-        level_turret_spawn_events::ColumnTypes,
-        native_soa::Owner<level_turret_spawn_events::CompactView,
-                          level_turret_spawn_events::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_indices(this auto& self) { return self.view().entity_indices(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    auto healths(this auto& self) { return self.view().healths(); }
-    auto laser_damages(this auto& self) { return self.view().laser_damages(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             Health const new_healths,
-             ioj::NonNegative<std::int32_t> const new_laser_damages) {
-        assert((index < num()));
-        view().entity_indices()[index] = new_entity_indices;
-        view().view_locations().set(index, new_locations);
-        view().view_rotations().set(index, new_rotations);
-        view().teams()[index] = new_teams;
-        view().healths()[index] = new_healths;
-        view().laser_damages()[index] = new_laser_damages;
-    }
-    size_type add(LevelEntityRef const new_entity_indices,
-                  Vector3f const new_locations,
-                  Rotator3f const new_rotations,
-                  ::ioj::Team const new_teams,
-                  Health const new_healths,
-                  ioj::NonNegative<std::int32_t> const new_laser_damages) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entity_indices,
-            new_locations,
-            new_rotations,
-            new_teams,
-            new_healths,
-            new_laser_damages);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

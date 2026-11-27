@@ -5,13 +5,9 @@
 
 #include "capital_entity_data_compact_view.h"
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -30,39 +26,8 @@ namespace ioj::sim {
 struct CapitalEntityData
     : soa_storage_detail::OwnerRowOperations<
           CapitalEntityData,
-          capital_entity_data::ColumnTypes,
           native_soa::Owner<capital_entity_data::CompactView,
                             capital_entity_data::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        CapitalEntityData,
-        capital_entity_data::ColumnTypes,
-        native_soa::Owner<capital_entity_data::CompactView, capital_entity_data::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
-    auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams) {
-        assert((index < num()));
-        view().entity_ids()[index] = new_entity_ids;
-        view().view_locations().set(index, new_locations);
-        view().view_rotations().set(index, new_rotations);
-        view().teams()[index] = new_teams;
-    }
-    size_type add(EntityId const new_entity_ids,
-                  Vector3f const new_locations,
-                  Rotator3f const new_rotations,
-                  ::ioj::Team const new_teams) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_entity_ids, new_locations, new_rotations, new_teams);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

@@ -4,18 +4,13 @@
 #pragma once
 
 #include "fighter_spawn_queue_view.h"
-#include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_compact_view.h"
 
-#include <cassert>
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace fighter_spawn_queue {
@@ -34,74 +29,17 @@ struct Layout
     static constexpr std::size_t teams_column{7ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = fighter_spawn_queue::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_indices() const {
-        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
-    }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_directions() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::directions_xs_column,
-                    Layout::directions_ys_column);
-    }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::fighter_spawn_queue::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             ioj::sim::LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             Vector3f const new_directions,
-             ::ioj::Team const new_teams) const {
-        assert((index < num()));
-        this->entity_indices()[index] = new_entity_indices;
-        this->view_locations().set(index, new_locations);
-        this->view_directions().set(index, new_directions);
-        this->teams()[index] = new_teams;
-    }
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

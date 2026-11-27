@@ -4,13 +4,10 @@
 #pragma once
 
 #include "entity_cell_data_compact_view.h"
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim::collision {
@@ -35,42 +32,7 @@ namespace ioj::sim::collision {
 struct EntityCellData
     : soa_storage_detail::OwnerRowOperations<
           EntityCellData,
-          entity_cell_data::ColumnTypes,
           native_soa::Owner<entity_cell_data::CompactView, entity_cell_data::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityCellData,
-        entity_cell_data::ColumnTypes,
-        native_soa::Owner<entity_cell_data::CompactView, entity_cell_data::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto view_min_points(this auto& self) { return self.view().view_min_points(); }
-    auto view_max_points(this auto& self) { return self.view().view_max_points(); }
-    auto view_min_cells(this auto& self) { return self.view().view_min_cells(); }
-    auto view_max_cells(this auto& self) { return self.view().view_max_cells(); }
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             Vector3f const new_min_points,
-             Vector3f const new_max_points,
-             CellCoord const new_min_cells,
-             CellCoord const new_max_cells,
-             EntityId const new_entity_ids) {
-        assert((index < num()));
-        view().view_min_points().set(index, new_min_points);
-        view().view_max_points().set(index, new_max_points);
-        view().view_min_cells().set(index, new_min_cells);
-        view().view_max_cells().set(index, new_max_cells);
-        view().entity_ids()[index] = new_entity_ids;
-    }
-    size_type add(Vector3f const new_min_points,
-                  Vector3f const new_max_points,
-                  CellCoord const new_min_cells,
-                  CellCoord const new_max_cells,
-                  EntityId const new_entity_ids) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_min_points, new_max_points, new_min_cells, new_max_cells, new_entity_ids);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim::collision

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/collision/cell_coords_compact_view.h"
 #include "ioj/single_allocation/operations.h"
 
@@ -22,23 +21,7 @@ namespace ioj::sim::collision {
 struct CellCoords
     : soa_storage_detail::OwnerRowOperations<
           CellCoords,
-          cell_coords::ColumnTypes,
           native_soa::Owner<cell_coords::CompactView, cell_coords::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        CellCoords,
-        cell_coords::ColumnTypes,
-        native_soa::Owner<cell_coords::CompactView, cell_coords::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto xs(this auto& self) { return self.view().xs(); }
-    auto ys(this auto& self) { return self.view().ys(); }
-    auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, CellCoord const value) {
-        set(index, value.x(), value.y(), value.z());
-    }
-    size_type add(CellCoord const value) { return add(value.x(), value.y(), value.z()); }
-    using equivalent_type = CellCoord;
-    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim::collision

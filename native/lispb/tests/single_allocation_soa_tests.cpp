@@ -72,14 +72,11 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
             (member points nested Points))))"))};
     auto const output{generated_headers(files)};
     expect_contains_all(output,
-                        {("void set(size_type index, std::int32_t const new_ids, Point const "
-                          "new_points) const"),
-                         "view_points().set(index, new_points);",
-                         "set(index, value.x, value.y);",
-                         "size_type add(std::int32_t const new_ids, Point const new_points)",
-                         "using Base::set;",
-                         "using RowOperations::add;"});
-    EXPECT_FALSE(output.contains("points().xs()[index] = new_points_xs;"));
+                        {"equivalent_values(",
+                         "func(value.x, value.y)",
+                         "logical_columns(",
+                         "source.view_points()",
+                         "RowTypes<"});
 }
 
 auto schemas() -> std::string {
@@ -105,21 +102,18 @@ TEST(SingleAllocationSoa, AuthoredRowFunctionsSuppressAutomaticOverloads) {
         std::string_view function;
         bool owner_operations;
         bool view_operations;
-        bool automatic_add;
     };
     for (auto const& test :
-         {Case{"(function set void (parameter value float) :body (\"\"))", false, true, false},
-          Case{"(function add void (parameter value float) :body (\"\"))", true, true, false},
+         {Case{"(function set void (parameter value float) :body (\"\"))", false, true},
+          Case{"(function add void (parameter value float) :body (\"\"))", true, true},
           Case{"(mutable-view-function set void (parameter value float) :body (\"\"))",
                true,
-               false,
-               true}}) {
+               false}}) {
         SCOPED_TRACE(test.function);
         auto const output{
             render("(struct Rows (member values array float) " + std::string{test.function} + ")")};
         EXPECT_EQ(output.contains("OwnerRowOperations<"), test.owner_operations);
         EXPECT_EQ(output.contains("ViewRowOperations<"), test.view_operations);
-        EXPECT_EQ(output.contains("using RowOperations::add;"), test.automatic_add);
     }
 }
 
@@ -279,11 +273,10 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         (struct Grandparent
           (member first nested Rows)
           (member second nested Rows)))")};
-    expect_contains_all(output,
-                        {"second_nested_wide_column{", "Layout::second_nested_wide_column"});
+    expect_contains_all(output, {"first_nested_wide_column{", "second_nested_wide_column{"});
     expect_contains_none(
         output, {"last_column()", "GrandparentView_first", "GrandparentView_second_nested"});
-    expect_contains_all(output, {"rows::View", "child::View", "second_nested_view.wide()"});
+    expect_contains_all(output, {"rows::Schema", "child::Schema", "second_nested_view.wide()"});
 }
 
 TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {

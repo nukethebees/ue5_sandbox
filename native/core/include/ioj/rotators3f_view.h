@@ -15,6 +15,8 @@ namespace rotators3f {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -23,53 +25,45 @@ using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, true> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.pitches(), source.yaws(), source.rolls());
     }
+    auto pitches(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto yaws(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto rolls(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{
+            columns.pitches()[index], columns.yaws()[index], columns.rolls()[index]};
+    }
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.pitch, value.yaw, value.roll);
+    }
+    using row_types = ioj::soa_storage_detail::
+        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto pitches() const { return this->template column<0LL>(); }
-    auto yaws() const { return this->template column<1LL>(); }
-    auto rolls() const { return this->template column<2LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::rotators3f::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Rotator3f const value) const {
-        set(index, value.pitch, value.yaw, value.roll);
-    }
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace rotators3f

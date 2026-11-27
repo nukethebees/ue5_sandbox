@@ -19,6 +19,8 @@ namespace component_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -36,7 +38,9 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),
@@ -50,42 +54,47 @@ struct Schema {
                     source.padding_before_bytes(),
                     source.slack_bytes());
     }
+    auto parent(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto name(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto tag(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto semantic_type(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto element_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto element_facts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
+    auto offset_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
+    }
+    auto extent_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    auto padding_before_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
+    }
+    auto slack_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<0LL>(); }
-    auto name() const { return this->template column<1LL>(); }
-    auto tag() const { return this->template column<2LL>(); }
-    auto semantic_type() const { return this->template column<3LL>(); }
-    auto element_count() const { return this->template column<4LL>(); }
-    auto element_facts() const { return this->template column<5LL>(); }
-    auto offset_bytes() const { return this->template column<6LL>(); }
-    auto extent_bytes() const { return this->template column<7LL>(); }
-    auto padding_before_bytes() const { return this->template column<8LL>(); }
-    auto slack_bytes() const { return this->template column<9LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::component_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace component_table

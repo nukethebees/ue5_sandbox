@@ -34,7 +34,6 @@ auto LoweringStorage::items(SchemaRange<TypeDependencyId> range) const
 void LoweringStorage::clear() {
     dependencies_.clear();
     single_allocation_models.clear();
-    column_lookup.clear();
     single_allocation_columns.clear();
     paths.clear();
     columns_.clear();

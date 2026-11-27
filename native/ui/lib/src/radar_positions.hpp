@@ -18,16 +18,7 @@ namespace ioj::ui::radar_2d {
 struct Positions
     : soa_storage_detail::OwnerRowOperations<
           Positions,
-          positions::ColumnTypes,
           native_soa::Owner<positions::CompactView, positions::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Positions,
-        positions::ColumnTypes,
-        native_soa::Owner<positions::CompactView, positions::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto xs(this auto& self) { return self.view().xs(); }
-    auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::ui::radar_2d

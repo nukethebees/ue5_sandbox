@@ -41,36 +41,11 @@ namespace ioj::layout {
 struct WorkloadTable
     : soa_storage_detail::OwnerRowOperations<
           WorkloadTable,
-          workload_table::ColumnTypes,
           native_soa::Owner<workload_table::CompactView, workload_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        WorkloadTable,
-        workload_table::ColumnTypes,
-        native_soa::Owner<workload_table::CompactView, workload_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto analysis(this auto& self) { return self.view().analysis(); }
-    auto selections(this auto& self) { return self.view().selections(); }
-    auto element_count(this auto& self) { return self.view().element_count(); }
-    auto multiplicity(this auto& self) { return self.view().multiplicity(); }
-    auto bytes(this auto& self) { return self.view().bytes(); }
-    auto bits(this auto& self) { return self.view().bits(); }
-    auto cache(this auto& self) { return self.view().cache(); }
-    auto pages(this auto& self) { return self.view().pages(); }
-    auto cache_capacity(this auto& self) { return self.view().cache_capacity(); }
-    auto packed_waste(this auto& self) { return self.view().packed_waste(); }
-    auto footprint_exact(this auto& self) { return self.view().footprint_exact(); }
-    auto storage_bytes(this auto& self) { return self.view().storage_bytes(); }
-    auto full_logical_payload_bytes(this auto& self) {
-        return self.view().full_logical_payload_bytes();
-    }
-    auto unselected_payload_bytes(this auto& self) {
-        return self.view().unselected_payload_bytes();
-    }
-    auto allocated_payload_bytes(this auto& self) { return self.view().allocated_payload_bytes(); }
-    auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    WorkloadId
-        append(AnalysisId owner, RowRange selected, std::uint64_t count, std::uint64_t repeat);
+    using implementation_type::implementation_type;
+    ioj::layout::WorkloadId append(ioj::layout::AnalysisId owner,
+                                   ioj::layout::RowRange selected,
+                                   std::uint64_t count,
+                                   std::uint64_t repeat);
 };
 } // namespace ioj::layout

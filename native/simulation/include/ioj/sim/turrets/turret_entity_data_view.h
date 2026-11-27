@@ -12,15 +12,15 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace turret_entity_data {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -51,7 +51,9 @@ using Pointers = soa_storage_detail::ColumnPointers<EntityId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -83,105 +85,91 @@ struct Schema {
                     target_velocities_view.ys(),
                     target_velocities_view.zs());
     }
+    auto entity_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto integral_biases(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto view_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 2ULL>();
+    }
+    auto view_fire_point_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 5ULL>();
+    }
+    auto view_rotations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::rotators3f::Schema, 8ULL>();
+    }
+    auto teams(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
+    auto laser_cooldowns(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    auto laser_damages(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
+    }
+    auto target_refresh_countdowns_periods(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
+    }
+    auto target_refresh_countdowns_remaining_ticks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
+    }
+    auto target_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<16ULL>();
+    }
+    auto view_target_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 17ULL>();
+    }
+    auto view_target_velocities(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 20ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.entity_ids(),
+                    source.integral_biases(),
+                    source.view_locations(),
+                    source.view_fire_point_locations(),
+                    source.view_rotations(),
+                    source.teams(),
+                    source.laser_cooldowns(),
+                    source.laser_damages(),
+                    source.target_refresh_countdowns_periods(),
+                    source.target_refresh_countdowns_remaining_ticks(),
+                    source.target_ids(),
+                    source.view_target_locations(),
+                    source.view_target_velocities());
+    }
+    using row_types =
+        ioj::soa_storage_detail::RowTypes<column_types,
+                                          ioj::soa_storage_detail::ColumnTypes<EntityId,
+                                                                               std::uint32_t,
+                                                                               Vector3f,
+                                                                               Vector3f,
+                                                                               Rotator3f,
+                                                                               ::ioj::Team,
+                                                                               std::int16_t,
+                                                                               std::int32_t,
+                                                                               std::int16_t,
+                                                                               std::int16_t,
+                                                                               EntityId,
+                                                                               Vector3f,
+                                                                               Vector3f>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<0LL>(); }
-    auto integral_biases() const { return this->template column<1LL>(); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<2LL>().data(),
-                this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->num()};
-    }
-    auto view_fire_point_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<5LL>().data(),
-                this->template column<6LL>().data(),
-                this->template column<7LL>().data(),
-                this->num()};
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->template column<8LL>().data(),
-                this->template column<9LL>().data(),
-                this->template column<10LL>().data(),
-                this->num()};
-    }
-    auto teams() const { return this->template column<11LL>(); }
-    auto laser_cooldowns() const { return this->template column<12LL>(); }
-    auto laser_damages() const { return this->template column<13LL>(); }
-    auto target_refresh_countdowns_periods() const { return this->template column<14LL>(); }
-    auto target_refresh_countdowns_remaining_ticks() const { return this->template column<15LL>(); }
-    auto target_ids() const { return this->template column<16LL>(); }
-    auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<17LL>().data(),
-                this->template column<18LL>().data(),
-                this->template column<19LL>().data(),
-                this->num()};
-    }
-    auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<20LL>().data(),
-                this->template column<21LL>().data(),
-                this->template column<22LL>().data(),
-                this->num()};
-    }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::turret_entity_data::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             Vector3f const new_locations,
-             Vector3f const new_fire_point_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->integral_biases()[index] = new_integral_biases;
-        this->view_locations().set(index, new_locations);
-        this->view_fire_point_locations().set(index, new_fire_point_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-        this->laser_cooldowns()[index] = new_laser_cooldowns;
-        this->laser_damages()[index] = new_laser_damages;
-        this->target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
-        this->target_refresh_countdowns_remaining_ticks()[index] =
-            new_target_refresh_countdowns_remaining_ticks;
-        this->target_ids()[index] = new_target_ids;
-        this->view_target_locations().set(index, new_target_locations);
-        this->view_target_velocities().set(index, new_target_velocities);
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace turret_entity_data

@@ -23,18 +23,7 @@ namespace ioj::sim {
 struct EntityDeathInfo
     : soa_storage_detail::OwnerRowOperations<
           EntityDeathInfo,
-          entity_death_info::ColumnTypes,
           native_soa::Owner<entity_death_info::CompactView, entity_death_info::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityDeathInfo,
-        entity_death_info::ColumnTypes,
-        native_soa::Owner<entity_death_info::CompactView, entity_death_info::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto reasons(this auto& self) { return self.view().reasons(); }
-    auto victims(this auto& self) { return self.view().victims(); }
-    auto killers(this auto& self) { return self.view().killers(); }
-    auto locations(this auto& self) { return self.view().locations(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

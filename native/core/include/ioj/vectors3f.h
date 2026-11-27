@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/operations.h"
 #include "ioj/vectors3f_compact_view.h"
-
-#include <cstdint>
 
 namespace ioj {
 
@@ -22,21 +19,7 @@ namespace ioj {
 struct Vectors3f
     : soa_storage_detail::OwnerRowOperations<
           Vectors3f,
-          vectors3f::ColumnTypes,
           native_soa::Owner<vectors3f::CompactView, vectors3f::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Vectors3f,
-        vectors3f::ColumnTypes,
-        native_soa::Owner<vectors3f::CompactView, vectors3f::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto xs(this auto& self) { return self.view().xs(); }
-    auto ys(this auto& self) { return self.view().ys(); }
-    auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }
-    size_type add(Vector3f const value) { return add(value.x(), value.y(), value.z()); }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

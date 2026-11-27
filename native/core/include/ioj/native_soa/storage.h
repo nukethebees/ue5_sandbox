@@ -54,9 +54,11 @@ using StorageOperations = soa_storage_detail::StorageOperations<rounded_capacity
 
 template <typename MutableView, typename ReadOnlyView>
 class Owner
-    : protected StorageState
+    : public MutableView::soa_schema
+    , protected StorageState
     , public StorageOperations {
   public:
+    using implementation_type = Owner;
     using soa_schema = typename MutableView::soa_schema;
     using Layout = typename MutableView::Layout;
     using CompactView = MutableView;
@@ -81,6 +83,15 @@ class Owner
     auto operator=(Owner const&) -> Owner& = delete;
     auto operator=(Owner&& other) -> Owner& { return move_assign(*this, other); }
 
+    template <std::size_t Index>
+    auto column_at(this auto& self) {
+        return self.view().template column_at<Index>();
+    }
+    template <typename Child, std::size_t First>
+    auto nested_at(this auto& self) {
+        return self.view().template nested_at<Child, First>();
+    }
+
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
@@ -88,7 +99,6 @@ class Owner
 
   private:
     friend StorageOperations;
-    friend soa_storage_detail::StorageRequirements;
 
     std::pmr::memory_resource* resource_;
 };

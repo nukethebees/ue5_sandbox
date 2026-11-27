@@ -4,18 +4,12 @@
 #pragma once
 
 #include "entity_history_view.h"
-#include "ioj/kill_count.h"
-#include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/sim/entities/entity_life_state.h"
-#include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace entity_history {
@@ -31,45 +25,17 @@ struct Layout
     static constexpr std::size_t death_locations_column{4ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_history::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto kills() const { return this->template column<KillCount>(Layout::kills_column); }
-    auto life_state() const { return this->template column<LifeState>(Layout::life_state_column); }
-    auto death_ticks() const { return this->template column<SimTick>(Layout::death_ticks_column); }
-    auto death_locations() const {
-        return this->template column<Vector3f>(Layout::death_locations_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                            ioj::sim::entity_history::ColumnTypes,
-                                                            CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

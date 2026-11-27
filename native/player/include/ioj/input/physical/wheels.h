@@ -19,18 +19,8 @@ namespace ioj {
 struct PhysicalWheelsRows
     : soa_storage_detail::OwnerRowOperations<
           PhysicalWheelsRows,
-          physical_wheels_rows::ColumnTypes,
           native_soa::Owner<physical_wheels_rows::CompactView,
                             physical_wheels_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalWheelsRows,
-        physical_wheels_rows::ColumnTypes,
-        native_soa::Owner<physical_wheels_rows::CompactView,
-                          physical_wheels_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto positions(this auto& self) { return self.view().positions(); }
-    auto steps(this auto& self) { return self.view().steps(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

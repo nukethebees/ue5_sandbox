@@ -3,13 +3,7 @@
 
 #pragma once
 
-#include "ioj/constrained_numbers.h"
-#include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/rotator_types.h"
 #include "ioj/rotators3f_compact_view.h"
-#include "ioj/sim/entities/health.h"
-#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
@@ -17,9 +11,7 @@
 #include "ioj/vectors3f_compact_view.h"
 #include "level_capital_spawn_events_view.h"
 
-#include <cassert>
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace level_capital_spawn_events {
@@ -41,89 +33,17 @@ struct Layout
     static constexpr std::size_t fighter_spawn_cooldowns_column{10ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = level_capital_spawn_events::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_indices() const {
-        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
-    }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::rotations_pitches_column,
-                    Layout::rotations_yaws_column);
-    }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto healths() const { return this->template column<Health>(Layout::healths_column); }
-    auto initial_fighter_spawn_delays() const {
-        return this->template column<ioj::NonNegativeFinite<float>>(
-            Layout::initial_fighter_spawn_delays_column);
-    }
-    auto fighter_spawn_cooldowns() const {
-        return this->template column<ioj::NonNegativeFinite<float>>(
-            Layout::fighter_spawn_cooldowns_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::level_capital_spawn_events::ColumnTypes,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             ioj::sim::LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             Health const new_healths,
-             ioj::NonNegativeFinite<float> const new_initial_fighter_spawn_delays,
-             ioj::NonNegativeFinite<float> const new_fighter_spawn_cooldowns) const {
-        assert((index < num()));
-        this->entity_indices()[index] = new_entity_indices;
-        this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-        this->healths()[index] = new_healths;
-        this->initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
-        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
-    }
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

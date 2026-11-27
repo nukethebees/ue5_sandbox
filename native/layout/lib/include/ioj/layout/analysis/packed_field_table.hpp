@@ -51,40 +51,9 @@ namespace ioj::layout {
 struct PackedFieldTable
     : soa_storage_detail::OwnerRowOperations<
           PackedFieldTable,
-          packed_field_table::ColumnTypes,
           native_soa::Owner<packed_field_table::CompactView,
                             packed_field_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PackedFieldTable,
-        packed_field_table::ColumnTypes,
-        native_soa::Owner<packed_field_table::CompactView, packed_field_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto parent(this auto& self) { return self.view().parent(); }
-    auto segment(this auto& self) { return self.view().segment(); }
-    auto name(this auto& self) { return self.view().name(); }
-    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
-    auto logical_type(this auto& self) { return self.view().logical_type(); }
-    auto kind(this auto& self) { return self.view().kind(); }
-    auto reserved(this auto& self) { return self.view().reserved(); }
-    auto schema_bit_width(this auto& self) { return self.view().schema_bit_width(); }
-    auto schema_bit_width_auto(this auto& self) { return self.view().schema_bit_width_auto(); }
-    auto bit_width(this auto& self) { return self.view().bit_width(); }
-    auto overridden(this auto& self) { return self.view().overridden(); }
-    auto least_significant_bit(this auto& self) { return self.view().least_significant_bit(); }
-    auto most_significant_bit(this auto& self) { return self.view().most_significant_bit(); }
-    auto maximum_unsigned_value(this auto& self) { return self.view().maximum_unsigned_value(); }
-    auto minimum_signed_value(this auto& self) { return self.view().minimum_signed_value(); }
-    auto maximum_signed_value(this auto& self) { return self.view().maximum_signed_value(); }
-    auto minimum_semantic_value(this auto& self) { return self.view().minimum_semantic_value(); }
-    auto maximum_semantic_value(this auto& self) { return self.view().maximum_semantic_value(); }
-    auto semantic_value_count(this auto& self) { return self.view().semantic_value_count(); }
-    auto sentinel_code_count(this auto& self) { return self.view().sentinel_code_count(); }
-    auto required_code_count(this auto& self) { return self.view().required_code_count(); }
-    auto minimum_required_bits(this auto& self) { return self.view().minimum_required_bits(); }
-    auto unused_codes(this auto& self) { return self.view().unused_codes(); }
-    auto codes(this auto& self) { return self.view().codes(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append();
 };
 } // namespace ioj::layout

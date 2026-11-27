@@ -4,19 +4,12 @@
 #pragma once
 
 #include "entity_frame_changes_view.h"
-#include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/rotator_types.h"
-#include "ioj/sim/entities/entity_frame_change.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace entity_frame_changes {
@@ -33,47 +26,17 @@ struct Layout
     static constexpr std::size_t ids_column{5ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_frame_changes::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto kinds() const {
-        return this->template column<EntityFrameChangeKind>(Layout::kinds_column);
-    }
-    auto indices() const { return this->template column<std::uint32_t>(Layout::indices_column); }
-    auto locations() const { return this->template column<Vector3f>(Layout::locations_column); }
-    auto rotations() const { return this->template column<Rotator3f>(Layout::rotations_column); }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto ids() const { return this->template column<EntityId>(Layout::ids_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::entity_frame_changes::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

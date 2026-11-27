@@ -19,18 +19,8 @@ namespace ioj {
 struct PhysicalMotionsRows
     : soa_storage_detail::OwnerRowOperations<
           PhysicalMotionsRows,
-          physical_motions_rows::ColumnTypes,
           native_soa::Owner<physical_motions_rows::CompactView,
                             physical_motions_rows::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalMotionsRows,
-        physical_motions_rows::ColumnTypes,
-        native_soa::Owner<physical_motions_rows::CompactView,
-                          physical_motions_rows::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto positions(this auto& self) { return self.view().positions(); }
-    auto deltas(this auto& self) { return self.view().deltas(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj

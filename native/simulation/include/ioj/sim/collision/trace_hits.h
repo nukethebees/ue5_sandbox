@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
 #include "ioj/sim/collision/trace_hits_compact_view.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
-
-#include <cassert>
 
 namespace ioj::sim {
 
@@ -28,38 +25,7 @@ namespace ioj::sim {
 struct TraceHits
     : soa_storage_detail::OwnerRowOperations<
           TraceHits,
-          trace_hits::ColumnTypes,
           native_soa::Owner<trace_hits::CompactView, trace_hits::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        TraceHits,
-        trace_hits::ColumnTypes,
-        native_soa::Owner<trace_hits::CompactView, trace_hits::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto entities(this auto& self) { return self.view().entities(); }
-    auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    auto hits(this auto& self) { return self.view().hits(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             EntityId const new_entities,
-             collision::StaticGeometryIndex const new_static_geometry_indices,
-             TraceHit const new_hits) {
-        assert((index < num()));
-        view().view_locations().set(index, new_locations);
-        view().entities()[index] = new_entities;
-        view().static_geometry_indices()[index] = new_static_geometry_indices;
-        view().hits()[index] = new_hits;
-    }
-    size_type add(Vector3f const new_locations,
-                  EntityId const new_entities,
-                  collision::StaticGeometryIndex const new_static_geometry_indices,
-                  TraceHit const new_hits) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_locations, new_entities, new_static_geometry_indices, new_hits);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

@@ -3,16 +3,12 @@
 #include <codegen/lowering/single_allocation_columns.h>
 #include <codegen/lowering/single_allocation_models.h>
 
-#include <map>
 #include <span>
-#include <utility>
 #include <vector>
 namespace lispb::codegen {
 class LoweringStorage {
   public:
     SingleAllocationModels single_allocation_models;
-    std::map<std::pair<SingleAllocationModelId, LoweringPathId>, SingleAllocationColumnId>
-        column_lookup;
     SingleAllocationColumns single_allocation_columns;
     LoweringPaths paths;
     auto save(std::span<SingleAllocationColumnId const> values)

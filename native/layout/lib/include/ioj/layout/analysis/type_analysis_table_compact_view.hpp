@@ -3,22 +3,13 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/aggregate_layout.hpp"
-#include "ioj/layout/analysis/enum_backing.hpp"
-#include "ioj/layout/analysis/packed_layout.hpp"
-#include "ioj/layout/analysis/physical_fact_id.hpp"
-#include "ioj/layout/analysis/scenario_id.hpp"
-#include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/layout/analysis/type_analysis_table_view.hpp"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include "lispb/schema/indices.h"
-
 #include <cstddef>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace type_analysis_table {
@@ -36,62 +27,17 @@ struct Layout
     static constexpr std::size_t soa_column{6ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = type_analysis_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto schema_type() const {
-        return this->template column<lispb::schema::TypeId>(Layout::schema_type_column);
-    }
-    auto scenario() const { return this->template column<ScenarioId>(Layout::scenario_column); }
-    auto physical() const {
-        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-            Layout::physical_column);
-    }
-    auto enum_backing() const {
-        return this->template column<std::optional<ioj::layout::EnumBacking>>(
-            Layout::enum_backing_column);
-    }
-    auto aggregate() const {
-        return this->template column<std::optional<ioj::layout::AggregateLayout>>(
-            Layout::aggregate_column);
-    }
-    auto packed() const {
-        return this->template column<std::optional<ioj::layout::PackedLayout>>(
-            Layout::packed_column);
-    }
-    auto soa() const {
-        return this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::type_analysis_table::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

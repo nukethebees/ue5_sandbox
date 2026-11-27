@@ -12,6 +12,8 @@ namespace single_restriction_rows {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -21,40 +23,28 @@ using Pointers = ioj::soa_storage_detail::ColumnPointers<RestrictedLeaf>;
 using ColumnTypes =
     ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : ioj::soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.restricted());
+    }
+    auto restricted(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
     }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto restricted() const { return this->template column<0LL>(); }
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : ioj::soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        codegen_compile_fixture::single_restriction_rows::ColumnTypes,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace single_restriction_rows

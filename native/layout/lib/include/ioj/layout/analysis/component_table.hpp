@@ -34,25 +34,8 @@ namespace ioj::layout {
 struct ComponentTable
     : soa_storage_detail::OwnerRowOperations<
           ComponentTable,
-          component_table::ColumnTypes,
           native_soa::Owner<component_table::CompactView, component_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        ComponentTable,
-        component_table::ColumnTypes,
-        native_soa::Owner<component_table::CompactView, component_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto parent(this auto& self) { return self.view().parent(); }
-    auto name(this auto& self) { return self.view().name(); }
-    auto tag(this auto& self) { return self.view().tag(); }
-    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
-    auto element_count(this auto& self) { return self.view().element_count(); }
-    auto element_facts(this auto& self) { return self.view().element_facts(); }
-    auto offset_bytes(this auto& self) { return self.view().offset_bytes(); }
-    auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
-    auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
-    auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append();
 };
 } // namespace ioj::layout

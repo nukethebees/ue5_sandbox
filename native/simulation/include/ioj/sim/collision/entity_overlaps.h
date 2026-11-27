@@ -20,19 +20,9 @@ namespace ioj::sim::collision {
 struct EntityEntityOverlaps
     : soa_storage_detail::OwnerRowOperations<
           EntityEntityOverlaps,
-          entity_entity_overlaps::ColumnTypes,
           native_soa::Owner<entity_entity_overlaps::CompactView,
                             entity_entity_overlaps::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityEntityOverlaps,
-        entity_entity_overlaps::ColumnTypes,
-        native_soa::Owner<entity_entity_overlaps::CompactView,
-                          entity_entity_overlaps::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto first_entities(this auto& self) { return self.view().first_entities(); }
-    auto second_entities(this auto& self) { return self.view().second_entities(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 
 /* **************************************** */
@@ -44,18 +34,8 @@ struct EntityEntityOverlaps
 struct EntityStaticOverlaps
     : soa_storage_detail::OwnerRowOperations<
           EntityStaticOverlaps,
-          entity_static_overlaps::ColumnTypes,
           native_soa::Owner<entity_static_overlaps::CompactView,
                             entity_static_overlaps::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityStaticOverlaps,
-        entity_static_overlaps::ColumnTypes,
-        native_soa::Owner<entity_static_overlaps::CompactView,
-                          entity_static_overlaps::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entities(this auto& self) { return self.view().entities(); }
-    auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim::collision

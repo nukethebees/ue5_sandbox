@@ -22,19 +22,9 @@ namespace ioj::sim {
 struct DirectDamageEvents
     : soa_storage_detail::OwnerRowOperations<
           DirectDamageEvents,
-          direct_damage_events::ColumnTypes,
           native_soa::Owner<direct_damage_events::CompactView,
                             direct_damage_events::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        DirectDamageEvents,
-        direct_damage_events::ColumnTypes,
-        native_soa::Owner<direct_damage_events::CompactView,
-                          direct_damage_events::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
-    auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
-    auto instigators(this auto& self) { return self.view().instigators(); }
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
              EntityId const instigator) {

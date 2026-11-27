@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/operations.h"
 #include "laser_entities_compact_view.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim::lasers {
@@ -39,72 +36,7 @@ namespace ioj::sim::lasers {
 struct LaserEntities
     : soa_storage_detail::OwnerRowOperations<
           LaserEntities,
-          laser_entities::ColumnTypes,
           native_soa::Owner<laser_entities::CompactView, laser_entities::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LaserEntities,
-        laser_entities::ColumnTypes,
-        native_soa::Owner<laser_entities::CompactView, laser_entities::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto active(this auto& self) { return self.view().active(); }
-    auto sources(this auto& self) { return self.view().sources(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
-    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    auto damages(this auto& self) { return self.view().damages(); }
-    auto lifetimes_remaining(this auto& self) { return self.view().lifetimes_remaining(); }
-    auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
-    auto initial_lifetimes(this auto& self) { return self.view().initial_lifetimes(); }
-    auto spawn_times(this auto& self) { return self.view().spawn_times(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             std::uint8_t const new_active,
-             LaserSource const new_sources,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             Vector3f const new_velocities,
-             std::int32_t const new_damages,
-             float const new_lifetimes_remaining,
-             EntityId const new_instigator_ids,
-             float const new_initial_lifetimes,
-             float const new_spawn_times) {
-        assert((index < num()));
-        view().active()[index] = new_active;
-        view().sources()[index] = new_sources;
-        view().view_locations().set(index, new_locations);
-        view().view_rotations().set(index, new_rotations);
-        view().view_velocities().set(index, new_velocities);
-        view().damages()[index] = new_damages;
-        view().lifetimes_remaining()[index] = new_lifetimes_remaining;
-        view().instigator_ids()[index] = new_instigator_ids;
-        view().initial_lifetimes()[index] = new_initial_lifetimes;
-        view().spawn_times()[index] = new_spawn_times;
-    }
-    size_type add(std::uint8_t const new_active,
-                  LaserSource const new_sources,
-                  Vector3f const new_locations,
-                  Rotator3f const new_rotations,
-                  Vector3f const new_velocities,
-                  std::int32_t const new_damages,
-                  float const new_lifetimes_remaining,
-                  EntityId const new_instigator_ids,
-                  float const new_initial_lifetimes,
-                  float const new_spawn_times) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_active,
-            new_sources,
-            new_locations,
-            new_rotations,
-            new_velocities,
-            new_damages,
-            new_lifetimes_remaining,
-            new_instigator_ids,
-            new_initial_lifetimes,
-            new_spawn_times);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim::lasers

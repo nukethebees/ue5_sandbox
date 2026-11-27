@@ -32,30 +32,10 @@ namespace ioj::layout {
 struct DistributionTable
     : soa_storage_detail::OwnerRowOperations<
           DistributionTable,
-          distribution_table::ColumnTypes,
           native_soa::Owner<distribution_table::CompactView,
                             distribution_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        DistributionTable,
-        distribution_table::ColumnTypes,
-        native_soa::Owner<distribution_table::CompactView, distribution_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto analysis(this auto& self) { return self.view().analysis(); }
-    auto entries(this auto& self) { return self.view().entries(); }
-    auto element_count(this auto& self) { return self.view().element_count(); }
-    auto total_weight(this auto& self) { return self.view().total_weight(); }
-    auto total_extent_bytes(this auto& self) { return self.view().total_extent_bytes(); }
-    auto total_slack_bytes(this auto& self) { return self.view().total_slack_bytes(); }
-    auto expected_extent_bytes(this auto& self) { return self.view().expected_extent_bytes(); }
-    auto expected_slack_bytes(this auto& self) { return self.view().expected_slack_bytes(); }
-    auto expected_selected_extent_bytes(this auto& self) {
-        return self.view().expected_selected_extent_bytes();
-    }
-    auto expected_selected_slack_bytes(this auto& self) {
-        return self.view().expected_selected_slack_bytes();
-    }
-    using RowOperations::add;
-    using RowOperations::set;
-    DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);
+    using implementation_type::implementation_type;
+    ioj::layout::DistributionId
+        append(ioj::layout::AnalysisId owner, ioj::layout::RowRange samples, std::uint64_t count);
 };
 } // namespace ioj::layout

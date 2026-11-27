@@ -3,18 +3,13 @@
 
 #pragma once
 
-#include "ioj/input/physical/button_state.h"
-#include "ioj/input/physical/physical_key.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
-#include "ioj/vector.h"
 #include "pointer_buttons_view.h"
 
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj {
 namespace physical_pointer_buttons_rows {
@@ -29,43 +24,17 @@ struct Layout
     static constexpr std::size_t clicks_column{3ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = physical_pointer_buttons_rows::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto positions() const { return this->template column<Vector2f>(Layout::positions_column); }
-    auto keys() const { return this->template column<PhysicalKey>(Layout::keys_column); }
-    auto states() const { return this->template column<ButtonState>(Layout::states_column); }
-    auto clicks() const { return this->template column<std::uint8_t>(Layout::clicks_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::physical_pointer_buttons_rows::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

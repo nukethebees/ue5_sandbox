@@ -3,13 +3,11 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 #include "spinner_entity_data_compact_view.h"
 
-#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim {
@@ -28,48 +26,8 @@ namespace ioj::sim {
 struct SpinnerEntityData
     : soa_storage_detail::OwnerRowOperations<
           SpinnerEntityData,
-          spinner_entity_data::ColumnTypes,
           native_soa::Owner<spinner_entity_data::CompactView,
                             spinner_entity_data::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SpinnerEntityData,
-        spinner_entity_data::ColumnTypes,
-        native_soa::Owner<spinner_entity_data::CompactView, spinner_entity_data::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto yaws(this auto& self) { return self.view().yaws(); }
-    auto laser_cooldowns(this auto& self) { return self.view().laser_cooldowns(); }
-    auto next_fire_point_indices(this auto& self) { return self.view().next_fire_point_indices(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             Vector3f const new_locations,
-             float const new_yaws,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_next_fire_point_indices) {
-        assert((index < num()));
-        view().entity_ids()[index] = new_entity_ids;
-        view().view_locations().set(index, new_locations);
-        view().yaws()[index] = new_yaws;
-        view().laser_cooldowns()[index] = new_laser_cooldowns;
-        view().next_fire_point_indices()[index] = new_next_fire_point_indices;
-    }
-    size_type add(EntityId const new_entity_ids,
-                  Vector3f const new_locations,
-                  float const new_yaws,
-                  std::int16_t const new_laser_cooldowns,
-                  std::int32_t const new_next_fire_point_indices) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entity_ids,
-            new_locations,
-            new_yaws,
-            new_laser_cooldowns,
-            new_next_fire_point_indices);
-        return index;
-    }
+    using implementation_type::implementation_type;
 };
 } // namespace ioj::sim

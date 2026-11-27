@@ -26,20 +26,9 @@ namespace ioj::layout {
 struct RelationshipTable
     : soa_storage_detail::OwnerRowOperations<
           RelationshipTable,
-          relationship_table::ColumnTypes,
           native_soa::Owner<relationship_table::CompactView,
                             relationship_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        RelationshipTable,
-        relationship_table::ColumnTypes,
-        native_soa::Owner<relationship_table::CompactView, relationship_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto owner(this auto& self) { return self.view().owner(); }
-    auto field(this auto& self) { return self.view().field(); }
-    auto relationship(this auto& self) { return self.view().relationship(); }
-    auto metrics(this auto& self) { return self.view().metrics(); }
-    using RowOperations::add;
-    using RowOperations::set;
+    using implementation_type::implementation_type;
     std::size_t append();
 };
 } // namespace ioj::layout

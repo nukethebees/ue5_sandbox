@@ -29,22 +29,9 @@ namespace ioj::layout {
 struct SelectionTable
     : soa_storage_detail::OwnerRowOperations<
           SelectionTable,
-          selection_table::ColumnTypes,
           native_soa::Owner<selection_table::CompactView, selection_table::CompactConstView>> {
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SelectionTable,
-        selection_table::ColumnTypes,
-        native_soa::Owner<selection_table::CompactView, selection_table::CompactConstView>>;
-    using RowOperations::RowOperations;
-    auto source(this auto& self) { return self.view().source(); }
-    auto operation(this auto& self) { return self.view().operation(); }
-    auto bytes(this auto& self) { return self.view().bytes(); }
-    auto bits(this auto& self) { return self.view().bits(); }
-    auto cache(this auto& self) { return self.view().cache(); }
-    auto pages(this auto& self) { return self.view().pages(); }
-    auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations::add;
-    using RowOperations::set;
-    std::size_t append(std::size_t selected_source, AccessOperation selected_operation);
+    using implementation_type::implementation_type;
+    std::size_t append(std::size_t selected_source,
+                       ioj::layout::AccessOperation selected_operation);
 };
 } // namespace ioj::layout

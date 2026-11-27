@@ -65,9 +65,9 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     ASSERT_EQ(files[2].path, "Generated_view.h");
     ASSERT_EQ(files[3].path, "Generated_compact_view.h");
     expect_contains_all(files[2].content,
-                        {"namespace f_data", "ViewBase<", "#include \"Project/Handle.h\""});
+                        {"namespace f_data", "ResolvedView<", "#include \"Project/Handle.h\""});
     expect_contains_none(files[2].content,
-                         {"CompactView",
+                         {"single_allocation/compact_view.h",
                           "ColumnLayouts",
                           "native_soa/storage.h",
                           "single_allocation/layout.h",

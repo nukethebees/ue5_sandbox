@@ -20,6 +20,8 @@ namespace workload_table {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -43,7 +45,9 @@ using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.analysis(),
@@ -63,48 +67,65 @@ struct Schema {
                     source.allocated_payload_bytes(),
                     source.capacity_slack_bytes());
     }
+    auto analysis(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto selections(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto element_count(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto multiplicity(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<3ULL>();
+    }
+    auto bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<4ULL>();
+    }
+    auto bits(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<5ULL>();
+    }
+    auto cache(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<6ULL>();
+    }
+    auto pages(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<7ULL>();
+    }
+    auto cache_capacity(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<8ULL>();
+    }
+    auto packed_waste(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<9ULL>();
+    }
+    auto footprint_exact(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<10ULL>();
+    }
+    auto storage_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<11ULL>();
+    }
+    auto full_logical_payload_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<12ULL>();
+    }
+    auto unselected_payload_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<13ULL>();
+    }
+    auto allocated_payload_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<14ULL>();
+    }
+    auto capacity_slack_bytes(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<15ULL>();
+    }
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->template column<0LL>(); }
-    auto selections() const { return this->template column<1LL>(); }
-    auto element_count() const { return this->template column<2LL>(); }
-    auto multiplicity() const { return this->template column<3LL>(); }
-    auto bytes() const { return this->template column<4LL>(); }
-    auto bits() const { return this->template column<5LL>(); }
-    auto cache() const { return this->template column<6LL>(); }
-    auto pages() const { return this->template column<7LL>(); }
-    auto cache_capacity() const { return this->template column<8LL>(); }
-    auto packed_waste() const { return this->template column<9LL>(); }
-    auto footprint_exact() const { return this->template column<10LL>(); }
-    auto storage_bytes() const { return this->template column<11LL>(); }
-    auto full_logical_payload_bytes() const { return this->template column<12LL>(); }
-    auto unselected_payload_bytes() const { return this->template column<13LL>(); }
-    auto allocated_payload_bytes() const { return this->template column<14LL>(); }
-    auto capacity_slack_bytes() const { return this->template column<15LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::workload_table::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace workload_table

@@ -3,18 +3,13 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/payload_footprint.hpp"
-#include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analysis/selection_table_view.hpp"
-#include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <cstdint>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace selection_table {
@@ -32,51 +27,17 @@ struct Layout
     static constexpr std::size_t capacity_slack_bytes_column{6ULL};
 };
 
-struct CompactView;
-struct CompactConstView;
-
 /* **************************************** */
 // Compact views
 /* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = selection_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto source() const { return this->template column<std::size_t>(Layout::source_column); }
-    auto operation() const {
-        return this->template column<AccessOperation>(Layout::operation_column);
-    }
-    auto bytes() const { return this->template column<PayloadFootprint>(Layout::bytes_column); }
-    auto bits() const { return this->template column<PayloadFootprint>(Layout::bits_column); }
-    auto cache() const { return this->template column<RegionFootprint>(Layout::cache_column); }
-    auto pages() const { return this->template column<RegionFootprint>(Layout::pages_column); }
-    auto capacity_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::capacity_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
 struct CompactView
-    : soa_storage_detail::ViewRowOperations<CompactView, ColumnTypes, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::selection_table::ColumnTypes,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 

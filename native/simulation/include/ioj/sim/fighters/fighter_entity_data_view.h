@@ -11,15 +11,15 @@
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
 
-#include <cassert>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace fighter_entity_data {
 struct Schema;
 struct View;
 struct ConstView;
+struct CompactView;
+struct CompactConstView;
 
 /* **************************************** */
 // Column pointers
@@ -76,7 +76,9 @@ using Pointers = soa_storage_detail::ColumnPointers<EntityId,
 
 using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
-struct Schema {
+struct Schema
+    : soa_storage_detail::
+          ViewTypes<View, ConstView, CompactView, CompactConstView, ColumnTypes, false> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -139,186 +141,176 @@ struct Schema {
                     source.target_radii(),
                     source.carrier_launched());
     }
+    auto entity_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<0ULL>();
+    }
+    auto integral_biases(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<1ULL>();
+    }
+    auto float_biases(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<2ULL>();
+    }
+    auto view_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 3ULL>();
+    }
+    auto view_desired_move_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 6ULL>();
+    }
+    auto view_aim_directions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 9ULL>();
+    }
+    auto view_planned_aim_directions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 12ULL>();
+    }
+    auto view_desired_aiming_directions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 15ULL>();
+    }
+    auto view_movement_directions(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 18ULL>();
+    }
+    auto view_velocities(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 21ULL>();
+    }
+    auto move_distances(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<24ULL>();
+    }
+    auto speeds(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<25ULL>();
+    }
+    auto teams(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<26ULL>();
+    }
+    auto navigation_update_countdowns_remaining_ticks(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<27ULL>();
+    }
+    auto navigation_update_countdowns_periods(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<28ULL>();
+    }
+    auto view_separation_steering(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 29ULL>();
+    }
+    auto navigation_risk_tiers(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<32ULL>();
+    }
+    auto navigation_lower_risk_scan_counts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<33ULL>();
+    }
+    auto avoidance_choice_indices(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<34ULL>();
+    }
+    auto avoidance_clear_scan_counts(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<35ULL>();
+    }
+    auto attack_cooldowns(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<36ULL>();
+    }
+    auto target_ids(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<37ULL>();
+    }
+    auto view_target_locations(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 38ULL>();
+    }
+    auto view_target_velocities(this auto&& self) {
+        return static_cast<decltype(self)&&>(self)
+            .template nested_at<ioj::vectors3f::Schema, 41ULL>();
+    }
+    auto intercept_times(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<44ULL>();
+    }
+    auto target_distance_sq(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<45ULL>();
+    }
+    auto target_distances(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<46ULL>();
+    }
+    auto target_radii(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<47ULL>();
+    }
+    auto carrier_launched(this auto&& self) {
+        return static_cast<decltype(self)&&>(self).template column_at<48ULL>();
+    }
+    static decltype(auto) logical_columns(auto const& source, auto&& func) {
+        return func(source.entity_ids(),
+                    source.integral_biases(),
+                    source.float_biases(),
+                    source.view_locations(),
+                    source.view_desired_move_locations(),
+                    source.view_aim_directions(),
+                    source.view_planned_aim_directions(),
+                    source.view_desired_aiming_directions(),
+                    source.view_movement_directions(),
+                    source.view_velocities(),
+                    source.move_distances(),
+                    source.speeds(),
+                    source.teams(),
+                    source.navigation_update_countdowns_remaining_ticks(),
+                    source.navigation_update_countdowns_periods(),
+                    source.view_separation_steering(),
+                    source.navigation_risk_tiers(),
+                    source.navigation_lower_risk_scan_counts(),
+                    source.avoidance_choice_indices(),
+                    source.avoidance_clear_scan_counts(),
+                    source.attack_cooldowns(),
+                    source.target_ids(),
+                    source.view_target_locations(),
+                    source.view_target_velocities(),
+                    source.intercept_times(),
+                    source.target_distance_sq(),
+                    source.target_distances(),
+                    source.target_radii(),
+                    source.carrier_launched());
+    }
+    using row_types = ioj::soa_storage_detail::RowTypes<
+        column_types,
+        ioj::soa_storage_detail::ColumnTypes<EntityId,
+                                             std::uint32_t,
+                                             float,
+                                             Vector3f,
+                                             Vector3f,
+                                             Vector3f,
+                                             Vector3f,
+                                             Vector3f,
+                                             Vector3f,
+                                             Vector3f,
+                                             float,
+                                             float,
+                                             ::ioj::Team,
+                                             std::int16_t,
+                                             std::int16_t,
+                                             Vector3f,
+                                             ioj::sim::fighters::NavigationRiskCode,
+                                             ioj::sim::fighters::NavigationScanCount,
+                                             ioj::sim::fighters::AvoidanceChoice,
+                                             ioj::sim::fighters::NavigationScanCount,
+                                             std::int16_t,
+                                             EntityId,
+                                             Vector3f,
+                                             Vector3f,
+                                             float,
+                                             float,
+                                             float,
+                                             float,
+                                             std::uint8_t>>;
 };
 
 /* **************************************** */
 // Views
 /* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
-    using Base::Base;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<0LL>(); }
-    auto integral_biases() const { return this->template column<1LL>(); }
-    auto float_biases() const { return this->template column<2LL>(); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<3LL>().data(),
-                this->template column<4LL>().data(),
-                this->template column<5LL>().data(),
-                this->num()};
-    }
-    auto view_desired_move_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<6LL>().data(),
-                this->template column<7LL>().data(),
-                this->template column<8LL>().data(),
-                this->num()};
-    }
-    auto view_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<9LL>().data(),
-                this->template column<10LL>().data(),
-                this->template column<11LL>().data(),
-                this->num()};
-    }
-    auto view_planned_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<12LL>().data(),
-                this->template column<13LL>().data(),
-                this->template column<14LL>().data(),
-                this->num()};
-    }
-    auto view_desired_aiming_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<15LL>().data(),
-                this->template column<16LL>().data(),
-                this->template column<17LL>().data(),
-                this->num()};
-    }
-    auto view_movement_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<18LL>().data(),
-                this->template column<19LL>().data(),
-                this->template column<20LL>().data(),
-                this->num()};
-    }
-    auto view_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<21LL>().data(),
-                this->template column<22LL>().data(),
-                this->template column<23LL>().data(),
-                this->num()};
-    }
-    auto move_distances() const { return this->template column<24LL>(); }
-    auto speeds() const { return this->template column<25LL>(); }
-    auto teams() const { return this->template column<26LL>(); }
-    auto navigation_update_countdowns_remaining_ticks() const {
-        return this->template column<27LL>();
-    }
-    auto navigation_update_countdowns_periods() const { return this->template column<28LL>(); }
-    auto view_separation_steering() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<29LL>().data(),
-                this->template column<30LL>().data(),
-                this->template column<31LL>().data(),
-                this->num()};
-    }
-    auto navigation_risk_tiers() const { return this->template column<32LL>(); }
-    auto navigation_lower_risk_scan_counts() const { return this->template column<33LL>(); }
-    auto avoidance_choice_indices() const { return this->template column<34LL>(); }
-    auto avoidance_clear_scan_counts() const { return this->template column<35LL>(); }
-    auto attack_cooldowns() const { return this->template column<36LL>(); }
-    auto target_ids() const { return this->template column<37LL>(); }
-    auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<38LL>().data(),
-                this->template column<39LL>().data(),
-                this->template column<40LL>().data(),
-                this->num()};
-    }
-    auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->template column<41LL>().data(),
-                this->template column<42LL>().data(),
-                this->template column<43LL>().data(),
-                this->num()};
-    }
-    auto intercept_times() const { return this->template column<44LL>(); }
-    auto target_distance_sq() const { return this->template column<45LL>(); }
-    auto target_distances() const { return this->template column<46LL>(); }
-    auto target_radii() const { return this->template column<47LL>(); }
-    auto carrier_launched() const { return this->template column<48LL>(); }
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, ColumnTypes, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::fighter_entity_data::ColumnTypes, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_float_biases,
-             Vector3f const new_locations,
-             Vector3f const new_desired_move_locations,
-             Vector3f const new_aim_directions,
-             Vector3f const new_planned_aim_directions,
-             Vector3f const new_desired_aiming_directions,
-             Vector3f const new_movement_directions,
-             Vector3f const new_velocities,
-             float const new_move_distances,
-             float const new_speeds,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
-             std::int16_t const new_navigation_update_countdowns_periods,
-             Vector3f const new_separation_steering,
-             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
-             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
-             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
-             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_cooldowns,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities,
-             float const new_intercept_times,
-             float const new_target_distance_sq,
-             float const new_target_distances,
-             float const new_target_radii,
-             std::uint8_t const new_carrier_launched) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->integral_biases()[index] = new_integral_biases;
-        this->float_biases()[index] = new_float_biases;
-        this->view_locations().set(index, new_locations);
-        this->view_desired_move_locations().set(index, new_desired_move_locations);
-        this->view_aim_directions().set(index, new_aim_directions);
-        this->view_planned_aim_directions().set(index, new_planned_aim_directions);
-        this->view_desired_aiming_directions().set(index, new_desired_aiming_directions);
-        this->view_movement_directions().set(index, new_movement_directions);
-        this->view_velocities().set(index, new_velocities);
-        this->move_distances()[index] = new_move_distances;
-        this->speeds()[index] = new_speeds;
-        this->teams()[index] = new_teams;
-        this->navigation_update_countdowns_remaining_ticks()[index] =
-            new_navigation_update_countdowns_remaining_ticks;
-        this->navigation_update_countdowns_periods()[index] =
-            new_navigation_update_countdowns_periods;
-        this->view_separation_steering().set(index, new_separation_steering);
-        this->navigation_risk_tiers()[index] = new_navigation_risk_tiers;
-        this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
-        this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
-        this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        this->attack_cooldowns()[index] = new_attack_cooldowns;
-        this->target_ids()[index] = new_target_ids;
-        this->view_target_locations().set(index, new_target_locations);
-        this->view_target_velocities().set(index, new_target_velocities);
-        this->intercept_times()[index] = new_intercept_times;
-        this->target_distance_sq()[index] = new_target_distance_sq;
-        this->target_distances()[index] = new_target_distances;
-        this->target_radii()[index] = new_target_radii;
-        this->carrier_launched()[index] = new_carrier_launched;
-    }
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
 };
 
 } // namespace fighter_entity_data
