@@ -7,18 +7,9 @@
 #include <Components/Border.h>
 #include <Components/TextBlock.h>
 #include <Engine/World.h>
-#include <Input/CommonUIInputTypes.h>
 #include <TimerManager.h>
 
 namespace ioj {
-TOptional<FUIInputConfig> UBenchmarkHudWidget::GetDesiredInputConfig() const {
-    auto config{FUIInputConfig{
-        ECommonInputMode::All, EMouseCaptureMode::NoCapture, EMouseLockMode::DoNotLock, false}};
-    config.bIgnoreMoveInput = true;
-    config.bIgnoreLookInput = true;
-    return config;
-}
-
 void UBenchmarkHudWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
     if (IsValid(benchmark_title)) {
@@ -74,6 +65,10 @@ void UBenchmarkHudWidget::set_state_source(TFunction<FRunHudState()> source) {
     }
 }
 
+void UBenchmarkHudWidget::select_button(bool end_selected) {
+    auto* target{end_selected ? end_benchmark_button : pause_resume_button};
+    target->focus_target()->SetFocus();
+}
 void UBenchmarkHudWidget::update_state() {
     if (!state_source_) {
         return;

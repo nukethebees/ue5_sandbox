@@ -45,7 +45,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* {
         return hud_.get_hud();
     }
-    [[nodiscard]] auto get_benchmark_hud() const -> UBenchmarkHudWidget const* {
+    [[nodiscard]] auto get_benchmark_hud() const -> UBenchmarkHudWidget* {
         return hud_.get_benchmark_hud();
     }
     [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {

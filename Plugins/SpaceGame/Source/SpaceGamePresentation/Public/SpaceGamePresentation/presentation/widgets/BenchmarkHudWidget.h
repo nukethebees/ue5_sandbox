@@ -2,7 +2,7 @@
 
 #include <ioj/sim/levels/level_state.h>
 
-#include <CommonActivatableWidget.h>
+#include <Blueprint/UserWidget.h>
 #include <TimerManager.h>
 
 #include "BenchmarkHudWidget.generated.h"
@@ -22,14 +22,13 @@ class FGameUiStyle;
 class UMenuButtonWidget;
 
 UCLASS()
-class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableWidget {
+class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void apply_ui_style(FGameUiStyle const& style);
     void set_state_source(TFunction<FRunHudState()> source);
     void update_state();
-
-    TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
+    void select_button(bool end_selected);
 
     FSimpleMulticastDelegate end_requested;
     FSimpleMulticastDelegate pause_requested;

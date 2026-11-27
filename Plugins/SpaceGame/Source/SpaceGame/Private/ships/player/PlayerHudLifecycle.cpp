@@ -199,7 +199,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     created_widget->end_requested.AddUObject(&owner,
                                              &ASpaceGamePlayerController::return_to_level_select);
     created_widget->AddToPlayerScreen(100);
-    created_widget->ActivateWidget();
+    created_widget->select_button(false);
     return true;
 }
 void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) {
@@ -209,7 +209,6 @@ void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) 
 
     benchmark_hud_widget_->end_requested.RemoveAll(&owner);
     benchmark_hud_widget_->pause_requested.RemoveAll(&owner);
-    benchmark_hud_widget_->DeactivateWidget();
     benchmark_hud_widget_->RemoveFromParent();
     benchmark_hud_widget_ = nullptr;
 }
