@@ -4,6 +4,7 @@
   :title "big_battle"
   :description ""
   :player 'bp-testspaceship
+  :static-collision (list)
   :entities (list
     (entity
       :id 'bp-testspaceship
@@ -23,6 +24,18 @@
       :position '(702380.0 554930.0 155150.0)
       :rotation '(0.0 50.00000000000006 -0.0))
     (entity
+      :id 'capitalship-green-0
+      :archetype 'capital-ship
+      :team 'green
+      :position '(-8390.0 217420.0 0.0)
+      :rotation '(2.286061858078901e-14 49.999999999998984 1.0075417770579342e-14))
+    (entity
+      :id 'capitalship-green-1
+      :archetype 'capital-ship
+      :team 'green
+      :position '(5890.0 243240.0 0.0)
+      :rotation '(0.0 50.00000000000006 -0.0))
+    (entity
       :id 'capitalship-orange-0
       :archetype 'capital-ship
       :team 'orange
@@ -33,18 +46,6 @@
       :archetype 'capital-ship
       :team 'orange
       :position '(731060.0 -726460.0 155150.0)
-      :rotation '(0.0 50.00000000000006 -0.0))
-    (entity
-      :id 'capitalship-green-0
-      :archetype 'capital-ship
-      :team 'green
-      :position '(-8390.0 217420.0 0.0)
-      :rotation '(2.2860618580789027e-14 49.999999999998984 1.0075417770579347e-14))
-    (entity
-      :id 'capitalship-green-1
-      :archetype 'capital-ship
-      :team 'green
-      :position '(5890.0 243240.0 0.0)
       :rotation '(0.0 50.00000000000006 -0.0))
     (entity
       :id 'capitalship-red-0
@@ -89,11 +90,6 @@
       :position '(1427050.0 105610.0 43970.0)
       :rotation '(0.0 50.00000000000006 -0.0))
     (entity
-      :id 'fighter-green-0
-      :archetype 'fighter
-      :team 'green
-      :position '(-40370.0 142770.0 5810.0))
-    (entity
       :id 'fighter-blue-0
       :archetype 'fighter
       :team 'blue
@@ -134,50 +130,15 @@
       :team 'blue
       :position '(582130.0 577180.0 177180.0))
     (entity
+      :id 'fighter-green-0
+      :archetype 'fighter
+      :team 'green
+      :position '(-40370.0 142770.0 5810.0))
+    (entity
       :id 'fighter-green-1
       :archetype 'fighter
       :team 'green
       :position '(-40370.0 142770.0 23700.0))
-    (entity
-      :id 'fighter-green-2
-      :archetype 'fighter
-      :team 'green
-      :position '(-50620.0 126960.0 23700.0))
-    (entity
-      :id 'fighter-green-3
-      :archetype 'fighter
-      :team 'green
-      :position '(-50130.0 138900.0 23700.0))
-    (entity
-      :id 'fighter-green-4
-      :archetype 'fighter
-      :team 'green
-      :position '(-60220.0 133660.0 23700.0))
-    (entity
-      :id 'fighter-green-5
-      :archetype 'fighter
-      :team 'green
-      :position '(-59490.0 146410.0 23700.0))
-    (entity
-      :id 'fighter-green-6
-      :archetype 'fighter
-      :team 'green
-      :position '(-38650.0 120350.0 41310.0))
-    (entity
-      :id 'fighter-green-7
-      :archetype 'fighter
-      :team 'green
-      :position '(-39700.0 132030.0 41310.0))
-    (entity
-      :id 'fighter-green-8
-      :archetype 'fighter
-      :team 'green
-      :position '(-40370.0 142770.0 41310.0))
-    (entity
-      :id 'fighter-green-9
-      :archetype 'fighter
-      :team 'green
-      :position '(-50620.0 126960.0 41310.0))
     (entity
       :id 'fighter-green-10
       :archetype 'fighter
@@ -229,8 +190,48 @@
       :team 'green
       :position '(-38650.0 120350.0 23700.0))
     (entity
+      :id 'fighter-green-2
+      :archetype 'fighter
+      :team 'green
+      :position '(-50620.0 126960.0 23700.0))
+    (entity
       :id 'fighter-green-20
       :archetype 'fighter
       :team 'green
-      :position '(-39700.0 132030.0 23700.0)))
+      :position '(-39700.0 132030.0 23700.0))
+    (entity
+      :id 'fighter-green-3
+      :archetype 'fighter
+      :team 'green
+      :position '(-50130.0 138900.0 23700.0))
+    (entity
+      :id 'fighter-green-4
+      :archetype 'fighter
+      :team 'green
+      :position '(-60220.0 133660.0 23700.0))
+    (entity
+      :id 'fighter-green-5
+      :archetype 'fighter
+      :team 'green
+      :position '(-59490.0 146410.0 23700.0))
+    (entity
+      :id 'fighter-green-6
+      :archetype 'fighter
+      :team 'green
+      :position '(-38650.0 120350.0 41310.0))
+    (entity
+      :id 'fighter-green-7
+      :archetype 'fighter
+      :team 'green
+      :position '(-39700.0 132030.0 41310.0))
+    (entity
+      :id 'fighter-green-8
+      :archetype 'fighter
+      :team 'green
+      :position '(-40370.0 142770.0 41310.0))
+    (entity
+      :id 'fighter-green-9
+      :archetype 'fighter
+      :team 'green
+      :position '(-50620.0 126960.0 41310.0)))
   :settings (settings)))
