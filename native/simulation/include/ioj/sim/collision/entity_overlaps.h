@@ -9,8 +9,6 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <memory_resource>
-
 namespace ioj::sim::collision {
 
 /* **************************************** */
@@ -20,64 +18,21 @@ namespace ioj::sim::collision {
 // first_entities: EntityId
 // second_entities: EntityId
 struct EntityEntityOverlaps
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
-                                             entity_entity_overlaps::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_entity_overlaps::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_entity_overlaps::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_entity_overlaps::CompactView;
-    using CompactConstView = entity_entity_overlaps::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityEntityOverlaps() noexcept
-        : EntityEntityOverlaps{*std::pmr::get_default_resource()} {}
-    explicit EntityEntityOverlaps(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityEntityOverlaps() { Operations::release_storage(*this); }
-
-    EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
-    EntityEntityOverlaps(EntityEntityOverlaps&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityEntityOverlaps const&) -> EntityEntityOverlaps& = delete;
-    auto operator=(EntityEntityOverlaps&& other) -> EntityEntityOverlaps& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_entity_overlaps::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityEntityOverlaps,
+          entity_entity_overlaps::ColumnTypes,
+          native_soa::Owner<entity_entity_overlaps::CompactView,
+                            entity_entity_overlaps::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityEntityOverlaps,
+        entity_entity_overlaps::ColumnTypes,
+        native_soa::Owner<entity_entity_overlaps::CompactView,
+                          entity_entity_overlaps::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto first_entities(this auto& self) { return self.view().first_entities(); }
     auto second_entities(this auto& self) { return self.view().second_entities(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
-                                               entity_entity_overlaps::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -87,63 +42,20 @@ struct EntityEntityOverlaps
 // entities: EntityId
 // static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
 struct EntityStaticOverlaps
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
-                                             entity_static_overlaps::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_static_overlaps::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_static_overlaps::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_static_overlaps::CompactView;
-    using CompactConstView = entity_static_overlaps::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityStaticOverlaps() noexcept
-        : EntityStaticOverlaps{*std::pmr::get_default_resource()} {}
-    explicit EntityStaticOverlaps(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityStaticOverlaps() { Operations::release_storage(*this); }
-
-    EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;
-    EntityStaticOverlaps(EntityStaticOverlaps&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityStaticOverlaps const&) -> EntityStaticOverlaps& = delete;
-    auto operator=(EntityStaticOverlaps&& other) -> EntityStaticOverlaps& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_static_overlaps::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityStaticOverlaps,
+          entity_static_overlaps::ColumnTypes,
+          native_soa::Owner<entity_static_overlaps::CompactView,
+                            entity_static_overlaps::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityStaticOverlaps,
+        entity_static_overlaps::ColumnTypes,
+        native_soa::Owner<entity_static_overlaps::CompactView,
+                          entity_static_overlaps::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entities(this auto& self) { return self.view().entities(); }
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
-                                               entity_static_overlaps::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

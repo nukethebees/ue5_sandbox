@@ -14,7 +14,6 @@
 #include "level_capital_spawn_events_compact_view.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -34,52 +33,17 @@ namespace ioj::sim {
 // initial_fighter_spawn_delays: ioj::NonNegativeFinite<float>
 // fighter_spawn_cooldowns: ioj::NonNegativeFinite<float>
 struct LevelCapitalSpawnEvents
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LevelCapitalSpawnEvents,
-                                             level_capital_spawn_events::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = level_capital_spawn_events::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = level_capital_spawn_events::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = level_capital_spawn_events::CompactView;
-    using CompactConstView = level_capital_spawn_events::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LevelCapitalSpawnEvents() noexcept
-        : LevelCapitalSpawnEvents{*std::pmr::get_default_resource()} {}
-    explicit LevelCapitalSpawnEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LevelCapitalSpawnEvents() { Operations::release_storage(*this); }
-
-    LevelCapitalSpawnEvents(LevelCapitalSpawnEvents const&) = delete;
-    LevelCapitalSpawnEvents(LevelCapitalSpawnEvents&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LevelCapitalSpawnEvents const&) -> LevelCapitalSpawnEvents& = delete;
-    auto operator=(LevelCapitalSpawnEvents&& other) -> LevelCapitalSpawnEvents& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = level_capital_spawn_events::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LevelCapitalSpawnEvents,
+          level_capital_spawn_events::ColumnTypes,
+          native_soa::Owner<level_capital_spawn_events::CompactView,
+                            level_capital_spawn_events::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LevelCapitalSpawnEvents,
+        level_capital_spawn_events::ColumnTypes,
+        native_soa::Owner<level_capital_spawn_events::CompactView,
+                          level_capital_spawn_events::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_rotations(this auto& self) { return self.view().view_rotations(); }
@@ -89,10 +53,6 @@ struct LevelCapitalSpawnEvents
         return self.view().initial_fighter_spawn_delays();
     }
     auto fighter_spawn_cooldowns(this auto& self) { return self.view().fighter_spawn_cooldowns(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelCapitalSpawnEvents,
-                                               level_capital_spawn_events::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -131,9 +91,5 @@ struct LevelCapitalSpawnEvents
             new_fighter_spawn_cooldowns);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

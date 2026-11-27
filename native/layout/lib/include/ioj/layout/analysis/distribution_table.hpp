@@ -11,7 +11,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cstdint>
-#include <memory_resource>
 #include <optional>
 
 namespace ioj::layout {
@@ -31,52 +30,16 @@ namespace ioj::layout {
 // expected_selected_extent_bytes: std::optional<long double>
 // expected_selected_slack_bytes: std::optional<long double>
 struct DistributionTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<DistributionTable,
-                                             distribution_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = distribution_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = distribution_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = distribution_table::CompactView;
-    using CompactConstView = distribution_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    DistributionTable() noexcept
-        : DistributionTable{*std::pmr::get_default_resource()} {}
-    explicit DistributionTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~DistributionTable() { Operations::release_storage(*this); }
-
-    DistributionTable(DistributionTable const&) = delete;
-    DistributionTable(DistributionTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(DistributionTable const&) -> DistributionTable& = delete;
-    auto operator=(DistributionTable&& other) -> DistributionTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = distribution_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          DistributionTable,
+          distribution_table::ColumnTypes,
+          native_soa::Owner<distribution_table::CompactView,
+                            distribution_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DistributionTable,
+        distribution_table::ColumnTypes,
+        native_soa::Owner<distribution_table::CompactView, distribution_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto analysis(this auto& self) { return self.view().analysis(); }
     auto entries(this auto& self) { return self.view().entries(); }
     auto element_count(this auto& self) { return self.view().element_count(); }
@@ -91,15 +54,8 @@ struct DistributionTable
     auto expected_selected_slack_bytes(this auto& self) {
         return self.view().expected_selected_slack_bytes();
     }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<DistributionTable,
-                                                                 distribution_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

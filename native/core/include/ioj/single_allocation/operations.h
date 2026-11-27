@@ -43,6 +43,7 @@ struct OwnerRowOperations;
 
 template <typename Self, typename Base, typename... Ts>
 struct OwnerRowOperations<Self, ColumnTypes<Ts...>, Base> : Base {
+    using Base::Base;
     void set(std::uint32_t index, Ts const... values) {
         assign_row(static_cast<Self&>(*this), index, values...);
     }
@@ -55,19 +56,6 @@ struct OwnerRowOperations<Self, ColumnTypes<Ts...>, Base> : Base {
         return index;
     }
 };
-
-template <typename Data>
-auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {
-    Data::with_columns(pointers, [&](auto*& first, auto*&... rest) {
-        if (first == nullptr) {
-            pointers = {};
-            return;
-        }
-        first += offset;
-        ((rest += offset), ...);
-    });
-    return pointers;
-}
 
 template <bool Overlapping, typename T>
 void transfer_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
@@ -87,10 +75,9 @@ template <bool Overlapping, typename Destination, typename Source>
 void transfer_columns(Destination const& destination,
                       Source const& source,
                       std::uint32_t count) noexcept {
-    Destination::with_columns(destination, [&](auto*... dst) {
-        Source::with_columns(
-            source, [&](auto*... src) { (transfer_n<Overlapping>(dst, src, count), ...); });
-    });
+    auto const& [... dst]{destination};
+    auto const& [... src]{source};
+    (transfer_n<Overlapping>(dst, src, count), ...);
 }
 
 // Generated owners supply state and typed column pointers.
@@ -103,14 +90,14 @@ struct StorageOperations {
     /* **************************************** */
     template <typename Byte, StorageOwner Self>
     auto make_data_unchecked(this Self const&, Byte* data, std::size_t blocks) noexcept {
-        return Self::Layout::template make_data<typename Self::template DataPointers<Byte>>(data,
-                                                                                            blocks);
+        return Self::Layout::template make_data<typename Self::Layout::template Pointers<Byte>>(
+            data, blocks);
     }
     template <StorageOwner Self>
     auto data(this Self& self) noexcept {
         using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
         if (self.data_ == nullptr) {
-            return typename Self::template DataPointers<Byte>{};
+            return typename Self::Layout::template Pointers<Byte>{};
         }
         return self.make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
     }
@@ -127,7 +114,8 @@ struct StorageOperations {
         requires SoaSourceFor<Source, Self, StorageSize<Self>>
     auto source_pointers(this Self const&, Source const& source) {
         return Self::soa_schema::with_columns(source, [](auto const&... columns) {
-            return typename Self::template DataPointers<std::byte const>{source_data(columns)...};
+            return
+                typename Self::Layout::template Pointers<std::byte const>{source_data(columns)...};
         });
     }
 
@@ -140,9 +128,9 @@ struct StorageOperations {
                                    StorageSize<Self> first,
                                    StorageSize<Self> count) {
         auto columns{self.data(first)};
-        decltype(columns)::with_columns(columns, [&](auto*... column) {
-            (std::uninitialized_value_construct_n(column, count), ...);
-        });
+        template for (auto* column : columns) {
+            std::uninitialized_value_construct_n(column, count);
+        }
     }
 
     template <typename Owner>
@@ -415,8 +403,9 @@ struct StorageOperations {
     void apply_permutation(this Self& self, std::span<StorageSize<Self>> indices) {
         assert(indices.size() == self.num_);
         auto columns{self.data()};
-        decltype(columns)::with_columns(
-            columns, [&](auto*... column) { ColumnPermutation{self.num_, indices}(column...); });
+        template for (auto* column : columns) {
+            ioj::apply_permutation(std::span{column, self.num_}, indices);
+        }
     }
     template <typename Self, typename Compare>
     void sort(this Self& self, Compare&& compare, std::span<std::uint32_t> indices) {

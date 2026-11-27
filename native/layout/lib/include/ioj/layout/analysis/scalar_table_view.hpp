@@ -17,7 +17,6 @@
 #include "lispb/schema/indices.h"
 
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace scalar_table {
@@ -25,46 +24,21 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<lispb::schema::TypeId,
-                                    std::optional<ioj::layout::IntegerDomain>,
-                                    std::optional<ioj::layout::EnumDomain>,
-                                    std::optional<ioj::layout::OptionalSentinelEncoding>,
-                                    std::optional<ioj::layout::OptionalPresenceEncoding>,
-                                    std::optional<ioj::layout::QuantizedEncoding>,
-                                    std::optional<ioj::layout::FixedEncoding>,
-                                    std::optional<ioj::layout::FloatEncoding>,
-                                    std::optional<ioj::layout::VarintEncoding>>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<lispb::schema::TypeId>* type{};
-    Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain{};
-    Element<std::optional<ioj::layout::EnumDomain>>* enum_domain{};
-    Element<std::optional<ioj::layout::OptionalSentinelEncoding>>* optional_sentinel_encoding{};
-    Element<std::optional<ioj::layout::OptionalPresenceEncoding>>* optional_presence_encoding{};
-    Element<std::optional<ioj::layout::QuantizedEncoding>>* quantized_encoding{};
-    Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding{};
-    Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding{};
-    Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.type,
-                    self.integer_domain,
-                    self.enum_domain,
-                    self.optional_sentinel_encoding,
-                    self.optional_presence_encoding,
-                    self.quantized_encoding,
-                    self.fixed_encoding,
-                    self.float_encoding,
-                    self.varint_encoding);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<lispb::schema::TypeId,
+                                       std::optional<ioj::layout::IntegerDomain>,
+                                       std::optional<ioj::layout::EnumDomain>,
+                                       std::optional<ioj::layout::OptionalSentinelEncoding>,
+                                       std::optional<ioj::layout::OptionalPresenceEncoding>,
+                                       std::optional<ioj::layout::QuantizedEncoding>,
+                                       std::optional<ioj::layout::FixedEncoding>,
+                                       std::optional<ioj::layout::FloatEncoding>,
+                                       std::optional<ioj::layout::VarintEncoding>>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -85,8 +59,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -95,19 +69,15 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto type() const { return this->column(this->columns_.type); }
-    auto integer_domain() const { return this->column(this->columns_.integer_domain); }
-    auto enum_domain() const { return this->column(this->columns_.enum_domain); }
-    auto optional_sentinel_encoding() const {
-        return this->column(this->columns_.optional_sentinel_encoding);
-    }
-    auto optional_presence_encoding() const {
-        return this->column(this->columns_.optional_presence_encoding);
-    }
-    auto quantized_encoding() const { return this->column(this->columns_.quantized_encoding); }
-    auto fixed_encoding() const { return this->column(this->columns_.fixed_encoding); }
-    auto float_encoding() const { return this->column(this->columns_.float_encoding); }
-    auto varint_encoding() const { return this->column(this->columns_.varint_encoding); }
+    auto type() const { return this->template column<0LL>(); }
+    auto integer_domain() const { return this->template column<1LL>(); }
+    auto enum_domain() const { return this->template column<2LL>(); }
+    auto optional_sentinel_encoding() const { return this->template column<3LL>(); }
+    auto optional_presence_encoding() const { return this->template column<4LL>(); }
+    auto quantized_encoding() const { return this->template column<5LL>(); }
+    auto fixed_encoding() const { return this->template column<6LL>(); }
+    auto float_encoding() const { return this->template column<7LL>(); }
+    auto varint_encoding() const { return this->template column<8LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

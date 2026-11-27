@@ -16,7 +16,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 #include <string_view>
 
 namespace ioj::layout {
@@ -50,52 +49,16 @@ namespace ioj::layout {
 // unused_codes: std::optional<std::uint64_t>
 // codes: ioj::layout::RowRange
 struct PackedFieldTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<PackedFieldTable,
-                                             packed_field_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = packed_field_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = packed_field_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = packed_field_table::CompactView;
-    using CompactConstView = packed_field_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PackedFieldTable() noexcept
-        : PackedFieldTable{*std::pmr::get_default_resource()} {}
-    explicit PackedFieldTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PackedFieldTable() { Operations::release_storage(*this); }
-
-    PackedFieldTable(PackedFieldTable const&) = delete;
-    PackedFieldTable(PackedFieldTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PackedFieldTable const&) -> PackedFieldTable& = delete;
-    auto operator=(PackedFieldTable&& other) -> PackedFieldTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = packed_field_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PackedFieldTable,
+          packed_field_table::ColumnTypes,
+          native_soa::Owner<packed_field_table::CompactView,
+                            packed_field_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PackedFieldTable,
+        packed_field_table::ColumnTypes,
+        native_soa::Owner<packed_field_table::CompactView, packed_field_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto parent(this auto& self) { return self.view().parent(); }
     auto segment(this auto& self) { return self.view().segment(); }
     auto name(this auto& self) { return self.view().name(); }
@@ -120,15 +83,8 @@ struct PackedFieldTable
     auto minimum_required_bits(this auto& self) { return self.view().minimum_required_bits(); }
     auto unused_codes(this auto& self) { return self.view().unused_codes(); }
     auto codes(this auto& self) { return self.view().codes(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PackedFieldTable,
-                                                                 packed_field_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

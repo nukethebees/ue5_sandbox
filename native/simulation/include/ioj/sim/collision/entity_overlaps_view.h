@@ -8,30 +8,18 @@
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 
-#include <type_traits>
-
 namespace ioj::sim::collision {
 namespace entity_entity_overlaps {
 struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId, EntityId>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* first_entities{};
-    Element<EntityId>* second_entities{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.first_entities, self.second_entities);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<EntityId, EntityId>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -44,8 +32,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -54,8 +42,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first_entities() const { return this->column(this->columns_.first_entities); }
-    auto second_entities() const { return this->column(this->columns_.second_entities); }
+    auto first_entities() const { return this->template column<0LL>(); }
+    auto second_entities() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -77,22 +65,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId, StaticGeometryIndex>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entities{};
-    Element<StaticGeometryIndex>* static_geometry_indices{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entities, self.static_geometry_indices);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<EntityId, StaticGeometryIndex>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -105,8 +83,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -115,10 +93,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->column(this->columns_.entities); }
-    auto static_geometry_indices() const {
-        return this->column(this->columns_.static_geometry_indices);
-    }
+    auto entities() const { return this->template column<0LL>(); }
+    auto static_geometry_indices() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

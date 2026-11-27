@@ -9,7 +9,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj {
 
@@ -21,56 +20,18 @@ namespace ioj {
 // yaws: float
 // rolls: float
 struct Rotators3f
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<Rotators3f, rotators3f::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = rotators3f::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = rotators3f::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = rotators3f::CompactView;
-    using CompactConstView = rotators3f::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    Rotators3f() noexcept
-        : Rotators3f{*std::pmr::get_default_resource()} {}
-    explicit Rotators3f(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~Rotators3f() { Operations::release_storage(*this); }
-
-    Rotators3f(Rotators3f const&) = delete;
-    Rotators3f(Rotators3f&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(Rotators3f const&) -> Rotators3f& = delete;
-    auto operator=(Rotators3f&& other) -> Rotators3f& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = rotators3f::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          Rotators3f,
+          rotators3f::ColumnTypes,
+          native_soa::Owner<rotators3f::CompactView, rotators3f::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        Rotators3f,
+        rotators3f::ColumnTypes,
+        native_soa::Owner<rotators3f::CompactView, rotators3f::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto pitches(this auto& self) { return self.view().pitches(); }
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto rolls(this auto& self) { return self.view().rolls(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Rotators3f, rotators3f::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Rotator3f const value) {
@@ -79,9 +40,5 @@ struct Rotators3f
     size_type add(Rotator3f const value) { return add(value.pitch, value.yaw, value.roll); }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/layout/analysis/distribution_entry_table_view.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -20,13 +21,7 @@ namespace distribution_entry_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<std::optional<std::size_t>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t component_column{0ULL};
     static constexpr std::size_t value_column{1ULL};
     static constexpr std::size_t weight_column{2ULL};

@@ -11,35 +11,19 @@
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 
-#include <type_traits>
-
 namespace ioj::sim {
 namespace entity_history {
 struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<::ioj::Team, KillCount, LifeState, SimTick, Vector3f>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<::ioj::Team>* teams{};
-    Element<KillCount>* kills{};
-    Element<LifeState>* life_state{};
-    Element<SimTick>* death_ticks{};
-    Element<Vector3f>* death_locations{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(
-            self.teams, self.kills, self.life_state, self.death_ticks, self.death_locations);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<::ioj::Team, KillCount, LifeState, SimTick, Vector3f>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -56,8 +40,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -66,11 +50,11 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto kills() const { return this->column(this->columns_.kills); }
-    auto life_state() const { return this->column(this->columns_.life_state); }
-    auto death_ticks() const { return this->column(this->columns_.death_ticks); }
-    auto death_locations() const { return this->column(this->columns_.death_locations); }
+    auto teams() const { return this->template column<0LL>(); }
+    auto kills() const { return this->template column<1LL>(); }
+    auto life_state() const { return this->template column<2LL>(); }
+    auto death_ticks() const { return this->template column<3LL>(); }
+    auto death_locations() const { return this->template column<4LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

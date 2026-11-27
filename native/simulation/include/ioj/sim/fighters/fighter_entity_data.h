@@ -13,7 +13,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -71,52 +70,16 @@ namespace ioj::sim {
 // target_radii: float
 // carrier_launched: std::uint8_t
 struct FighterEntityData
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<FighterEntityData,
-                                             fighter_entity_data::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = fighter_entity_data::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = fighter_entity_data::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = fighter_entity_data::CompactView;
-    using CompactConstView = fighter_entity_data::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    FighterEntityData() noexcept
-        : FighterEntityData{*std::pmr::get_default_resource()} {}
-    explicit FighterEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~FighterEntityData() { Operations::release_storage(*this); }
-
-    FighterEntityData(FighterEntityData const&) = delete;
-    FighterEntityData(FighterEntityData&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(FighterEntityData const&) -> FighterEntityData& = delete;
-    auto operator=(FighterEntityData&& other) -> FighterEntityData& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = fighter_entity_data::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          FighterEntityData,
+          fighter_entity_data::ColumnTypes,
+          native_soa::Owner<fighter_entity_data::CompactView,
+                            fighter_entity_data::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        FighterEntityData,
+        fighter_entity_data::ColumnTypes,
+        native_soa::Owner<fighter_entity_data::CompactView, fighter_entity_data::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_ids(this auto& self) { return self.view().entity_ids(); }
     auto integral_biases(this auto& self) { return self.view().integral_biases(); }
     auto float_biases(this auto& self) { return self.view().float_biases(); }
@@ -166,9 +129,6 @@ struct FighterEntityData
     auto target_distances(this auto& self) { return self.view().target_distances(); }
     auto target_radii(this auto& self) { return self.view().target_radii(); }
     auto carrier_launched(this auto& self) { return self.view().carrier_launched(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<FighterEntityData,
-                                                                 fighter_entity_data::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -297,9 +257,5 @@ struct FighterEntityData
             new_carrier_launched);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

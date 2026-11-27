@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/math_types.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -20,7 +21,8 @@ namespace world_aabbs {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
+struct Layout
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t min_points_xs_column{0ULL};
     static constexpr std::size_t min_points_ys_column{1ULL};
     static constexpr std::size_t min_points_zs_column{2ULL};

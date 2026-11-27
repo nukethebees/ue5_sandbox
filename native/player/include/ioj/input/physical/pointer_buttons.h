@@ -11,7 +11,6 @@
 #include "pointer_buttons_compact_view.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj {
 
@@ -24,65 +23,22 @@ namespace ioj {
 // states: ioj::ButtonState
 // clicks: std::uint8_t
 struct PhysicalPointerButtonsRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<PhysicalPointerButtonsRows,
-                                             physical_pointer_buttons_rows::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = physical_pointer_buttons_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = physical_pointer_buttons_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = physical_pointer_buttons_rows::CompactView;
-    using CompactConstView = physical_pointer_buttons_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PhysicalPointerButtonsRows() noexcept
-        : PhysicalPointerButtonsRows{*std::pmr::get_default_resource()} {}
-    explicit PhysicalPointerButtonsRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PhysicalPointerButtonsRows() { Operations::release_storage(*this); }
-
-    PhysicalPointerButtonsRows(PhysicalPointerButtonsRows const&) = delete;
-    PhysicalPointerButtonsRows(PhysicalPointerButtonsRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PhysicalPointerButtonsRows const&) -> PhysicalPointerButtonsRows& = delete;
-    auto operator=(PhysicalPointerButtonsRows&& other) -> PhysicalPointerButtonsRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = physical_pointer_buttons_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PhysicalPointerButtonsRows,
+          physical_pointer_buttons_rows::ColumnTypes,
+          native_soa::Owner<physical_pointer_buttons_rows::CompactView,
+                            physical_pointer_buttons_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PhysicalPointerButtonsRows,
+        physical_pointer_buttons_rows::ColumnTypes,
+        native_soa::Owner<physical_pointer_buttons_rows::CompactView,
+                          physical_pointer_buttons_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto positions(this auto& self) { return self.view().positions(); }
     auto keys(this auto& self) { return self.view().keys(); }
     auto states(this auto& self) { return self.view().states(); }
     auto clicks(this auto& self) { return self.view().clicks(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<PhysicalPointerButtonsRows,
-                                               physical_pointer_buttons_rows::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

@@ -9,7 +9,6 @@
 #include "world_aabbs_compact_view.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim::collision {
 
@@ -24,55 +23,17 @@ namespace ioj::sim::collision {
 // max_points_ys: float
 // max_points_zs: float
 struct WorldAABBs
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<WorldAABBs, world_aabbs::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = world_aabbs::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = world_aabbs::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = world_aabbs::CompactView;
-    using CompactConstView = world_aabbs::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    WorldAABBs() noexcept
-        : WorldAABBs{*std::pmr::get_default_resource()} {}
-    explicit WorldAABBs(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~WorldAABBs() { Operations::release_storage(*this); }
-
-    WorldAABBs(WorldAABBs const&) = delete;
-    WorldAABBs(WorldAABBs&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
-    auto operator=(WorldAABBs&& other) -> WorldAABBs& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = world_aabbs::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          WorldAABBs,
+          world_aabbs::ColumnTypes,
+          native_soa::Owner<world_aabbs::CompactView, world_aabbs::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        WorldAABBs,
+        world_aabbs::ColumnTypes,
+        native_soa::Owner<world_aabbs::CompactView, world_aabbs::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<WorldAABBs, world_aabbs::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {
@@ -86,9 +47,5 @@ struct WorldAABBs
         set(index, new_min_points, new_max_points);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

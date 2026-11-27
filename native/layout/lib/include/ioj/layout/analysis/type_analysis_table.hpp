@@ -16,8 +16,6 @@
 
 #include "lispb/schema/indices.h"
 
-#include <memory_resource>
-
 namespace ioj::layout {
 
 /* **************************************** */
@@ -32,52 +30,16 @@ namespace ioj::layout {
 // packed: std::optional<ioj::layout::PackedLayout>
 // soa: std::optional<ioj::layout::SoaLayout>
 struct TypeAnalysisTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<TypeAnalysisTable,
-                                             type_analysis_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = type_analysis_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = type_analysis_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = type_analysis_table::CompactView;
-    using CompactConstView = type_analysis_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    TypeAnalysisTable() noexcept
-        : TypeAnalysisTable{*std::pmr::get_default_resource()} {}
-    explicit TypeAnalysisTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~TypeAnalysisTable() { Operations::release_storage(*this); }
-
-    TypeAnalysisTable(TypeAnalysisTable const&) = delete;
-    TypeAnalysisTable(TypeAnalysisTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(TypeAnalysisTable const&) -> TypeAnalysisTable& = delete;
-    auto operator=(TypeAnalysisTable&& other) -> TypeAnalysisTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = type_analysis_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          TypeAnalysisTable,
+          type_analysis_table::ColumnTypes,
+          native_soa::Owner<type_analysis_table::CompactView,
+                            type_analysis_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        TypeAnalysisTable,
+        type_analysis_table::ColumnTypes,
+        native_soa::Owner<type_analysis_table::CompactView, type_analysis_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto schema_type(this auto& self) { return self.view().schema_type(); }
     auto scenario(this auto& self) { return self.view().scenario(); }
     auto physical(this auto& self) { return self.view().physical(); }
@@ -85,16 +47,9 @@ struct TypeAnalysisTable
     auto aggregate(this auto& self) { return self.view().aggregate(); }
     auto packed(this auto& self) { return self.view().packed(); }
     auto soa(this auto& self) { return self.view().soa(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<TypeAnalysisTable,
-                                                                 type_analysis_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);
     AnalysisId find(lispb::schema::TypeId type, ScenarioId scenario_id) const;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

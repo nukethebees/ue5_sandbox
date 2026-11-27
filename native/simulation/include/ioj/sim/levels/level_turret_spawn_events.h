@@ -14,7 +14,6 @@
 #include "level_turret_spawn_events_compact_view.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -33,62 +32,23 @@ namespace ioj::sim {
 // healths: Health
 // laser_damages: ioj::NonNegative<std::int32_t>
 struct LevelTurretSpawnEvents
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
-                                             level_turret_spawn_events::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = level_turret_spawn_events::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = level_turret_spawn_events::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = level_turret_spawn_events::CompactView;
-    using CompactConstView = level_turret_spawn_events::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LevelTurretSpawnEvents() noexcept
-        : LevelTurretSpawnEvents{*std::pmr::get_default_resource()} {}
-    explicit LevelTurretSpawnEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LevelTurretSpawnEvents() { Operations::release_storage(*this); }
-
-    LevelTurretSpawnEvents(LevelTurretSpawnEvents const&) = delete;
-    LevelTurretSpawnEvents(LevelTurretSpawnEvents&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LevelTurretSpawnEvents const&) -> LevelTurretSpawnEvents& = delete;
-    auto operator=(LevelTurretSpawnEvents&& other) -> LevelTurretSpawnEvents& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = level_turret_spawn_events::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LevelTurretSpawnEvents,
+          level_turret_spawn_events::ColumnTypes,
+          native_soa::Owner<level_turret_spawn_events::CompactView,
+                            level_turret_spawn_events::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LevelTurretSpawnEvents,
+        level_turret_spawn_events::ColumnTypes,
+        native_soa::Owner<level_turret_spawn_events::CompactView,
+                          level_turret_spawn_events::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_rotations(this auto& self) { return self.view().view_rotations(); }
     auto teams(this auto& self) { return self.view().teams(); }
     auto healths(this auto& self) { return self.view().healths(); }
     auto laser_damages(this auto& self) { return self.view().laser_damages(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
-                                               level_turret_spawn_events::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -123,9 +83,5 @@ struct LevelTurretSpawnEvents
             new_laser_damages);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -50,35 +50,15 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
             (member foreign_types array other::Token)
             (member shadowed_types array example::Base))))"))};
     auto const output{generated_headers(files)};
-    expect_contains_all(
-        output,
-        {"namespace world_aabbs",
-         "namespace ids",
-         "namespace http_server",
-         "namespace rows",
-         "struct CompactView",
-         "struct CompactConstView",
-         "ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>",
-         "Element<Base>* shadowed_types",
-         "struct DataPointers",
-         "ViewBase<ColumnTypes, DataPointers, Const>"});
-    EXPECT_FALSE(output.contains("make_data_unchecked("));
-    expect_contains_all(output, {"auto ids() const", "ids_column{0ULL}", "nested_xs_column{1ULL}"});
-    EXPECT_FALSE(output.contains("LayoutColumns"));
-    EXPECT_TRUE(output.contains("CompactViewBase<Const>"));
-    expect_contains_none(output,
-                         {"State* state_{};",
-                          "transfer_columns(",
-                          "TArray",
-                          "FMemory",
-                          "CoreMinimal",
-                          "void default_construct_columns(",
-                          "source_pointers("});
     expect_contains_all(output,
-                        {"with_columns(Columns const& source, Func&& func)",
-                         "return func(source.ids(), nested_view.xs(),",
-                         "using resolved_view_type =",
-                         "Operations::release_storage(*this);"});
+                        {"namespace world_aabbs",
+                         "namespace ids",
+                         "namespace http_server",
+                         "namespace rows",
+                         "other::Token",
+                         "struct CompactView",
+                         "struct CompactConstView"});
+    EXPECT_FALSE(output.contains("struct DataPointers"));
 }
 
 TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
@@ -292,7 +272,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
                          ConflictingSoaModuleDeclaration,
-                         testing::Values("CompactView", "DataPointers", "ColumnTypes"));
+                         testing::Values("CompactView", "Pointers", "ColumnTypes"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(

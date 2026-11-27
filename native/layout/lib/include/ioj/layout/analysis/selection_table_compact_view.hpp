@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analysis/selection_table_view.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -21,13 +22,7 @@ namespace selection_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<std::size_t,
-                                              AccessOperation,
-                                              PayloadFootprint,
-                                              PayloadFootprint,
-                                              RegionFootprint,
-                                              RegionFootprint,
-                                              std::optional<std::uint64_t>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t source_column{0ULL};
     static constexpr std::size_t operation_column{1ULL};
     static constexpr std::size_t bytes_column{2ULL};

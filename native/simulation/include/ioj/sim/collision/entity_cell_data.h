@@ -12,7 +12,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim::collision {
 
@@ -34,60 +33,20 @@ namespace ioj::sim::collision {
 // max_cells_zs: std::int32_t
 // entity_ids: EntityId
 struct EntityCellData
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityCellData,
-                                             entity_cell_data::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_cell_data::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_cell_data::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_cell_data::CompactView;
-    using CompactConstView = entity_cell_data::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityCellData() noexcept
-        : EntityCellData{*std::pmr::get_default_resource()} {}
-    explicit EntityCellData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityCellData() { Operations::release_storage(*this); }
-
-    EntityCellData(EntityCellData const&) = delete;
-    EntityCellData(EntityCellData&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityCellData const&) -> EntityCellData& = delete;
-    auto operator=(EntityCellData&& other) -> EntityCellData& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_cell_data::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityCellData,
+          entity_cell_data::ColumnTypes,
+          native_soa::Owner<entity_cell_data::CompactView, entity_cell_data::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityCellData,
+        entity_cell_data::ColumnTypes,
+        native_soa::Owner<entity_cell_data::CompactView, entity_cell_data::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }
     auto view_min_cells(this auto& self) { return self.view().view_min_cells(); }
     auto view_max_cells(this auto& self) { return self.view().view_max_cells(); }
     auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityCellData,
-                                                                 entity_cell_data::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -113,9 +72,5 @@ struct EntityCellData
         set(index, new_min_points, new_max_points, new_min_cells, new_max_cells, new_entity_ids);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

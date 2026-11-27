@@ -12,7 +12,6 @@
 #include "lispb/schema/enum_signedness.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::layout {
 
@@ -27,66 +26,23 @@ namespace ioj::layout {
 // provenance: lispb::StringId
 // origin: ioj::layout::FactOrigin
 struct PhysicalFactTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
-                                             physical_fact_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = physical_fact_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = physical_fact_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = physical_fact_table::CompactView;
-    using CompactConstView = physical_fact_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PhysicalFactTable() noexcept
-        : PhysicalFactTable{*std::pmr::get_default_resource()} {}
-    explicit PhysicalFactTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PhysicalFactTable() { Operations::release_storage(*this); }
-
-    PhysicalFactTable(PhysicalFactTable const&) = delete;
-    PhysicalFactTable(PhysicalFactTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PhysicalFactTable const&) -> PhysicalFactTable& = delete;
-    auto operator=(PhysicalFactTable&& other) -> PhysicalFactTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = physical_fact_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PhysicalFactTable,
+          physical_fact_table::ColumnTypes,
+          native_soa::Owner<physical_fact_table::CompactView,
+                            physical_fact_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PhysicalFactTable,
+        physical_fact_table::ColumnTypes,
+        native_soa::Owner<physical_fact_table::CompactView, physical_fact_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto size_bytes(this auto& self) { return self.view().size_bytes(); }
     auto alignment_bytes(this auto& self) { return self.view().alignment_bytes(); }
     auto signedness(this auto& self) { return self.view().signedness(); }
     auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
     auto provenance(this auto& self) { return self.view().provenance(); }
     auto origin(this auto& self) { return self.view().origin(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
-                                                                 physical_fact_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

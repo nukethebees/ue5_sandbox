@@ -5,6 +5,7 @@
 
 #include "ioj/layout/analysis/code_table_view.hpp"
 #include "ioj/layout/analyzer/enum_code_value.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -22,11 +23,7 @@ namespace code_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<std::string_view,
-                                              std::uint8_t,
-                                              std::uint8_t,
-                                              std::optional<ioj::layout::EnumCodeValue>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t name_column{0ULL};
     static constexpr std::size_t sentinel_column{1ULL};
     static constexpr std::size_t count_sentinel_column{2ULL};

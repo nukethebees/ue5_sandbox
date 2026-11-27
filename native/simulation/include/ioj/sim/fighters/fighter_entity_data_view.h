@@ -21,7 +21,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<EntityId,
                                                     std::uint32_t,
                                                     float,
                                                     float,
@@ -71,115 +74,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId,
                                                     float,
                                                     std::uint8_t>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entity_ids{};
-    Element<std::uint32_t>* integral_biases{};
-    Element<float>* float_biases{};
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* desired_move_locations_xs{};
-    Element<float>* desired_move_locations_ys{};
-    Element<float>* desired_move_locations_zs{};
-    Element<float>* aim_directions_xs{};
-    Element<float>* aim_directions_ys{};
-    Element<float>* aim_directions_zs{};
-    Element<float>* planned_aim_directions_xs{};
-    Element<float>* planned_aim_directions_ys{};
-    Element<float>* planned_aim_directions_zs{};
-    Element<float>* desired_aiming_directions_xs{};
-    Element<float>* desired_aiming_directions_ys{};
-    Element<float>* desired_aiming_directions_zs{};
-    Element<float>* movement_directions_xs{};
-    Element<float>* movement_directions_ys{};
-    Element<float>* movement_directions_zs{};
-    Element<float>* velocities_xs{};
-    Element<float>* velocities_ys{};
-    Element<float>* velocities_zs{};
-    Element<float>* move_distances{};
-    Element<float>* speeds{};
-    Element<::ioj::Team>* teams{};
-    Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
-    Element<std::int16_t>* navigation_update_countdowns_periods{};
-    Element<float>* separation_steering_xs{};
-    Element<float>* separation_steering_ys{};
-    Element<float>* separation_steering_zs{};
-    Element<fighters::NavigationRiskCode>* navigation_risk_tiers{};
-    Element<fighters::NavigationScanCount>* navigation_lower_risk_scan_counts{};
-    Element<fighters::AvoidanceChoice>* avoidance_choice_indices{};
-    Element<fighters::NavigationScanCount>* avoidance_clear_scan_counts{};
-    Element<std::int16_t>* attack_cooldowns{};
-    Element<EntityId>* target_ids{};
-    Element<float>* target_locations_xs{};
-    Element<float>* target_locations_ys{};
-    Element<float>* target_locations_zs{};
-    Element<float>* target_velocities_xs{};
-    Element<float>* target_velocities_ys{};
-    Element<float>* target_velocities_zs{};
-    Element<float>* intercept_times{};
-    Element<float>* target_distance_sq{};
-    Element<float>* target_distances{};
-    Element<float>* target_radii{};
-    Element<std::uint8_t>* carrier_launched{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_ids,
-                    self.integral_biases,
-                    self.float_biases,
-                    self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.desired_move_locations_xs,
-                    self.desired_move_locations_ys,
-                    self.desired_move_locations_zs,
-                    self.aim_directions_xs,
-                    self.aim_directions_ys,
-                    self.aim_directions_zs,
-                    self.planned_aim_directions_xs,
-                    self.planned_aim_directions_ys,
-                    self.planned_aim_directions_zs,
-                    self.desired_aiming_directions_xs,
-                    self.desired_aiming_directions_ys,
-                    self.desired_aiming_directions_zs,
-                    self.movement_directions_xs,
-                    self.movement_directions_ys,
-                    self.movement_directions_zs,
-                    self.velocities_xs,
-                    self.velocities_ys,
-                    self.velocities_zs,
-                    self.move_distances,
-                    self.speeds,
-                    self.teams,
-                    self.navigation_update_countdowns_remaining_ticks,
-                    self.navigation_update_countdowns_periods,
-                    self.separation_steering_xs,
-                    self.separation_steering_ys,
-                    self.separation_steering_zs,
-                    self.navigation_risk_tiers,
-                    self.navigation_lower_risk_scan_counts,
-                    self.avoidance_choice_indices,
-                    self.avoidance_clear_scan_counts,
-                    self.attack_cooldowns,
-                    self.target_ids,
-                    self.target_locations_xs,
-                    self.target_locations_ys,
-                    self.target_locations_zs,
-                    self.target_velocities_xs,
-                    self.target_velocities_ys,
-                    self.target_velocities_zs,
-                    self.intercept_times,
-                    self.target_distance_sq,
-                    self.target_distances,
-                    self.target_radii,
-                    self.carrier_launched);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -250,8 +145,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -260,107 +155,97 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
-    auto integral_biases() const { return this->column(this->columns_.integral_biases); }
-    auto float_biases() const { return this->column(this->columns_.float_biases); }
+    auto entity_ids() const { return this->template column<0LL>(); }
+    auto integral_biases() const { return this->template column<1LL>(); }
+    auto float_biases() const { return this->template column<2LL>(); }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
                 this->num()};
     }
     auto view_desired_move_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.desired_move_locations_xs,
-                this->columns_.desired_move_locations_ys,
-                this->columns_.desired_move_locations_zs,
+        return {this->template column<6LL>().data(),
+                this->template column<7LL>().data(),
+                this->template column<8LL>().data(),
                 this->num()};
     }
     auto view_aim_directions() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.aim_directions_xs,
-                this->columns_.aim_directions_ys,
-                this->columns_.aim_directions_zs,
+        return {this->template column<9LL>().data(),
+                this->template column<10LL>().data(),
+                this->template column<11LL>().data(),
                 this->num()};
     }
     auto view_planned_aim_directions() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.planned_aim_directions_xs,
-                this->columns_.planned_aim_directions_ys,
-                this->columns_.planned_aim_directions_zs,
+        return {this->template column<12LL>().data(),
+                this->template column<13LL>().data(),
+                this->template column<14LL>().data(),
                 this->num()};
     }
     auto view_desired_aiming_directions() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.desired_aiming_directions_xs,
-                this->columns_.desired_aiming_directions_ys,
-                this->columns_.desired_aiming_directions_zs,
+        return {this->template column<15LL>().data(),
+                this->template column<16LL>().data(),
+                this->template column<17LL>().data(),
                 this->num()};
     }
     auto view_movement_directions() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.movement_directions_xs,
-                this->columns_.movement_directions_ys,
-                this->columns_.movement_directions_zs,
+        return {this->template column<18LL>().data(),
+                this->template column<19LL>().data(),
+                this->template column<20LL>().data(),
                 this->num()};
     }
     auto view_velocities() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.velocities_xs,
-                this->columns_.velocities_ys,
-                this->columns_.velocities_zs,
+        return {this->template column<21LL>().data(),
+                this->template column<22LL>().data(),
+                this->template column<23LL>().data(),
                 this->num()};
     }
-    auto move_distances() const { return this->column(this->columns_.move_distances); }
-    auto speeds() const { return this->column(this->columns_.speeds); }
-    auto teams() const { return this->column(this->columns_.teams); }
+    auto move_distances() const { return this->template column<24LL>(); }
+    auto speeds() const { return this->template column<25LL>(); }
+    auto teams() const { return this->template column<26LL>(); }
     auto navigation_update_countdowns_remaining_ticks() const {
-        return this->column(this->columns_.navigation_update_countdowns_remaining_ticks);
+        return this->template column<27LL>();
     }
-    auto navigation_update_countdowns_periods() const {
-        return this->column(this->columns_.navigation_update_countdowns_periods);
-    }
+    auto navigation_update_countdowns_periods() const { return this->template column<28LL>(); }
     auto view_separation_steering() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.separation_steering_xs,
-                this->columns_.separation_steering_ys,
-                this->columns_.separation_steering_zs,
+        return {this->template column<29LL>().data(),
+                this->template column<30LL>().data(),
+                this->template column<31LL>().data(),
                 this->num()};
     }
-    auto navigation_risk_tiers() const {
-        return this->column(this->columns_.navigation_risk_tiers);
-    }
-    auto navigation_lower_risk_scan_counts() const {
-        return this->column(this->columns_.navigation_lower_risk_scan_counts);
-    }
-    auto avoidance_choice_indices() const {
-        return this->column(this->columns_.avoidance_choice_indices);
-    }
-    auto avoidance_clear_scan_counts() const {
-        return this->column(this->columns_.avoidance_clear_scan_counts);
-    }
-    auto attack_cooldowns() const { return this->column(this->columns_.attack_cooldowns); }
-    auto target_ids() const { return this->column(this->columns_.target_ids); }
+    auto navigation_risk_tiers() const { return this->template column<32LL>(); }
+    auto navigation_lower_risk_scan_counts() const { return this->template column<33LL>(); }
+    auto avoidance_choice_indices() const { return this->template column<34LL>(); }
+    auto avoidance_clear_scan_counts() const { return this->template column<35LL>(); }
+    auto attack_cooldowns() const { return this->template column<36LL>(); }
+    auto target_ids() const { return this->template column<37LL>(); }
     auto view_target_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.target_locations_xs,
-                this->columns_.target_locations_ys,
-                this->columns_.target_locations_zs,
+        return {this->template column<38LL>().data(),
+                this->template column<39LL>().data(),
+                this->template column<40LL>().data(),
                 this->num()};
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.target_velocities_xs,
-                this->columns_.target_velocities_ys,
-                this->columns_.target_velocities_zs,
+        return {this->template column<41LL>().data(),
+                this->template column<42LL>().data(),
+                this->template column<43LL>().data(),
                 this->num()};
     }
-    auto intercept_times() const { return this->column(this->columns_.intercept_times); }
-    auto target_distance_sq() const { return this->column(this->columns_.target_distance_sq); }
-    auto target_distances() const { return this->column(this->columns_.target_distances); }
-    auto target_radii() const { return this->column(this->columns_.target_radii); }
-    auto carrier_launched() const { return this->column(this->columns_.carrier_launched); }
+    auto intercept_times() const { return this->template column<44LL>(); }
+    auto target_distance_sq() const { return this->template column<45LL>(); }
+    auto target_distances() const { return this->template column<46LL>(); }
+    auto target_radii() const { return this->template column<47LL>(); }
+    auto carrier_launched() const { return this->template column<48LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

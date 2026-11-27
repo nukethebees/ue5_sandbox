@@ -8,6 +8,7 @@
 #include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/collision/cell_coords_compact_view.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -15,7 +16,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 namespace ioj::sim::collision {
@@ -24,19 +24,7 @@ namespace entity_cell_data {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<float,
-                                              float,
-                                              float,
-                                              float,
-                                              float,
-                                              float,
-                                              std::int32_t,
-                                              std::int32_t,
-                                              std::int32_t,
-                                              std::int32_t,
-                                              std::int32_t,
-                                              std::int32_t,
-                                              EntityId> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t min_points_xs_column{0ULL};
     static constexpr std::size_t min_points_ys_column{1ULL};
     static constexpr std::size_t min_points_zs_column{2ULL};

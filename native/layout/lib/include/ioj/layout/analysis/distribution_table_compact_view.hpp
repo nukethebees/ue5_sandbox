@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/distribution_table_view.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -21,16 +22,7 @@ namespace distribution_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              RowRange,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<long double>,
-                                              std::optional<long double>,
-                                              std::optional<long double>,
-                                              std::optional<long double>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t analysis_column{0ULL};
     static constexpr std::size_t entries_column{1ULL};
     static constexpr std::size_t element_count_column{2ULL};

@@ -5,6 +5,7 @@
 
 #include "ioj/math_types.h"
 #include "ioj/sim/lasers/laser_source.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -21,8 +22,7 @@ namespace laser_hit_details {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<float, float, float, float, float, float, LaserSource> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t locations_xs_column{0ULL};
     static constexpr std::size_t locations_ys_column{1ULL};
     static constexpr std::size_t locations_zs_column{2ULL};

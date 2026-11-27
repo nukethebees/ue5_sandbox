@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/packed_field_table_view.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -26,30 +27,7 @@ namespace packed_field_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              lispb::schema::ChildOccurrenceId,
-                                              std::string_view,
-                                              std::optional<lispb::schema::TypeId>,
-                                              lispb::StringId,
-                                              lispb::codegen::PackedFieldKind,
-                                              std::uint8_t,
-                                              std::uint32_t,
-                                              std::uint8_t,
-                                              std::uint32_t,
-                                              std::uint8_t,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::int64_t>,
-                                              std::optional<std::int64_t>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>,
-                                              std::optional<std::uint64_t>,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint32_t>,
-                                              std::optional<std::uint64_t>,
-                                              RowRange> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t parent_column{0ULL};
     static constexpr std::size_t segment_column{1ULL};
     static constexpr std::size_t name_column{2ULL};

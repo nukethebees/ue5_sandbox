@@ -17,31 +17,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float, float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* starts_xs{};
-    Element<float>* starts_ys{};
-    Element<float>* starts_zs{};
-    Element<float>* ends_xs{};
-    Element<float>* ends_ys{};
-    Element<float>* ends_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.starts_xs,
-                    self.starts_ys,
-                    self.starts_zs,
-                    self.ends_xs,
-                    self.ends_ys,
-                    self.ends_zs);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -61,8 +42,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -72,14 +53,16 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         requires Enabled
         : Base{other} {}
     auto view_starts() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.starts_xs,
-                this->columns_.starts_ys,
-                this->columns_.starts_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
     auto view_ends() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {
-            this->columns_.ends_xs, this->columns_.ends_ys, this->columns_.ends_zs, this->num()};
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
+                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {

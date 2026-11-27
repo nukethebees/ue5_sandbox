@@ -7,6 +7,7 @@
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -19,7 +20,8 @@ namespace entity_death_info {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
+struct Layout
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t reasons_column{0ULL};
     static constexpr std::size_t victims_column{1ULL};
     static constexpr std::size_t killers_column{2ULL};

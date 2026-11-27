@@ -18,7 +18,6 @@
 #include "lispb/schema/indices.h"
 
 #include <cstddef>
-#include <memory_resource>
 
 namespace ioj::layout {
 
@@ -36,52 +35,15 @@ namespace ioj::layout {
 // float_encoding: std::optional<ioj::layout::FloatEncoding>
 // varint_encoding: std::optional<ioj::layout::VarintEncoding>
 struct ScalarTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<ScalarTable,
-                                             scalar_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = scalar_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = scalar_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = scalar_table::CompactView;
-    using CompactConstView = scalar_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    ScalarTable() noexcept
-        : ScalarTable{*std::pmr::get_default_resource()} {}
-    explicit ScalarTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~ScalarTable() { Operations::release_storage(*this); }
-
-    ScalarTable(ScalarTable const&) = delete;
-    ScalarTable(ScalarTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(ScalarTable const&) -> ScalarTable& = delete;
-    auto operator=(ScalarTable&& other) -> ScalarTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = scalar_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          ScalarTable,
+          scalar_table::ColumnTypes,
+          native_soa::Owner<scalar_table::CompactView, scalar_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        ScalarTable,
+        scalar_table::ColumnTypes,
+        native_soa::Owner<scalar_table::CompactView, scalar_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto type(this auto& self) { return self.view().type(); }
     auto integer_domain(this auto& self) { return self.view().integer_domain(); }
     auto enum_domain(this auto& self) { return self.view().enum_domain(); }
@@ -95,15 +57,9 @@ struct ScalarTable
     auto fixed_encoding(this auto& self) { return self.view().fixed_encoding(); }
     auto float_encoding(this auto& self) { return self.view().float_encoding(); }
     auto varint_encoding(this auto& self) { return self.view().varint_encoding(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<ScalarTable, scalar_table::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(lispb::schema::TypeId value);
     std::size_t find(lispb::schema::TypeId value) const;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

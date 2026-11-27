@@ -9,7 +9,6 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace level_spawn_groups {
@@ -17,23 +16,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<EntityType, std::int32_t, LevelEventCount>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityType>* types{};
-    Element<std::int32_t>* offsets{};
-    Element<LevelEventCount>* counts{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.types, self.offsets, self.counts);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<EntityType, std::int32_t, LevelEventCount>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -46,8 +34,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -56,9 +44,9 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto types() const { return this->column(this->columns_.types); }
-    auto offsets() const { return this->column(this->columns_.offsets); }
-    auto counts() const { return this->column(this->columns_.counts); }
+    auto types() const { return this->template column<0LL>(); }
+    auto offsets() const { return this->template column<1LL>(); }
+    auto counts() const { return this->template column<2LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "FieldMasks_view.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -17,7 +18,9 @@ namespace f_mask_rows8 {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask8, std::int32_t> {
+struct Layout
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
 };
@@ -67,7 +70,8 @@ namespace f_mask_rows9 {
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<FFieldMask9, std::int32_t, std::int32_t> {
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
     static constexpr std::size_t tail_column{2ULL};
@@ -118,7 +122,9 @@ namespace f_mask_rows16 {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask16, std::int32_t> {
+struct Layout
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
 };
@@ -167,7 +173,9 @@ namespace f_mask_rows17 {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask17, std::int32_t> {
+struct Layout
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
 };
@@ -216,7 +224,9 @@ namespace f_mask_rows32 {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask32, std::int32_t> {
+struct Layout
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
 };
@@ -265,7 +275,9 @@ namespace f_mask_rows33 {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask33, std::int32_t> {
+struct Layout
+    : ioj::soa_storage_detail::FromPointers<ioj::single_allocation_layout::ColumnLayouts,
+                                            Pointers> {
     static constexpr std::size_t masks_column{0ULL};
     static constexpr std::size_t values_column{1ULL};
 };

@@ -19,34 +19,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::
-    ColumnTypes<EntityId, float, float, float, float, std::int16_t, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entity_ids{};
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* yaws{};
-    Element<std::int16_t>* laser_cooldowns{};
-    Element<std::int32_t>* next_fire_point_indices{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_ids,
-                    self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.yaws,
-                    self.laser_cooldowns,
-                    self.next_fire_point_indices);
-    }
-};
+using Pointers = soa_storage_detail::
+    ColumnPointers<EntityId, float, float, float, float, std::int16_t, std::int32_t>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -66,8 +45,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -76,19 +55,17 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto entity_ids() const { return this->template column<0LL>(); }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
+                this->template column<3LL>().data(),
                 this->num()};
     }
-    auto yaws() const { return this->column(this->columns_.yaws); }
-    auto laser_cooldowns() const { return this->column(this->columns_.laser_cooldowns); }
-    auto next_fire_point_indices() const {
-        return this->column(this->columns_.next_fire_point_indices);
-    }
+    auto yaws() const { return this->template column<4LL>(); }
+    auto laser_cooldowns() const { return this->template column<5LL>(); }
+    auto next_fire_point_indices() const { return this->template column<6LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

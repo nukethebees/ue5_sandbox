@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace packed_field_table {
@@ -24,91 +23,36 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<AnalysisId,
-                                    lispb::schema::ChildOccurrenceId,
-                                    std::string_view,
-                                    std::optional<lispb::schema::TypeId>,
-                                    lispb::StringId,
-                                    lispb::codegen::PackedFieldKind,
-                                    std::uint8_t,
-                                    std::uint32_t,
-                                    std::uint8_t,
-                                    std::uint32_t,
-                                    std::uint8_t,
-                                    std::uint64_t,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::int64_t>,
-                                    std::optional<std::int64_t>,
-                                    std::optional<lispb::codegen::PackedIntegerValue>,
-                                    std::optional<lispb::codegen::PackedIntegerValue>,
-                                    std::optional<std::uint64_t>,
-                                    std::uint64_t,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::uint32_t>,
-                                    std::optional<std::uint64_t>,
-                                    RowRange>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* parent{};
-    Element<lispb::schema::ChildOccurrenceId>* segment{};
-    Element<std::string_view>* name{};
-    Element<std::optional<lispb::schema::TypeId>>* semantic_type{};
-    Element<lispb::StringId>* logical_type{};
-    Element<lispb::codegen::PackedFieldKind>* kind{};
-    Element<std::uint8_t>* reserved{};
-    Element<std::uint32_t>* schema_bit_width{};
-    Element<std::uint8_t>* schema_bit_width_auto{};
-    Element<std::uint32_t>* bit_width{};
-    Element<std::uint8_t>* overridden{};
-    Element<std::uint64_t>* least_significant_bit{};
-    Element<std::optional<std::uint64_t>>* most_significant_bit{};
-    Element<std::optional<std::uint64_t>>* maximum_unsigned_value{};
-    Element<std::optional<std::int64_t>>* minimum_signed_value{};
-    Element<std::optional<std::int64_t>>* maximum_signed_value{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* minimum_semantic_value{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* maximum_semantic_value{};
-    Element<std::optional<std::uint64_t>>* semantic_value_count{};
-    Element<std::uint64_t>* sentinel_code_count{};
-    Element<std::optional<std::uint64_t>>* required_code_count{};
-    Element<std::optional<std::uint32_t>>* minimum_required_bits{};
-    Element<std::optional<std::uint64_t>>* unused_codes{};
-    Element<RowRange>* codes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.parent,
-                    self.segment,
-                    self.name,
-                    self.semantic_type,
-                    self.logical_type,
-                    self.kind,
-                    self.reserved,
-                    self.schema_bit_width,
-                    self.schema_bit_width_auto,
-                    self.bit_width,
-                    self.overridden,
-                    self.least_significant_bit,
-                    self.most_significant_bit,
-                    self.maximum_unsigned_value,
-                    self.minimum_signed_value,
-                    self.maximum_signed_value,
-                    self.minimum_semantic_value,
-                    self.maximum_semantic_value,
-                    self.semantic_value_count,
-                    self.sentinel_code_count,
-                    self.required_code_count,
-                    self.minimum_required_bits,
-                    self.unused_codes,
-                    self.codes);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<AnalysisId,
+                                       lispb::schema::ChildOccurrenceId,
+                                       std::string_view,
+                                       std::optional<lispb::schema::TypeId>,
+                                       lispb::StringId,
+                                       lispb::codegen::PackedFieldKind,
+                                       std::uint8_t,
+                                       std::uint32_t,
+                                       std::uint8_t,
+                                       std::uint32_t,
+                                       std::uint8_t,
+                                       std::uint64_t,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::int64_t>,
+                                       std::optional<std::int64_t>,
+                                       std::optional<lispb::codegen::PackedIntegerValue>,
+                                       std::optional<lispb::codegen::PackedIntegerValue>,
+                                       std::optional<std::uint64_t>,
+                                       std::uint64_t,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::uint32_t>,
+                                       std::optional<std::uint64_t>,
+                                       RowRange>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -144,8 +88,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -154,42 +98,30 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(this->columns_.parent); }
-    auto segment() const { return this->column(this->columns_.segment); }
-    auto name() const { return this->column(this->columns_.name); }
-    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
-    auto logical_type() const { return this->column(this->columns_.logical_type); }
-    auto kind() const { return this->column(this->columns_.kind); }
-    auto reserved() const { return this->column(this->columns_.reserved); }
-    auto schema_bit_width() const { return this->column(this->columns_.schema_bit_width); }
-    auto schema_bit_width_auto() const {
-        return this->column(this->columns_.schema_bit_width_auto);
-    }
-    auto bit_width() const { return this->column(this->columns_.bit_width); }
-    auto overridden() const { return this->column(this->columns_.overridden); }
-    auto least_significant_bit() const {
-        return this->column(this->columns_.least_significant_bit);
-    }
-    auto most_significant_bit() const { return this->column(this->columns_.most_significant_bit); }
-    auto maximum_unsigned_value() const {
-        return this->column(this->columns_.maximum_unsigned_value);
-    }
-    auto minimum_signed_value() const { return this->column(this->columns_.minimum_signed_value); }
-    auto maximum_signed_value() const { return this->column(this->columns_.maximum_signed_value); }
-    auto minimum_semantic_value() const {
-        return this->column(this->columns_.minimum_semantic_value);
-    }
-    auto maximum_semantic_value() const {
-        return this->column(this->columns_.maximum_semantic_value);
-    }
-    auto semantic_value_count() const { return this->column(this->columns_.semantic_value_count); }
-    auto sentinel_code_count() const { return this->column(this->columns_.sentinel_code_count); }
-    auto required_code_count() const { return this->column(this->columns_.required_code_count); }
-    auto minimum_required_bits() const {
-        return this->column(this->columns_.minimum_required_bits);
-    }
-    auto unused_codes() const { return this->column(this->columns_.unused_codes); }
-    auto codes() const { return this->column(this->columns_.codes); }
+    auto parent() const { return this->template column<0LL>(); }
+    auto segment() const { return this->template column<1LL>(); }
+    auto name() const { return this->template column<2LL>(); }
+    auto semantic_type() const { return this->template column<3LL>(); }
+    auto logical_type() const { return this->template column<4LL>(); }
+    auto kind() const { return this->template column<5LL>(); }
+    auto reserved() const { return this->template column<6LL>(); }
+    auto schema_bit_width() const { return this->template column<7LL>(); }
+    auto schema_bit_width_auto() const { return this->template column<8LL>(); }
+    auto bit_width() const { return this->template column<9LL>(); }
+    auto overridden() const { return this->template column<10LL>(); }
+    auto least_significant_bit() const { return this->template column<11LL>(); }
+    auto most_significant_bit() const { return this->template column<12LL>(); }
+    auto maximum_unsigned_value() const { return this->template column<13LL>(); }
+    auto minimum_signed_value() const { return this->template column<14LL>(); }
+    auto maximum_signed_value() const { return this->template column<15LL>(); }
+    auto minimum_semantic_value() const { return this->template column<16LL>(); }
+    auto maximum_semantic_value() const { return this->template column<17LL>(); }
+    auto semantic_value_count() const { return this->template column<18LL>(); }
+    auto sentinel_code_count() const { return this->template column<19LL>(); }
+    auto required_code_count() const { return this->template column<20LL>(); }
+    auto minimum_required_bits() const { return this->template column<21LL>(); }
+    auto unused_codes() const { return this->template column<22LL>(); }
+    auto codes() const { return this->template column<23LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

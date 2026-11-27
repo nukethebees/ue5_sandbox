@@ -5,6 +5,7 @@
 
 #include "ioj/rotator_types.h"
 #include "ioj/rotators3f_view.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -19,7 +20,8 @@ namespace rotators3f {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
+struct Layout
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t pitches_column{0ULL};
     static constexpr std::size_t yaws_column{1ULL};
     static constexpr std::size_t rolls_column{2ULL};

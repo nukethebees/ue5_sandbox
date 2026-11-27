@@ -86,17 +86,20 @@ struct ViewOperations {
     }
 };
 
-template <typename Columns, template <typename> typename Pointers, bool Const>
+template <typename Columns, bool Const>
 struct ViewBase;
 
-template <template <typename> typename Pointers, bool Const, typename... Ts>
-struct ViewBase<ColumnTypes<Ts...>, Pointers, Const> : ViewOperations {
+template <bool Const, typename... Ts>
+struct ViewBase<ColumnTypes<Ts...>, Const> : ViewOperations {
     using size_type = std::uint32_t;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using PointerStorage = Pointers<Element<std::byte>>;
+    using PointerStorage = ColumnPointers<Element<Ts>...>;
 
     ViewBase() = default;
+    ViewBase(PointerStorage columns, size_type count)
+        : columns_{columns}
+        , column_count_{count} {}
     ViewBase(Element<Ts>*... pointers, size_type column_count)
         : columns_{pointers...}
         , column_count_{column_count} {
@@ -115,25 +118,21 @@ struct ViewBase<ColumnTypes<Ts...>, Pointers, Const> : ViewOperations {
     template <typename Self>
     auto slice(this Self const& self, size_type offset, size_type count) -> Self {
         assert(offset <= self.column_count_ && count <= self.column_count_ - offset);
-        return PointerStorage::with_columns(self.columns_, [&](auto*... pointers) {
-            return Self{(pointers ? pointers + offset : nullptr)..., count};
-        });
+        return Self{offset_columns(self.columns_, offset), count};
     }
   protected:
-    template <typename, template <typename> typename, bool>
+    template <typename, bool>
     friend struct ViewBase;
 
     template <bool Enabled = Const>
         requires Enabled
-    ViewBase(ViewBase<ColumnTypes<Ts...>, Pointers, false> const& other)
-        : column_count_{other.column_count_} {
-        Pointers<std::byte>::with_columns(
-            other.columns_, [this](auto*... source) { columns_ = PointerStorage{source...}; });
-    }
+    ViewBase(ViewBase<ColumnTypes<Ts...>, false> const& other)
+        : columns_{convert_pointers<PointerStorage>(other.columns_)}
+        , column_count_{other.column_count_} {}
 
-    template <typename T>
-    auto column(T* pointer) const {
-        return std::span{pointer, column_count_};
+    template <std::size_t Index>
+    auto column() const {
+        return std::span{columns_.template get<Index>(), column_count_};
     }
 
     PointerStorage columns_{};

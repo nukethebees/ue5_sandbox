@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <memory_resource>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -50,5 +51,46 @@ inline auto growth_capacity(size_type const required,
 }
 
 using StorageOperations = soa_storage_detail::StorageOperations<rounded_capacity, growth_capacity>;
+
+template <typename MutableView, typename ReadOnlyView>
+class Owner
+    : protected StorageState
+    , public StorageOperations {
+  public:
+    using soa_schema = typename MutableView::soa_schema;
+    using Layout = typename MutableView::Layout;
+    using CompactView = MutableView;
+    using CompactConstView = ReadOnlyView;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
+
+    Owner() noexcept
+        : Owner{*std::pmr::get_default_resource()} {}
+    explicit Owner(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    ~Owner() { release_storage(*this); }
+    Owner(Owner const&) = delete;
+    Owner(Owner&& other) noexcept
+        : resource_{other.resource_} {
+        take_storage(*this, other);
+    }
+    auto operator=(Owner const&) -> Owner& = delete;
+    auto operator=(Owner&& other) -> Owner& { return move_assign(*this, other); }
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
+  private:
+    friend StorageOperations;
+    friend soa_storage_detail::StorageRequirements;
+
+    std::pmr::memory_resource* resource_;
+};
 
 }

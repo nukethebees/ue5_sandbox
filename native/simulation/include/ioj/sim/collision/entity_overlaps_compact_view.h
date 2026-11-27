@@ -6,6 +6,7 @@
 #include "entity_overlaps_view.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -19,7 +20,8 @@ namespace entity_entity_overlaps {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
+struct Layout
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t first_entities_column{0ULL};
     static constexpr std::size_t second_entities_column{1ULL};
 };
@@ -80,7 +82,8 @@ namespace entity_static_overlaps {
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
+struct Layout
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t entities_column{0ULL};
     static constexpr std::size_t static_geometry_indices_column{1ULL};
 };

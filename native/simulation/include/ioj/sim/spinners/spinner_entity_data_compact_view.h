@@ -5,6 +5,7 @@
 
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -22,8 +23,7 @@ namespace spinner_entity_data {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<EntityId, float, float, float, float, std::int16_t, std::int32_t> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t entity_ids_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};

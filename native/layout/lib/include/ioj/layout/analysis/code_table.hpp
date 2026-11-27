@@ -12,7 +12,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 #include <string_view>
 
 namespace ioj::layout {
@@ -27,64 +26,22 @@ namespace ioj::layout {
 // code: std::optional<ioj::layout::EnumCodeValue>
 // integer_value: std::optional<lispb::codegen::PackedIntegerValue>
 struct CodeTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<CodeTable, code_table::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = code_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = code_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = code_table::CompactView;
-    using CompactConstView = code_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    CodeTable() noexcept
-        : CodeTable{*std::pmr::get_default_resource()} {}
-    explicit CodeTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~CodeTable() { Operations::release_storage(*this); }
-
-    CodeTable(CodeTable const&) = delete;
-    CodeTable(CodeTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(CodeTable const&) -> CodeTable& = delete;
-    auto operator=(CodeTable&& other) -> CodeTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = code_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          CodeTable,
+          code_table::ColumnTypes,
+          native_soa::Owner<code_table::CompactView, code_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        CodeTable,
+        code_table::ColumnTypes,
+        native_soa::Owner<code_table::CompactView, code_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto name(this auto& self) { return self.view().name(); }
     auto sentinel(this auto& self) { return self.view().sentinel(); }
     auto count_sentinel(this auto& self) { return self.view().count_sentinel(); }
     auto code(this auto& self) { return self.view().code(); }
     auto integer_value(this auto& self) { return self.view().integer_value(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<CodeTable, code_table::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

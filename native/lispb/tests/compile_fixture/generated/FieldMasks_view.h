@@ -36,22 +36,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask8, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask8>* masks{};
-    Element<std::int32_t>* values{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask8, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -64,8 +55,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -74,8 +65,8 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -116,23 +107,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask9, std::int32_t, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask9>* masks{};
-    Element<std::int32_t>* values{};
-    Element<std::int32_t>* tail{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values, self.tail);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask9, std::int32_t, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -145,8 +126,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -155,9 +136,9 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
-    auto tail() const { return this->column(this->columns_.tail); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
+    auto tail() const { return this->template column<2LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -197,22 +178,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask16, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask16>* masks{};
-    Element<std::int32_t>* values{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask16, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -225,8 +197,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -235,8 +207,8 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -276,22 +248,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask17, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask17>* masks{};
-    Element<std::int32_t>* values{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask17, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -304,8 +267,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -314,8 +277,8 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -355,22 +318,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask32, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask32>* masks{};
-    Element<std::int32_t>* values{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask32, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -383,8 +337,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -393,8 +347,8 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -434,22 +388,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = ioj::soa_storage_detail::ColumnTypes<FFieldMask33, std::int32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<FFieldMask33>* masks{};
-    Element<std::int32_t>* values{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.masks, self.values);
-    }
-};
+using Pointers = ioj::soa_storage_detail::ColumnPointers<FFieldMask33, std::int32_t>;
+
+using ColumnTypes =
+    ioj::soa_storage_detail::FromPointers<ioj::soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -462,8 +407,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -472,8 +417,8 @@ struct ViewImpl : ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, C
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto masks() const { return this->column(this->columns_.masks); }
-    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->template column<0LL>(); }
+    auto values() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

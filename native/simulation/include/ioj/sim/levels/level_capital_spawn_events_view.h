@@ -23,7 +23,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<LevelEntityRef,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<LevelEntityRef,
                                                     float,
                                                     float,
                                                     float,
@@ -35,39 +38,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<LevelEntityRef,
                                                     ioj::NonNegativeFinite<float>,
                                                     ioj::NonNegativeFinite<float>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<LevelEntityRef>* entity_indices{};
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* rotations_pitches{};
-    Element<float>* rotations_yaws{};
-    Element<float>* rotations_rolls{};
-    Element<::ioj::Team>* teams{};
-    Element<Health>* healths{};
-    Element<ioj::NonNegativeFinite<float>>* initial_fighter_spawn_delays{};
-    Element<ioj::NonNegativeFinite<float>>* fighter_spawn_cooldowns{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_indices,
-                    self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.rotations_pitches,
-                    self.rotations_yaws,
-                    self.rotations_rolls,
-                    self.teams,
-                    self.healths,
-                    self.initial_fighter_spawn_delays,
-                    self.fighter_spawn_cooldowns);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -92,8 +63,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -102,29 +73,25 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
+    auto entity_indices() const { return this->template column<0LL>(); }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
+                this->template column<3LL>().data(),
                 this->num()};
     }
     auto view_rotations() const
         -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->columns_.rotations_pitches,
-                this->columns_.rotations_yaws,
-                this->columns_.rotations_rolls,
+        return {this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
+                this->template column<6LL>().data(),
                 this->num()};
     }
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto healths() const { return this->column(this->columns_.healths); }
-    auto initial_fighter_spawn_delays() const {
-        return this->column(this->columns_.initial_fighter_spawn_delays);
-    }
-    auto fighter_spawn_cooldowns() const {
-        return this->column(this->columns_.fighter_spawn_cooldowns);
-    }
+    auto teams() const { return this->template column<7LL>(); }
+    auto healths() const { return this->template column<8LL>(); }
+    auto initial_fighter_spawn_delays() const { return this->template column<9LL>(); }
+    auto fighter_spawn_cooldowns() const { return this->template column<10LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

@@ -15,7 +15,6 @@
 #include "lispb/schema/indices.h"
 
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace type_analysis_table {
@@ -23,7 +22,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<lispb::schema::TypeId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<lispb::schema::TypeId,
                                                     ScenarioId,
                                                     std::optional<ioj::layout::PhysicalFactId>,
                                                     std::optional<ioj::layout::EnumBacking>,
@@ -31,31 +33,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<lispb::schema::TypeId,
                                                     std::optional<ioj::layout::PackedLayout>,
                                                     std::optional<ioj::layout::SoaLayout>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<lispb::schema::TypeId>* schema_type{};
-    Element<ScenarioId>* scenario{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* physical{};
-    Element<std::optional<ioj::layout::EnumBacking>>* enum_backing{};
-    Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
-    Element<std::optional<ioj::layout::PackedLayout>>* packed{};
-    Element<std::optional<ioj::layout::SoaLayout>>* soa{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.schema_type,
-                    self.scenario,
-                    self.physical,
-                    self.enum_backing,
-                    self.aggregate,
-                    self.packed,
-                    self.soa);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -74,8 +52,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -84,13 +62,13 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto schema_type() const { return this->column(this->columns_.schema_type); }
-    auto scenario() const { return this->column(this->columns_.scenario); }
-    auto physical() const { return this->column(this->columns_.physical); }
-    auto enum_backing() const { return this->column(this->columns_.enum_backing); }
-    auto aggregate() const { return this->column(this->columns_.aggregate); }
-    auto packed() const { return this->column(this->columns_.packed); }
-    auto soa() const { return this->column(this->columns_.soa); }
+    auto schema_type() const { return this->template column<0LL>(); }
+    auto scenario() const { return this->template column<1LL>(); }
+    auto physical() const { return this->template column<2LL>(); }
+    auto enum_backing() const { return this->template column<3LL>(); }
+    auto aggregate() const { return this->template column<4LL>(); }
+    auto packed() const { return this->template column<5LL>(); }
+    auto soa() const { return this->template column<6LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

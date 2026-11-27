@@ -5,6 +5,7 @@
 
 #include "ioj/layout/analysis/physical_fact_table_view.hpp"
 #include "ioj/layout/fact_origin.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -22,12 +23,7 @@ namespace physical_fact_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<std::uint64_t,
-                                              std::uint64_t,
-                                              lispb::schema::EnumSignedness,
-                                              std::optional<std::uint32_t>,
-                                              lispb::StringId,
-                                              FactOrigin> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t size_bytes_column{0ULL};
     static constexpr std::size_t alignment_bytes_column{1ULL};
     static constexpr std::size_t signedness_column{2ULL};

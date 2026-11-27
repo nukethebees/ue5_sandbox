@@ -12,7 +12,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace selection_table {
@@ -20,7 +19,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<std::size_t,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<std::size_t,
                                                     AccessOperation,
                                                     PayloadFootprint,
                                                     PayloadFootprint,
@@ -28,31 +30,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<std::size_t,
                                                     RegionFootprint,
                                                     std::optional<std::uint64_t>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::size_t>* source{};
-    Element<AccessOperation>* operation{};
-    Element<PayloadFootprint>* bytes{};
-    Element<PayloadFootprint>* bits{};
-    Element<RegionFootprint>* cache{};
-    Element<RegionFootprint>* pages{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.source,
-                    self.operation,
-                    self.bytes,
-                    self.bits,
-                    self.cache,
-                    self.pages,
-                    self.capacity_slack_bytes);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -71,8 +49,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -81,13 +59,13 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto source() const { return this->column(this->columns_.source); }
-    auto operation() const { return this->column(this->columns_.operation); }
-    auto bytes() const { return this->column(this->columns_.bytes); }
-    auto bits() const { return this->column(this->columns_.bits); }
-    auto cache() const { return this->column(this->columns_.cache); }
-    auto pages() const { return this->column(this->columns_.pages); }
-    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
+    auto source() const { return this->template column<0LL>(); }
+    auto operation() const { return this->template column<1LL>(); }
+    auto bytes() const { return this->template column<2LL>(); }
+    auto bits() const { return this->template column<3LL>(); }
+    auto cache() const { return this->template column<4LL>(); }
+    auto pages() const { return this->template column<5LL>(); }
+    auto capacity_slack_bytes() const { return this->template column<6LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

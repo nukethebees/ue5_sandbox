@@ -12,7 +12,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace physical_fact_table {
@@ -20,36 +19,17 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<std::uint64_t,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<std::uint64_t,
                                                     std::uint64_t,
                                                     lispb::schema::EnumSignedness,
                                                     std::optional<std::uint32_t>,
                                                     lispb::StringId,
                                                     FactOrigin>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::uint64_t>* size_bytes{};
-    Element<std::uint64_t>* alignment_bytes{};
-    Element<lispb::schema::EnumSignedness>* signedness{};
-    Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
-    Element<lispb::StringId>* provenance{};
-    Element<FactOrigin>* origin{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.size_bytes,
-                    self.alignment_bytes,
-                    self.signedness,
-                    self.unsigned_value_bits,
-                    self.provenance,
-                    self.origin);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -67,8 +47,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -77,12 +57,12 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto size_bytes() const { return this->column(this->columns_.size_bytes); }
-    auto alignment_bytes() const { return this->column(this->columns_.alignment_bytes); }
-    auto signedness() const { return this->column(this->columns_.signedness); }
-    auto unsigned_value_bits() const { return this->column(this->columns_.unsigned_value_bits); }
-    auto provenance() const { return this->column(this->columns_.provenance); }
-    auto origin() const { return this->column(this->columns_.origin); }
+    auto size_bytes() const { return this->template column<0LL>(); }
+    auto alignment_bytes() const { return this->template column<1LL>(); }
+    auto signedness() const { return this->template column<2LL>(); }
+    auto unsigned_value_bits() const { return this->template column<3LL>(); }
+    auto provenance() const { return this->template column<4LL>(); }
+    auto origin() const { return this->template column<5LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

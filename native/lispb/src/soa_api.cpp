@@ -250,7 +250,7 @@ class SoaApiLowering : public CppIRBuilder {
     auto compact_row_api(LoweringContext& ctx,
                          DeclarationHandle schema,
                          SoaReceiver receiver,
-                         CppTypeId base) -> Nodes {
+                         CppTypeId) -> Nodes {
         auto const& decls{ctx.declarations};
         auto const& soas{decls.soas};
         auto const& members{decls.soa_members};
@@ -297,9 +297,6 @@ class SoaApiLowering : public CppIRBuilder {
         }
         if ((!owner && !mutable_view) || custom("set")) {
             return result.build();
-        }
-        if (owner) {
-            result.add(using_declaration(store_text("RowOperations"), base)).new_lines(1);
         }
         result.add(using_import(named_type(owner ? "RowOperations::set" : "Base::set")))
             .new_lines(1);

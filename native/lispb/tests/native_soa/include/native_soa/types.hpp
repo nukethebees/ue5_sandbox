@@ -15,7 +15,6 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::native_soa_fixture {
 
@@ -25,58 +24,18 @@ namespace ioj::native_soa_fixture {
 // Columns:
 // count: std::uint32_t
 struct Counts
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<Counts, counts::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = counts::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = counts::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = counts::CompactView;
-    using CompactConstView = counts::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    Counts() noexcept
-        : Counts{*std::pmr::get_default_resource()} {}
-    explicit Counts(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~Counts() { Operations::release_storage(*this); }
-
-    Counts(Counts const&) = delete;
-    Counts(Counts&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(Counts const&) -> Counts& = delete;
-    auto operator=(Counts&& other) -> Counts& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = counts::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          Counts,
+          counts::ColumnTypes,
+          native_soa::Owner<counts::CompactView, counts::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        Counts,
+        counts::ColumnTypes,
+        native_soa::Owner<counts::CompactView, counts::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto count(this auto& self) { return self.view().count(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Counts, counts::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 struct Second {
@@ -93,58 +52,18 @@ struct First {
 // Columns:
 // others: ioj::native_soa_fixture::PointerB*
 struct PointerA
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<PointerA, pointer_a::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = pointer_a::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = pointer_a::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = pointer_a::CompactView;
-    using CompactConstView = pointer_a::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PointerA() noexcept
-        : PointerA{*std::pmr::get_default_resource()} {}
-    explicit PointerA(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PointerA() { Operations::release_storage(*this); }
-
-    PointerA(PointerA const&) = delete;
-    PointerA(PointerA&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PointerA const&) -> PointerA& = delete;
-    auto operator=(PointerA&& other) -> PointerA& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = pointer_a::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PointerA,
+          pointer_a::ColumnTypes,
+          native_soa::Owner<pointer_a::CompactView, pointer_a::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PointerA,
+        pointer_a::ColumnTypes,
+        native_soa::Owner<pointer_a::CompactView, pointer_a::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<PointerA, pointer_a::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -153,58 +72,18 @@ struct PointerA
 // Columns:
 // others: ioj::native_soa_fixture::PointerA*
 struct PointerB
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<PointerB, pointer_b::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = pointer_b::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = pointer_b::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = pointer_b::CompactView;
-    using CompactConstView = pointer_b::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PointerB() noexcept
-        : PointerB{*std::pmr::get_default_resource()} {}
-    explicit PointerB(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PointerB() { Operations::release_storage(*this); }
-
-    PointerB(PointerB const&) = delete;
-    PointerB(PointerB&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PointerB const&) -> PointerB& = delete;
-    auto operator=(PointerB&& other) -> PointerB& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = pointer_b::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PointerB,
+          pointer_b::ColumnTypes,
+          native_soa::Owner<pointer_b::CompactView, pointer_b::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PointerB,
+        pointer_b::ColumnTypes,
+        native_soa::Owner<pointer_b::CompactView, pointer_b::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<PointerB, pointer_b::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -213,60 +92,18 @@ struct PointerB
 // Columns:
 // records: ioj::native_soa_fixture::MixedRecord*
 struct MixedRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<MixedRows, mixed_rows::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = mixed_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = mixed_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = mixed_rows::CompactView;
-    using CompactConstView = mixed_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    MixedRows() noexcept
-        : MixedRows{*std::pmr::get_default_resource()} {}
-    explicit MixedRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~MixedRows() { Operations::release_storage(*this); }
-
-    MixedRows(MixedRows const&) = delete;
-    MixedRows(MixedRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(MixedRows const&) -> MixedRows& = delete;
-    auto operator=(MixedRows&& other) -> MixedRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = mixed_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          MixedRows,
+          mixed_rows::ColumnTypes,
+          native_soa::Owner<mixed_rows::CompactView, mixed_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        MixedRows,
+        mixed_rows::ColumnTypes,
+        native_soa::Owner<mixed_rows::CompactView, mixed_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto records(this auto& self) { return self.view().records(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<MixedRows, mixed_rows::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 struct Envelope {
@@ -282,59 +119,19 @@ struct Envelope {
 // pairs: ioj::native_soa_fixture::Pair
 // pointers: ioj::native_soa_fixture::Node*
 struct PairRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<PairRows, pair_rows::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = pair_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = pair_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = pair_rows::CompactView;
-    using CompactConstView = pair_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PairRows() noexcept
-        : PairRows{*std::pmr::get_default_resource()} {}
-    explicit PairRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PairRows() { Operations::release_storage(*this); }
-
-    PairRows(PairRows const&) = delete;
-    PairRows(PairRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PairRows const&) -> PairRows& = delete;
-    auto operator=(PairRows&& other) -> PairRows& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = pair_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PairRows,
+          pair_rows::ColumnTypes,
+          native_soa::Owner<pair_rows::CompactView, pair_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PairRows,
+        pair_rows::ColumnTypes,
+        native_soa::Owner<pair_rows::CompactView, pair_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto pairs(this auto& self) { return self.view().pairs(); }
     auto pointers(this auto& self) { return self.view().pointers(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<PairRows, pair_rows::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -345,60 +142,20 @@ struct PairRows
 // ys: float
 // zs: float
 struct Vectors
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<Vectors, vectors::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = vectors::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = vectors::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = vectors::CompactView;
-    using CompactConstView = vectors::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    Vectors() noexcept
-        : Vectors{*std::pmr::get_default_resource()} {}
-    explicit Vectors(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~Vectors() { Operations::release_storage(*this); }
-
-    Vectors(Vectors const&) = delete;
-    Vectors(Vectors&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(Vectors const&) -> Vectors& = delete;
-    auto operator=(Vectors&& other) -> Vectors& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = vectors::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          Vectors,
+          vectors::ColumnTypes,
+          native_soa::Owner<vectors::CompactView, vectors::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        Vectors,
+        vectors::ColumnTypes,
+        native_soa::Owner<vectors::CompactView, vectors::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
     auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Vectors, vectors::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -413,62 +170,20 @@ struct Vectors
 // velocities_ys: float
 // velocities_zs: float
 struct SingleRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<SingleRows, single_rows::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = single_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = single_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = single_rows::CompactView;
-    using CompactConstView = single_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    SingleRows() noexcept
-        : SingleRows{*std::pmr::get_default_resource()} {}
-    explicit SingleRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~SingleRows() { Operations::release_storage(*this); }
-
-    SingleRows(SingleRows const&) = delete;
-    SingleRows(SingleRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(SingleRows const&) -> SingleRows& = delete;
-    auto operator=(SingleRows&& other) -> SingleRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = single_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          SingleRows,
+          single_rows::ColumnTypes,
+          native_soa::Owner<single_rows::CompactView, single_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        SingleRows,
+        single_rows::ColumnTypes,
+        native_soa::Owner<single_rows::CompactView, single_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto values(this auto& self) { return self.view().values(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
     auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<SingleRows, single_rows::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -488,67 +203,25 @@ struct SingleRows
 // aligned64: Aligned64
 // aligned256: Aligned256
 struct SingleAlignmentRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
-                                             single_alignment_rows::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = single_alignment_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = single_alignment_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = single_alignment_rows::CompactView;
-    using CompactConstView = single_alignment_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    SingleAlignmentRows() noexcept
-        : SingleAlignmentRows{*std::pmr::get_default_resource()} {}
-    explicit SingleAlignmentRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~SingleAlignmentRows() { Operations::release_storage(*this); }
-
-    SingleAlignmentRows(SingleAlignmentRows const&) = delete;
-    SingleAlignmentRows(SingleAlignmentRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(SingleAlignmentRows const&) -> SingleAlignmentRows& = delete;
-    auto operator=(SingleAlignmentRows&& other) -> SingleAlignmentRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = single_alignment_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          SingleAlignmentRows,
+          single_alignment_rows::ColumnTypes,
+          native_soa::Owner<single_alignment_rows::CompactView,
+                            single_alignment_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        SingleAlignmentRows,
+        single_alignment_rows::ColumnTypes,
+        native_soa::Owner<single_alignment_rows::CompactView,
+                          single_alignment_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto bytes(this auto& self) { return self.view().bytes(); }
     auto view_odd(this auto& self) { return self.view().view_odd(); }
     auto aligned32(this auto& self) { return self.view().aligned32(); }
     auto view_nested(this auto& self) { return self.view().view_nested(); }
     auto aligned64(this auto& self) { return self.view().aligned64(); }
     auto aligned256(this auto& self) { return self.view().aligned256(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
-                                                                 single_alignment_rows::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -560,56 +233,19 @@ struct SingleAlignmentRows
 // positions_xs: float
 // positions_ys: float
 struct NATIVE_SOA_FIXTURE_API ApiOwner
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<ApiOwner, api_owner::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = ioj::native_soa_fixture::api_owner::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ioj::native_soa_fixture::api_owner::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = ioj::native_soa_fixture::api_owner::CompactView;
-    using CompactConstView = ioj::native_soa_fixture::api_owner::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    ApiOwner() noexcept
-        : ApiOwner{*std::pmr::get_default_resource()} {}
-    explicit ApiOwner(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~ApiOwner() { Operations::release_storage(*this); }
-
-    ApiOwner(ApiOwner const&) = delete;
-    ApiOwner(ApiOwner&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(ApiOwner const&) -> ApiOwner& = delete;
-    auto operator=(ApiOwner&& other) -> ApiOwner& { return Operations::move_assign(*this, other); }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = ioj::native_soa_fixture::api_owner::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          ApiOwner,
+          api_owner::ColumnTypes,
+          native_soa::Owner<api_owner::CompactView, api_owner::CompactConstView>> {
+    using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
+        ApiOwner,
+        ioj::native_soa_fixture::api_owner::ColumnTypes,
+        ioj::native_soa::Owner<ioj::native_soa_fixture::api_owner::CompactView,
+                               ioj::native_soa_fixture::api_owner::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto values(this auto& self) { return self.view().values(); }
     auto masks(this auto& self) { return self.view().masks(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
-    using RowOperations =
-        ioj::soa_storage_detail::OwnerRowOperations<ApiOwner,
-                                                    ioj::native_soa_fixture::api_owner::ColumnTypes,
-                                                    ioj::native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -646,10 +282,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     }
     float first_value() const { return view().values()[0]; }
     Value total() const;
-  private:
-    friend Operations;
-    friend ioj::soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 /* **************************************** */
@@ -659,67 +291,23 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
 // xs: float
 // ys: float
 struct EquivalentOwner
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EquivalentOwner,
-                                             equivalent_owner::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = equivalent_owner::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = equivalent_owner::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = equivalent_owner::CompactView;
-    using CompactConstView = equivalent_owner::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EquivalentOwner() noexcept
-        : EquivalentOwner{*std::pmr::get_default_resource()} {}
-    explicit EquivalentOwner(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EquivalentOwner() { Operations::release_storage(*this); }
-
-    EquivalentOwner(EquivalentOwner const&) = delete;
-    EquivalentOwner(EquivalentOwner&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EquivalentOwner const&) -> EquivalentOwner& = delete;
-    auto operator=(EquivalentOwner&& other) -> EquivalentOwner& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = equivalent_owner::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EquivalentOwner,
+          equivalent_owner::ColumnTypes,
+          native_soa::Owner<equivalent_owner::CompactView, equivalent_owner::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EquivalentOwner,
+        equivalent_owner::ColumnTypes,
+        native_soa::Owner<equivalent_owner::CompactView, equivalent_owner::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EquivalentOwner,
-                                                                 equivalent_owner::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, ApiPair const value) { set(index, value.x, value.y); }
     size_type add(ApiPair const value) { return add(value.x, value.y); }
     using equivalent_type = ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 
 struct ApiReference {
@@ -734,67 +322,23 @@ struct ApiReference {
 // vertical: float
 // depth: float
 struct AccessorOwner
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<AccessorOwner,
-                                             accessor_owner::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = accessor_owner::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = accessor_owner::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = accessor_owner::CompactView;
-    using CompactConstView = accessor_owner::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    AccessorOwner() noexcept
-        : AccessorOwner{*std::pmr::get_default_resource()} {}
-    explicit AccessorOwner(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~AccessorOwner() { Operations::release_storage(*this); }
-
-    AccessorOwner(AccessorOwner const&) = delete;
-    AccessorOwner(AccessorOwner&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(AccessorOwner const&) -> AccessorOwner& = delete;
-    auto operator=(AccessorOwner&& other) -> AccessorOwner& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = accessor_owner::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          AccessorOwner,
+          accessor_owner::ColumnTypes,
+          native_soa::Owner<accessor_owner::CompactView, accessor_owner::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        AccessorOwner,
+        accessor_owner::ColumnTypes,
+        native_soa::Owner<accessor_owner::CompactView, accessor_owner::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto horizontal(this auto& self) { return self.view().horizontal(); }
     auto vertical(this auto& self) { return self.view().vertical(); }
     auto depth(this auto& self) { return self.view().depth(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<AccessorOwner,
-                                                                 accessor_owner::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }
     size_type add(Vector3f const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::native_soa_fixture

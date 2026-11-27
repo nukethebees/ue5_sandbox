@@ -12,8 +12,6 @@
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <memory_resource>
-
 namespace ioj::sim {
 
 /* **************************************** */
@@ -26,65 +24,21 @@ namespace ioj::sim {
 // death_ticks: SimTick
 // death_locations: Vector3f
 struct EntityHistory
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                             entity_history::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_history::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_history::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_history::CompactView;
-    using CompactConstView = entity_history::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityHistory() noexcept
-        : EntityHistory{*std::pmr::get_default_resource()} {}
-    explicit EntityHistory(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityHistory() { Operations::release_storage(*this); }
-
-    EntityHistory(EntityHistory const&) = delete;
-    EntityHistory(EntityHistory&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityHistory const&) -> EntityHistory& = delete;
-    auto operator=(EntityHistory&& other) -> EntityHistory& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_history::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityHistory,
+          entity_history::ColumnTypes,
+          native_soa::Owner<entity_history::CompactView, entity_history::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityHistory,
+        entity_history::ColumnTypes,
+        native_soa::Owner<entity_history::CompactView, entity_history::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto teams(this auto& self) { return self.view().teams(); }
     auto kills(this auto& self) { return self.view().kills(); }
     auto life_state(this auto& self) { return self.view().life_state(); }
     auto death_ticks(this auto& self) { return self.view().death_ticks(); }
     auto death_locations(this auto& self) { return self.view().death_locations(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                                                 entity_history::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

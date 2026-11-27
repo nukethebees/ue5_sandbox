@@ -14,7 +14,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace workload_table {
@@ -22,7 +21,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     RowRange,
                                                     std::uint64_t,
                                                     std::uint64_t,
@@ -39,49 +41,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
                                                     std::optional<std::uint64_t>,
                                                     std::optional<std::uint64_t>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* analysis{};
-    Element<RowRange>* selections{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::uint64_t>* multiplicity{};
-    Element<PayloadFootprint>* bytes{};
-    Element<PayloadFootprint>* bits{};
-    Element<RegionFootprint>* cache{};
-    Element<RegionFootprint>* pages{};
-    Element<CacheCapacityAnalysis>* cache_capacity{};
-    Element<PackedAccessWaste>* packed_waste{};
-    Element<std::uint8_t>* footprint_exact{};
-    Element<std::optional<std::uint64_t>>* storage_bytes{};
-    Element<std::optional<std::uint64_t>>* full_logical_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.analysis,
-                    self.selections,
-                    self.element_count,
-                    self.multiplicity,
-                    self.bytes,
-                    self.bits,
-                    self.cache,
-                    self.pages,
-                    self.cache_capacity,
-                    self.packed_waste,
-                    self.footprint_exact,
-                    self.storage_bytes,
-                    self.full_logical_payload_bytes,
-                    self.unselected_payload_bytes,
-                    self.allocated_payload_bytes,
-                    self.capacity_slack_bytes);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -109,8 +69,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -119,28 +79,22 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->column(this->columns_.analysis); }
-    auto selections() const { return this->column(this->columns_.selections); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto multiplicity() const { return this->column(this->columns_.multiplicity); }
-    auto bytes() const { return this->column(this->columns_.bytes); }
-    auto bits() const { return this->column(this->columns_.bits); }
-    auto cache() const { return this->column(this->columns_.cache); }
-    auto pages() const { return this->column(this->columns_.pages); }
-    auto cache_capacity() const { return this->column(this->columns_.cache_capacity); }
-    auto packed_waste() const { return this->column(this->columns_.packed_waste); }
-    auto footprint_exact() const { return this->column(this->columns_.footprint_exact); }
-    auto storage_bytes() const { return this->column(this->columns_.storage_bytes); }
-    auto full_logical_payload_bytes() const {
-        return this->column(this->columns_.full_logical_payload_bytes);
-    }
-    auto unselected_payload_bytes() const {
-        return this->column(this->columns_.unselected_payload_bytes);
-    }
-    auto allocated_payload_bytes() const {
-        return this->column(this->columns_.allocated_payload_bytes);
-    }
-    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
+    auto analysis() const { return this->template column<0LL>(); }
+    auto selections() const { return this->template column<1LL>(); }
+    auto element_count() const { return this->template column<2LL>(); }
+    auto multiplicity() const { return this->template column<3LL>(); }
+    auto bytes() const { return this->template column<4LL>(); }
+    auto bits() const { return this->template column<5LL>(); }
+    auto cache() const { return this->template column<6LL>(); }
+    auto pages() const { return this->template column<7LL>(); }
+    auto cache_capacity() const { return this->template column<8LL>(); }
+    auto packed_waste() const { return this->template column<9LL>(); }
+    auto footprint_exact() const { return this->template column<10LL>(); }
+    auto storage_bytes() const { return this->template column<11LL>(); }
+    auto full_logical_payload_bytes() const { return this->template column<12LL>(); }
+    auto unselected_payload_bytes() const { return this->template column<13LL>(); }
+    auto allocated_payload_bytes() const { return this->template column<14LL>(); }
+    auto capacity_slack_bytes() const { return this->template column<15LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

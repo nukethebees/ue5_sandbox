@@ -8,8 +8,6 @@
 #include "ioj/vector.h"
 #include "wheels_compact_view.h"
 
-#include <memory_resource>
-
 namespace ioj {
 
 /* **************************************** */
@@ -19,62 +17,20 @@ namespace ioj {
 // positions: ioj::Vector2f
 // steps: float
 struct PhysicalWheelsRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<PhysicalWheelsRows,
-                                             physical_wheels_rows::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = physical_wheels_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = physical_wheels_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = physical_wheels_rows::CompactView;
-    using CompactConstView = physical_wheels_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PhysicalWheelsRows() noexcept
-        : PhysicalWheelsRows{*std::pmr::get_default_resource()} {}
-    explicit PhysicalWheelsRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PhysicalWheelsRows() { Operations::release_storage(*this); }
-
-    PhysicalWheelsRows(PhysicalWheelsRows const&) = delete;
-    PhysicalWheelsRows(PhysicalWheelsRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PhysicalWheelsRows const&) -> PhysicalWheelsRows& = delete;
-    auto operator=(PhysicalWheelsRows&& other) -> PhysicalWheelsRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = physical_wheels_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PhysicalWheelsRows,
+          physical_wheels_rows::ColumnTypes,
+          native_soa::Owner<physical_wheels_rows::CompactView,
+                            physical_wheels_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PhysicalWheelsRows,
+        physical_wheels_rows::ColumnTypes,
+        native_soa::Owner<physical_wheels_rows::CompactView,
+                          physical_wheels_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto positions(this auto& self) { return self.view().positions(); }
     auto steps(this auto& self) { return self.view().steps(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PhysicalWheelsRows,
-                                                                 physical_wheels_rows::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

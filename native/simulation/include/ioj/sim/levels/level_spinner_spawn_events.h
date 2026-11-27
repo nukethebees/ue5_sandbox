@@ -11,7 +11,6 @@
 #include "level_spinner_spawn_events_compact_view.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -26,62 +25,23 @@ namespace ioj::sim {
 // yaws: float
 // initial_fire_point_indices: ioj::NonNegative<std::int32_t>
 struct LevelSpinnerSpawnEvents
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
-                                             level_spinner_spawn_events::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = level_spinner_spawn_events::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = level_spinner_spawn_events::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = level_spinner_spawn_events::CompactView;
-    using CompactConstView = level_spinner_spawn_events::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LevelSpinnerSpawnEvents() noexcept
-        : LevelSpinnerSpawnEvents{*std::pmr::get_default_resource()} {}
-    explicit LevelSpinnerSpawnEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LevelSpinnerSpawnEvents() { Operations::release_storage(*this); }
-
-    LevelSpinnerSpawnEvents(LevelSpinnerSpawnEvents const&) = delete;
-    LevelSpinnerSpawnEvents(LevelSpinnerSpawnEvents&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LevelSpinnerSpawnEvents const&) -> LevelSpinnerSpawnEvents& = delete;
-    auto operator=(LevelSpinnerSpawnEvents&& other) -> LevelSpinnerSpawnEvents& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = level_spinner_spawn_events::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LevelSpinnerSpawnEvents,
+          level_spinner_spawn_events::ColumnTypes,
+          native_soa::Owner<level_spinner_spawn_events::CompactView,
+                            level_spinner_spawn_events::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LevelSpinnerSpawnEvents,
+        level_spinner_spawn_events::ColumnTypes,
+        native_soa::Owner<level_spinner_spawn_events::CompactView,
+                          level_spinner_spawn_events::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto initial_fire_point_indices(this auto& self) {
         return self.view().initial_fire_point_indices();
     }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
-                                               level_spinner_spawn_events::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -104,9 +64,5 @@ struct LevelSpinnerSpawnEvents
         set(index, new_entity_indices, new_locations, new_yaws, new_initial_fire_point_indices);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

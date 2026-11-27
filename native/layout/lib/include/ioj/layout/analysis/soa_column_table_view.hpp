@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace soa_column_table {
@@ -23,7 +22,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     std::string_view,
                                                     lispb::schema::TypeId,
                                                     lispb::StringId,
@@ -39,47 +41,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
                                                     std::optional<std::uint64_t>,
                                                     std::optional<ioj::layout::CacheLineTiling>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* parent{};
-    Element<std::string_view>* name{};
-    Element<lispb::schema::TypeId>* semantic_type{};
-    Element<lispb::StringId>* schema_type{};
-    Element<lispb::StringId>* physical_type{};
-    Element<std::uint8_t>* overridden{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts{};
-    Element<std::optional<std::uint64_t>>* total_bytes{};
-    Element<std::optional<std::uint64_t>>* allocation_offset_bytes{};
-    Element<std::optional<std::uint64_t>>* padding_before_bytes{};
-    Element<std::optional<std::uint64_t>>* minimum_cache_lines{};
-    Element<std::optional<std::uint64_t>>* elements_per_cache_line{};
-    Element<std::optional<std::uint64_t>>* minimum_pages{};
-    Element<std::optional<std::uint64_t>>* complete_elements_per_page{};
-    Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.parent,
-                    self.name,
-                    self.semantic_type,
-                    self.schema_type,
-                    self.physical_type,
-                    self.overridden,
-                    self.type_facts,
-                    self.total_bytes,
-                    self.allocation_offset_bytes,
-                    self.padding_before_bytes,
-                    self.minimum_cache_lines,
-                    self.elements_per_cache_line,
-                    self.minimum_pages,
-                    self.complete_elements_per_page,
-                    self.cache_line_tiling);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -106,8 +68,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -116,27 +78,21 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(this->columns_.parent); }
-    auto name() const { return this->column(this->columns_.name); }
-    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
-    auto schema_type() const { return this->column(this->columns_.schema_type); }
-    auto physical_type() const { return this->column(this->columns_.physical_type); }
-    auto overridden() const { return this->column(this->columns_.overridden); }
-    auto type_facts() const { return this->column(this->columns_.type_facts); }
-    auto total_bytes() const { return this->column(this->columns_.total_bytes); }
-    auto allocation_offset_bytes() const {
-        return this->column(this->columns_.allocation_offset_bytes);
-    }
-    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
-    auto minimum_cache_lines() const { return this->column(this->columns_.minimum_cache_lines); }
-    auto elements_per_cache_line() const {
-        return this->column(this->columns_.elements_per_cache_line);
-    }
-    auto minimum_pages() const { return this->column(this->columns_.minimum_pages); }
-    auto complete_elements_per_page() const {
-        return this->column(this->columns_.complete_elements_per_page);
-    }
-    auto cache_line_tiling() const { return this->column(this->columns_.cache_line_tiling); }
+    auto parent() const { return this->template column<0LL>(); }
+    auto name() const { return this->template column<1LL>(); }
+    auto semantic_type() const { return this->template column<2LL>(); }
+    auto schema_type() const { return this->template column<3LL>(); }
+    auto physical_type() const { return this->template column<4LL>(); }
+    auto overridden() const { return this->template column<5LL>(); }
+    auto type_facts() const { return this->template column<6LL>(); }
+    auto total_bytes() const { return this->template column<7LL>(); }
+    auto allocation_offset_bytes() const { return this->template column<8LL>(); }
+    auto padding_before_bytes() const { return this->template column<9LL>(); }
+    auto minimum_cache_lines() const { return this->template column<10LL>(); }
+    auto elements_per_cache_line() const { return this->template column<11LL>(); }
+    auto minimum_pages() const { return this->template column<12LL>(); }
+    auto complete_elements_per_page() const { return this->template column<13LL>(); }
+    auto cache_line_tiling() const { return this->template column<14LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

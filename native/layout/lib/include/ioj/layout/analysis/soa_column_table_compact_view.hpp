@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analysis/soa_column_table_view.hpp"
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -25,21 +26,7 @@ namespace soa_column_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              std::string_view,
-                                              lispb::schema::TypeId,
-                                              lispb::StringId,
-                                              lispb::StringId,
-                                              std::uint8_t,
-                                              std::optional<ioj::layout::PhysicalFactId>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<ioj::layout::CacheLineTiling>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t parent_column{0ULL};
     static constexpr std::size_t name_column{1ULL};
     static constexpr std::size_t semantic_type_column{2ULL};

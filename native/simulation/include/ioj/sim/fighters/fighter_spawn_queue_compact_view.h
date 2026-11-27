@@ -7,6 +7,7 @@
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/sim/levels/level_entity_ref.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -22,8 +23,7 @@ namespace fighter_spawn_queue {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<LevelEntityRef, float, float, float, float, float, float, ::ioj::Team> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t entity_indices_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};

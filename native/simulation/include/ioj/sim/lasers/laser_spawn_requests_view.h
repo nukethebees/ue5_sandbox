@@ -22,7 +22,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<float,
                                                     float,
                                                     float,
                                                     float,
@@ -37,45 +40,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<float,
                                                     EntityId,
                                                     LaserSource>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* rotations_pitches{};
-    Element<float>* rotations_yaws{};
-    Element<float>* rotations_rolls{};
-    Element<float>* base_velocities_xs{};
-    Element<float>* base_velocities_ys{};
-    Element<float>* base_velocities_zs{};
-    Element<std::int32_t>* damages{};
-    Element<float>* speeds{};
-    Element<float>* max_distances{};
-    Element<EntityId>* instigator_ids{};
-    Element<LaserSource>* sources{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.rotations_pitches,
-                    self.rotations_yaws,
-                    self.rotations_rolls,
-                    self.base_velocities_xs,
-                    self.base_velocities_ys,
-                    self.base_velocities_zs,
-                    self.damages,
-                    self.speeds,
-                    self.max_distances,
-                    self.instigator_ids,
-                    self.sources);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -104,8 +69,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -116,30 +81,30 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         : Base{other} {}
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
     auto view_rotations() const
         -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->columns_.rotations_pitches,
-                this->columns_.rotations_yaws,
-                this->columns_.rotations_rolls,
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
                 this->num()};
     }
     auto view_base_velocities() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.base_velocities_xs,
-                this->columns_.base_velocities_ys,
-                this->columns_.base_velocities_zs,
+        return {this->template column<6LL>().data(),
+                this->template column<7LL>().data(),
+                this->template column<8LL>().data(),
                 this->num()};
     }
-    auto damages() const { return this->column(this->columns_.damages); }
-    auto speeds() const { return this->column(this->columns_.speeds); }
-    auto max_distances() const { return this->column(this->columns_.max_distances); }
-    auto instigator_ids() const { return this->column(this->columns_.instigator_ids); }
-    auto sources() const { return this->column(this->columns_.sources); }
+    auto damages() const { return this->template column<9LL>(); }
+    auto speeds() const { return this->template column<10LL>(); }
+    auto max_distances() const { return this->template column<11LL>(); }
+    auto instigator_ids() const { return this->template column<12LL>(); }
+    auto sources() const { return this->template column<13LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

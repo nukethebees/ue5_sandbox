@@ -13,7 +13,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -45,52 +44,16 @@ namespace ioj::sim {
 // target_velocities_ys: float
 // target_velocities_zs: float
 struct TurretEntityData
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<TurretEntityData,
-                                             turret_entity_data::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = turret_entity_data::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = turret_entity_data::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = turret_entity_data::CompactView;
-    using CompactConstView = turret_entity_data::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    TurretEntityData() noexcept
-        : TurretEntityData{*std::pmr::get_default_resource()} {}
-    explicit TurretEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~TurretEntityData() { Operations::release_storage(*this); }
-
-    TurretEntityData(TurretEntityData const&) = delete;
-    TurretEntityData(TurretEntityData&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(TurretEntityData const&) -> TurretEntityData& = delete;
-    auto operator=(TurretEntityData&& other) -> TurretEntityData& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = turret_entity_data::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          TurretEntityData,
+          turret_entity_data::ColumnTypes,
+          native_soa::Owner<turret_entity_data::CompactView,
+                            turret_entity_data::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        TurretEntityData,
+        turret_entity_data::ColumnTypes,
+        native_soa::Owner<turret_entity_data::CompactView, turret_entity_data::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_ids(this auto& self) { return self.view().entity_ids(); }
     auto integral_biases(this auto& self) { return self.view().integral_biases(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
@@ -110,9 +73,6 @@ struct TurretEntityData
     auto target_ids(this auto& self) { return self.view().target_ids(); }
     auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
     auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<TurretEntityData,
-                                                                 turret_entity_data::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -176,9 +136,5 @@ struct TurretEntityData
             new_target_velocities);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

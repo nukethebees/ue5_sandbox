@@ -75,10 +75,7 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     expect_contains_all(files[3].content,
                         {"struct EXAMPLE_API CompactConstView", "Project/Generated_view.h"});
     expect_contains_none(files[3].content, {"native_soa/storage.h", "StorageOperations"});
-    expect_contains_all(header,
-                        {"std::pmr::memory_resource&",
-                         "using Operations = ioj::native_soa::StorageOperations;",
-                         "Project/Generated_compact_view.h"});
+    expect_contains_all(header, {"ioj::native_soa::Owner<", "Project/Generated_compact_view.h"});
     expect_contains_none(header, {"void apply_permutation(", "TArray", "validate_array_sizes"});
     EXPECT_TRUE(source.contains("#include \"Project/Generated.h\""));
 }
@@ -103,7 +100,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
          "Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)",
          "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>",
          "matrix_field(std::int32_t const row_index, std::int32_t const column_index)",
-         "ColumnTypes<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
+         "ColumnPointers<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
     EXPECT_FALSE(header.contains("CoreMinimal.h"));
 }
 

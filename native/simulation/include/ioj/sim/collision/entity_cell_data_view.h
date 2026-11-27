@@ -21,7 +21,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<float,
                                                     float,
                                                     float,
                                                     float,
@@ -35,43 +38,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<float,
                                                     std::int32_t,
                                                     EntityId>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* min_points_xs{};
-    Element<float>* min_points_ys{};
-    Element<float>* min_points_zs{};
-    Element<float>* max_points_xs{};
-    Element<float>* max_points_ys{};
-    Element<float>* max_points_zs{};
-    Element<std::int32_t>* min_cells_xs{};
-    Element<std::int32_t>* min_cells_ys{};
-    Element<std::int32_t>* min_cells_zs{};
-    Element<std::int32_t>* max_cells_xs{};
-    Element<std::int32_t>* max_cells_ys{};
-    Element<std::int32_t>* max_cells_zs{};
-    Element<EntityId>* entity_ids{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.min_points_xs,
-                    self.min_points_ys,
-                    self.min_points_zs,
-                    self.max_points_xs,
-                    self.max_points_ys,
-                    self.max_points_zs,
-                    self.min_cells_xs,
-                    self.min_cells_ys,
-                    self.min_cells_zs,
-                    self.max_cells_xs,
-                    self.max_cells_ys,
-                    self.max_cells_zs,
-                    self.entity_ids);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -100,8 +67,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -112,33 +79,33 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         : Base{other} {}
     auto view_min_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.min_points_xs,
-                this->columns_.min_points_ys,
-                this->columns_.min_points_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
     auto view_max_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.max_points_xs,
-                this->columns_.max_points_ys,
-                this->columns_.max_points_zs,
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
                 this->num()};
     }
     auto view_min_cells() const
         -> std::conditional_t<Const, cell_coords::ConstView, cell_coords::View> {
-        return {this->columns_.min_cells_xs,
-                this->columns_.min_cells_ys,
-                this->columns_.min_cells_zs,
+        return {this->template column<6LL>().data(),
+                this->template column<7LL>().data(),
+                this->template column<8LL>().data(),
                 this->num()};
     }
     auto view_max_cells() const
         -> std::conditional_t<Const, cell_coords::ConstView, cell_coords::View> {
-        return {this->columns_.max_cells_xs,
-                this->columns_.max_cells_ys,
-                this->columns_.max_cells_zs,
+        return {this->template column<9LL>().data(),
+                this->template column<10LL>().data(),
+                this->template column<11LL>().data(),
                 this->num()};
     }
-    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto entity_ids() const { return this->template column<12LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

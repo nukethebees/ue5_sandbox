@@ -9,7 +9,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj {
 namespace vectors3f {
@@ -17,23 +16,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* xs{};
-    Element<float>* ys{};
-    Element<float>* zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.xs, self.ys, self.zs);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -46,8 +34,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -56,9 +44,9 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(this->columns_.xs); }
-    auto ys() const { return this->column(this->columns_.ys); }
-    auto zs() const { return this->column(this->columns_.zs); }
+    auto xs() const { return this->template column<0LL>(); }
+    auto ys() const { return this->template column<1LL>(); }
+    auto zs() const { return this->template column<2LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

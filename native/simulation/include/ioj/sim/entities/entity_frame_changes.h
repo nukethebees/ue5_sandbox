@@ -13,7 +13,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -28,66 +27,24 @@ namespace ioj::sim {
 // teams: ::ioj::Team
 // ids: EntityId
 struct EntityFrameChanges
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityFrameChanges,
-                                             entity_frame_changes::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_frame_changes::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_frame_changes::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_frame_changes::CompactView;
-    using CompactConstView = entity_frame_changes::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityFrameChanges() noexcept
-        : EntityFrameChanges{*std::pmr::get_default_resource()} {}
-    explicit EntityFrameChanges(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityFrameChanges() { Operations::release_storage(*this); }
-
-    EntityFrameChanges(EntityFrameChanges const&) = delete;
-    EntityFrameChanges(EntityFrameChanges&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityFrameChanges const&) -> EntityFrameChanges& = delete;
-    auto operator=(EntityFrameChanges&& other) -> EntityFrameChanges& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_frame_changes::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityFrameChanges,
+          entity_frame_changes::ColumnTypes,
+          native_soa::Owner<entity_frame_changes::CompactView,
+                            entity_frame_changes::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityFrameChanges,
+        entity_frame_changes::ColumnTypes,
+        native_soa::Owner<entity_frame_changes::CompactView,
+                          entity_frame_changes::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto kinds(this auto& self) { return self.view().kinds(); }
     auto indices(this auto& self) { return self.view().indices(); }
     auto locations(this auto& self) { return self.view().locations(); }
     auto rotations(this auto& self) { return self.view().rotations(); }
     auto teams(this auto& self) { return self.view().teams(); }
     auto ids(this auto& self) { return self.view().ids(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityFrameChanges,
-                                                                 entity_frame_changes::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

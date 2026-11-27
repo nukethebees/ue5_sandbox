@@ -10,7 +10,6 @@
 #include "level_spawn_groups_compact_view.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -22,63 +21,20 @@ namespace ioj::sim {
 // offsets: std::int32_t
 // counts: LevelEventCount
 struct LevelSpawnGroups
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                             level_spawn_groups::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = level_spawn_groups::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = level_spawn_groups::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = level_spawn_groups::CompactView;
-    using CompactConstView = level_spawn_groups::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LevelSpawnGroups() noexcept
-        : LevelSpawnGroups{*std::pmr::get_default_resource()} {}
-    explicit LevelSpawnGroups(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LevelSpawnGroups() { Operations::release_storage(*this); }
-
-    LevelSpawnGroups(LevelSpawnGroups const&) = delete;
-    LevelSpawnGroups(LevelSpawnGroups&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LevelSpawnGroups const&) -> LevelSpawnGroups& = delete;
-    auto operator=(LevelSpawnGroups&& other) -> LevelSpawnGroups& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = level_spawn_groups::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LevelSpawnGroups,
+          level_spawn_groups::ColumnTypes,
+          native_soa::Owner<level_spawn_groups::CompactView,
+                            level_spawn_groups::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LevelSpawnGroups,
+        level_spawn_groups::ColumnTypes,
+        native_soa::Owner<level_spawn_groups::CompactView, level_spawn_groups::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto types(this auto& self) { return self.view().types(); }
     auto offsets(this auto& self) { return self.view().offsets(); }
     auto counts(this auto& self) { return self.view().counts(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                                                 level_spawn_groups::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

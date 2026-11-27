@@ -11,7 +11,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -28,59 +27,20 @@ namespace ioj::sim {
 // directions_zs: float
 // teams: ::ioj::Team
 struct FighterSpawnQueue
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<FighterSpawnQueue,
-                                             fighter_spawn_queue::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = fighter_spawn_queue::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = fighter_spawn_queue::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = fighter_spawn_queue::CompactView;
-    using CompactConstView = fighter_spawn_queue::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    FighterSpawnQueue() noexcept
-        : FighterSpawnQueue{*std::pmr::get_default_resource()} {}
-    explicit FighterSpawnQueue(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~FighterSpawnQueue() { Operations::release_storage(*this); }
-
-    FighterSpawnQueue(FighterSpawnQueue const&) = delete;
-    FighterSpawnQueue(FighterSpawnQueue&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(FighterSpawnQueue const&) -> FighterSpawnQueue& = delete;
-    auto operator=(FighterSpawnQueue&& other) -> FighterSpawnQueue& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = fighter_spawn_queue::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          FighterSpawnQueue,
+          fighter_spawn_queue::ColumnTypes,
+          native_soa::Owner<fighter_spawn_queue::CompactView,
+                            fighter_spawn_queue::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        FighterSpawnQueue,
+        fighter_spawn_queue::ColumnTypes,
+        native_soa::Owner<fighter_spawn_queue::CompactView, fighter_spawn_queue::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_directions(this auto& self) { return self.view().view_directions(); }
     auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<FighterSpawnQueue,
-                                                                 fighter_spawn_queue::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -103,9 +63,5 @@ struct FighterSpawnQueue
         set(index, new_entity_indices, new_locations, new_directions, new_teams);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

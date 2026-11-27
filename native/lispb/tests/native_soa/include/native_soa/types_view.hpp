@@ -41,21 +41,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<std::uint32_t>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::uint32_t>* count{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.count);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<std::uint32_t>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -68,8 +59,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -78,7 +69,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto count() const { return this->column(this->columns_.count); }
+    auto count() const { return this->template column<0LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -108,21 +99,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<PointerB*>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<PointerB*>* others{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.others);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<PointerB*>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -135,8 +117,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -145,7 +127,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(this->columns_.others); }
+    auto others() const { return this->template column<0LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -165,21 +147,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<PointerA*>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<PointerA*>* others{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.others);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<PointerA*>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -192,8 +165,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -202,7 +175,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(this->columns_.others); }
+    auto others() const { return this->template column<0LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -222,21 +195,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<MixedRecord*>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<MixedRecord*>* records{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.records);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<MixedRecord*>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -249,8 +213,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -259,7 +223,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto records() const { return this->column(this->columns_.records); }
+    auto records() const { return this->template column<0LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -283,22 +247,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<Pair, Node*>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<Pair>* pairs{};
-    Element<Node*>* pointers{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.pairs, self.pointers);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<Pair, Node*>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -311,8 +265,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -321,8 +275,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pairs() const { return this->column(this->columns_.pairs); }
-    auto pointers() const { return this->column(this->columns_.pointers); }
+    auto pairs() const { return this->template column<0LL>(); }
+    auto pointers() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -342,23 +296,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* xs{};
-    Element<float>* ys{};
-    Element<float>* zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.xs, self.ys, self.zs);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -371,8 +314,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -381,9 +324,9 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(this->columns_.xs); }
-    auto ys() const { return this->column(this->columns_.ys); }
-    auto zs() const { return this->column(this->columns_.zs); }
+    auto xs() const { return this->template column<0LL>(); }
+    auto ys() const { return this->template column<1LL>(); }
+    auto zs() const { return this->template column<2LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -403,22 +346,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<OddBytes, OddBytes>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<OddBytes>* first{};
-    Element<OddBytes>* second{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.first, self.second);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<OddBytes, OddBytes>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -431,8 +364,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -441,8 +374,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first() const { return this->column(this->columns_.first); }
-    auto second() const { return this->column(this->columns_.second); }
+    auto first() const { return this->template column<0LL>(); }
+    auto second() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -462,31 +395,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float, float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* starts_xs{};
-    Element<float>* starts_ys{};
-    Element<float>* starts_zs{};
-    Element<float>* ends_xs{};
-    Element<float>* ends_ys{};
-    Element<float>* ends_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.starts_xs,
-                    self.starts_ys,
-                    self.starts_zs,
-                    self.ends_xs,
-                    self.ends_ys,
-                    self.ends_zs);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -506,8 +420,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -517,14 +431,16 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         requires Enabled
         : Base{other} {}
     auto view_starts() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->columns_.starts_xs,
-                this->columns_.starts_ys,
-                this->columns_.starts_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
     auto view_ends() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {
-            this->columns_.ends_xs, this->columns_.ends_ys, this->columns_.ends_zs, this->num()};
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
+                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -547,34 +463,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<std::int32_t, float, float, float, float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::int32_t>* values{};
-    Element<float>* positions_xs{};
-    Element<float>* positions_ys{};
-    Element<float>* positions_zs{};
-    Element<float>* velocities_xs{};
-    Element<float>* velocities_ys{};
-    Element<float>* velocities_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.values,
-                    self.positions_xs,
-                    self.positions_ys,
-                    self.positions_zs,
-                    self.velocities_xs,
-                    self.velocities_ys,
-                    self.velocities_zs);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<std::int32_t, float, float, float, float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -595,8 +490,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -605,17 +500,17 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(this->columns_.values); }
+    auto values() const { return this->template column<0LL>(); }
     auto view_positions() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->columns_.positions_xs,
-                this->columns_.positions_ys,
-                this->columns_.positions_zs,
+        return {this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
+                this->template column<3LL>().data(),
                 this->num()};
     }
     auto view_velocities() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->columns_.velocities_xs,
-                this->columns_.velocities_ys,
-                this->columns_.velocities_zs,
+        return {this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
+                this->template column<6LL>().data(),
                 this->num()};
     }
 };
@@ -637,7 +532,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<std::uint8_t,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<std::uint8_t,
                                                     OddBytes,
                                                     OddBytes,
                                                     Aligned32,
@@ -650,41 +548,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<std::uint8_t,
                                                     Aligned64,
                                                     Aligned256>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::uint8_t>* bytes{};
-    Element<OddBytes>* odd_first{};
-    Element<OddBytes>* odd_second{};
-    Element<Aligned32>* aligned32{};
-    Element<float>* nested_starts_xs{};
-    Element<float>* nested_starts_ys{};
-    Element<float>* nested_starts_zs{};
-    Element<float>* nested_ends_xs{};
-    Element<float>* nested_ends_ys{};
-    Element<float>* nested_ends_zs{};
-    Element<Aligned64>* aligned64{};
-    Element<Aligned256>* aligned256{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.bytes,
-                    self.odd_first,
-                    self.odd_second,
-                    self.aligned32,
-                    self.nested_starts_xs,
-                    self.nested_starts_ys,
-                    self.nested_starts_zs,
-                    self.nested_ends_xs,
-                    self.nested_ends_ys,
-                    self.nested_ends_zs,
-                    self.aligned64,
-                    self.aligned256);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -712,8 +576,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -722,23 +586,24 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto bytes() const { return this->column(this->columns_.bytes); }
+    auto bytes() const { return this->template column<0LL>(); }
     auto view_odd() const -> std::conditional_t<Const, odd_pairs::ConstView, odd_pairs::View> {
-        return {this->columns_.odd_first, this->columns_.odd_second, this->num()};
+        return {
+            this->template column<1LL>().data(), this->template column<2LL>().data(), this->num()};
     }
-    auto aligned32() const { return this->column(this->columns_.aligned32); }
+    auto aligned32() const { return this->template column<3LL>(); }
     auto view_nested() const
         -> std::conditional_t<Const, vector_groups::ConstView, vector_groups::View> {
-        return {this->columns_.nested_starts_xs,
-                this->columns_.nested_starts_ys,
-                this->columns_.nested_starts_zs,
-                this->columns_.nested_ends_xs,
-                this->columns_.nested_ends_ys,
-                this->columns_.nested_ends_zs,
+        return {this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
+                this->template column<6LL>().data(),
+                this->template column<7LL>().data(),
+                this->template column<8LL>().data(),
+                this->template column<9LL>().data(),
                 this->num()};
     }
-    auto aligned64() const { return this->column(this->columns_.aligned64); }
-    auto aligned256() const { return this->column(this->columns_.aligned256); }
+    auto aligned64() const { return this->template column<10LL>(); }
+    auto aligned256() const { return this->template column<11LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -767,22 +632,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* xs{};
-    Element<float>* ys{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.xs, self.ys);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -795,8 +650,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -805,8 +660,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(this->columns_.xs); }
-    auto ys() const { return this->column(this->columns_.ys); }
+    auto xs() const { return this->template column<0LL>(); }
+    auto ys() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -864,24 +719,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, ApiMask, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* values{};
-    Element<ApiMask>* masks{};
-    Element<float>* positions_xs{};
-    Element<float>* positions_ys{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.values, self.masks, self.positions_xs, self.positions_ys);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, ApiMask, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -895,8 +738,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = ioj::native_soa_fixture::api_owner::View;
     using const_view_type = ioj::native_soa_fixture::api_owner::ConstView;
@@ -905,13 +748,14 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(this->columns_.values); }
-    auto masks() const { return this->column(this->columns_.masks); }
+    auto values() const { return this->template column<0LL>(); }
+    auto masks() const { return this->template column<1LL>(); }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ioj::native_soa_fixture::api_coordinates::ConstView,
                               ioj::native_soa_fixture::api_coordinates::View> {
-        return {this->columns_.positions_xs, this->columns_.positions_ys, this->num()};
+        return {
+            this->template column<2LL>().data(), this->template column<3LL>().data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -949,22 +793,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* xs{};
-    Element<float>* ys{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.xs, self.ys);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -977,8 +811,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -987,8 +821,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(this->columns_.xs); }
-    auto ys() const { return this->column(this->columns_.ys); }
+    auto xs() const { return this->template column<0LL>(); }
+    auto ys() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -1023,23 +857,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* horizontal{};
-    Element<float>* vertical{};
-    Element<float>* depth{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.horizontal, self.vertical, self.depth);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -1052,8 +875,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -1062,9 +885,9 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto horizontal() const { return this->column(this->columns_.horizontal); }
-    auto vertical() const { return this->column(this->columns_.vertical); }
-    auto depth() const { return this->column(this->columns_.depth); }
+    auto horizontal() const { return this->template column<0LL>(); }
+    auto vertical() const { return this->template column<1LL>(); }
+    auto depth() const { return this->template column<2LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

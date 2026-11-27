@@ -9,33 +9,19 @@
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 
-#include <type_traits>
-
 namespace ioj {
 namespace physical_buttons_rows {
 struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<PhysicalKey, host::Modifiers, ButtonState, bool>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<PhysicalKey>* keys{};
-    Element<host::Modifiers>* modifiers{};
-    Element<ButtonState>* states{};
-    Element<bool>* repeats{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.keys, self.modifiers, self.states, self.repeats);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<PhysicalKey, host::Modifiers, ButtonState, bool>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -48,8 +34,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -58,10 +44,10 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto keys() const { return this->column(this->columns_.keys); }
-    auto modifiers() const { return this->column(this->columns_.modifiers); }
-    auto states() const { return this->column(this->columns_.states); }
-    auto repeats() const { return this->column(this->columns_.repeats); }
+    auto keys() const { return this->template column<0LL>(); }
+    auto modifiers() const { return this->template column<1LL>(); }
+    auto states() const { return this->template column<2LL>(); }
+    auto repeats() const { return this->template column<3LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace distribution_entry_table {
@@ -19,40 +18,19 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<std::optional<std::size_t>,
-                                    std::optional<lispb::codegen::PackedIntegerValue>,
-                                    std::uint64_t,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::uint64_t>,
-                                    std::optional<std::uint64_t>>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::optional<std::size_t>>* component{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* value{};
-    Element<std::uint64_t>* weight{};
-    Element<std::optional<std::uint64_t>>* extent_bytes{};
-    Element<std::optional<std::uint64_t>>* slack_bytes{};
-    Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
-    Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.component,
-                    self.value,
-                    self.weight,
-                    self.extent_bytes,
-                    self.slack_bytes,
-                    self.weighted_extent_bytes,
-                    self.weighted_slack_bytes);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<std::optional<std::size_t>,
+                                       std::optional<lispb::codegen::PackedIntegerValue>,
+                                       std::uint64_t,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::uint64_t>,
+                                       std::optional<std::uint64_t>>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -71,8 +49,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -81,15 +59,13 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto component() const { return this->column(this->columns_.component); }
-    auto value() const { return this->column(this->columns_.value); }
-    auto weight() const { return this->column(this->columns_.weight); }
-    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
-    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
-    auto weighted_extent_bytes() const {
-        return this->column(this->columns_.weighted_extent_bytes);
-    }
-    auto weighted_slack_bytes() const { return this->column(this->columns_.weighted_slack_bytes); }
+    auto component() const { return this->template column<0LL>(); }
+    auto value() const { return this->template column<1LL>(); }
+    auto weight() const { return this->template column<2LL>(); }
+    auto extent_bytes() const { return this->template column<3LL>(); }
+    auto slack_bytes() const { return this->template column<4LL>(); }
+    auto weighted_extent_bytes() const { return this->template column<5LL>(); }
+    auto weighted_slack_bytes() const { return this->template column<6LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

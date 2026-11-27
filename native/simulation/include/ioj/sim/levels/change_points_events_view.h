@@ -8,30 +8,18 @@
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 
-#include <type_traits>
-
 namespace ioj::sim {
 namespace change_points_events {
 struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<PointsChange, ::ioj::Team>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<PointsChange>* deltas{};
-    Element<::ioj::Team>* teams{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.deltas, self.teams);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<PointsChange, ::ioj::Team>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -44,8 +32,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -54,8 +42,8 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto deltas() const { return this->column(this->columns_.deltas); }
-    auto teams() const { return this->column(this->columns_.teams); }
+    auto deltas() const { return this->template column<0LL>(); }
+    auto teams() const { return this->template column<1LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

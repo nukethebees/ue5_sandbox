@@ -20,32 +20,13 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::
-    ColumnTypes<float, float, float, EntityId, collision::StaticGeometryIndex, TraceHit>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<EntityId>* entities{};
-    Element<collision::StaticGeometryIndex>* static_geometry_indices{};
-    Element<TraceHit>* hits{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.entities,
-                    self.static_geometry_indices,
-                    self.hits);
-    }
-};
+using Pointers = soa_storage_detail::
+    ColumnPointers<float, float, float, EntityId, collision::StaticGeometryIndex, TraceHit>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -64,8 +45,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -76,16 +57,14 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         : Base{other} {}
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
-    auto entities() const { return this->column(this->columns_.entities); }
-    auto static_geometry_indices() const {
-        return this->column(this->columns_.static_geometry_indices);
-    }
-    auto hits() const { return this->column(this->columns_.hits); }
+    auto entities() const { return this->template column<3LL>(); }
+    auto static_geometry_indices() const { return this->template column<4LL>(); }
+    auto hits() const { return this->template column<5LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

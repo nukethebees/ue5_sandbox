@@ -1187,7 +1187,7 @@ TEST_F(SourceLoaderTest, OrdinarySoaNeedsNoSourceOutput) {
     files.write_root(R"((module native_data :header "NativeData.h"
         (struct Data (member values array std::int32_t))))");
     auto const output{files.render(files.load()).front().content};
-    expect_contains_all(output, {"struct Data", "std::pmr::memory_resource&"});
+    expect_contains_all(output, {"struct Data", "native_soa::Owner<"});
 }
 
 TEST_F(SourceLoaderTest, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
@@ -2225,7 +2225,7 @@ TEST_F(SourceLoaderTest, OrdinarySoaPreservesLogicalApi) {
     ASSERT_EQ(soas.mutable_view_functions[schema_row].size(), 1U);
     auto const generated{files.render(manifest)};
     auto const& output{generated.front().content};
-    expect_contains_all(output, {"struct API Rows", "std::pmr::memory_resource& resource"});
+    expect_contains_all(output, {"struct API Rows", "native_soa::Owner<"});
     EXPECT_TRUE(generated.at(2).content.contains("return this->values()[0];"));
     EXPECT_FALSE(output.contains("struct Rows {"));
     EXPECT_TRUE(output.contains("void noop() {"));

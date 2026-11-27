@@ -13,7 +13,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim::lasers {
 
@@ -38,52 +37,15 @@ namespace ioj::sim::lasers {
 // initial_lifetimes: float
 // spawn_times: float
 struct LaserEntities
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LaserEntities,
-                                             laser_entities::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = laser_entities::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = laser_entities::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = laser_entities::CompactView;
-    using CompactConstView = laser_entities::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LaserEntities() noexcept
-        : LaserEntities{*std::pmr::get_default_resource()} {}
-    explicit LaserEntities(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LaserEntities() { Operations::release_storage(*this); }
-
-    LaserEntities(LaserEntities const&) = delete;
-    LaserEntities(LaserEntities&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LaserEntities const&) -> LaserEntities& = delete;
-    auto operator=(LaserEntities&& other) -> LaserEntities& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = laser_entities::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LaserEntities,
+          laser_entities::ColumnTypes,
+          native_soa::Owner<laser_entities::CompactView, laser_entities::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LaserEntities,
+        laser_entities::ColumnTypes,
+        native_soa::Owner<laser_entities::CompactView, laser_entities::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto active(this auto& self) { return self.view().active(); }
     auto sources(this auto& self) { return self.view().sources(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
@@ -94,9 +56,6 @@ struct LaserEntities
     auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
     auto initial_lifetimes(this auto& self) { return self.view().initial_lifetimes(); }
     auto spawn_times(this auto& self) { return self.view().spawn_times(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<LaserEntities,
-                                                                 laser_entities::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -147,9 +106,5 @@ struct LaserEntities
             new_spawn_times);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

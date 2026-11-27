@@ -9,7 +9,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -21,58 +20,20 @@ namespace ioj::sim {
 // damage_amounts: std::int32_t
 // instigators: EntityId
 struct DirectDamageEvents
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
-                                             direct_damage_events::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = direct_damage_events::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = direct_damage_events::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = direct_damage_events::CompactView;
-    using CompactConstView = direct_damage_events::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    DirectDamageEvents() noexcept
-        : DirectDamageEvents{*std::pmr::get_default_resource()} {}
-    explicit DirectDamageEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~DirectDamageEvents() { Operations::release_storage(*this); }
-
-    DirectDamageEvents(DirectDamageEvents const&) = delete;
-    DirectDamageEvents(DirectDamageEvents&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(DirectDamageEvents const&) -> DirectDamageEvents& = delete;
-    auto operator=(DirectDamageEvents&& other) -> DirectDamageEvents& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = direct_damage_events::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          DirectDamageEvents,
+          direct_damage_events::ColumnTypes,
+          native_soa::Owner<direct_damage_events::CompactView,
+                            direct_damage_events::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DirectDamageEvents,
+        direct_damage_events::ColumnTypes,
+        native_soa::Owner<direct_damage_events::CompactView,
+                          direct_damage_events::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
     auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
     auto instigators(this auto& self) { return self.view().instigators(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
-                                                                 direct_damage_events::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::set;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
@@ -84,9 +45,5 @@ struct DirectDamageEvents
         events.damage_amounts()[index] = damage_amount;
         events.instigators()[index] = instigator;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

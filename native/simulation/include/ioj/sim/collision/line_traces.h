@@ -9,7 +9,6 @@
 #include "ioj/single_allocation/operations.h"
 
 #include <cassert>
-#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -24,55 +23,17 @@ namespace ioj::sim {
 // ends_ys: float
 // ends_zs: float
 struct LineTraces
-    : protected native_soa::StorageState
-    , soa_storage_detail::
-          OwnerRowOperations<LineTraces, line_traces::ColumnTypes, native_soa::StorageOperations> {
-    using soa_schema = line_traces::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = line_traces::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = line_traces::CompactView;
-    using CompactConstView = line_traces::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LineTraces() noexcept
-        : LineTraces{*std::pmr::get_default_resource()} {}
-    explicit LineTraces(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LineTraces() { Operations::release_storage(*this); }
-
-    LineTraces(LineTraces const&) = delete;
-    LineTraces(LineTraces&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LineTraces const&) -> LineTraces& = delete;
-    auto operator=(LineTraces&& other) -> LineTraces& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = line_traces::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LineTraces,
+          line_traces::ColumnTypes,
+          native_soa::Owner<line_traces::CompactView, line_traces::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LineTraces,
+        line_traces::ColumnTypes,
+        native_soa::Owner<line_traces::CompactView, line_traces::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto view_starts(this auto& self) { return self.view().view_starts(); }
     auto view_ends(this auto& self) { return self.view().view_ends(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<LineTraces, line_traces::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {
@@ -86,9 +47,5 @@ struct LineTraces
         set(index, new_starts, new_ends);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -10,6 +10,7 @@
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/layout/analysis/workload_table_view.hpp"
 #include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -24,22 +25,7 @@ namespace workload_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              RowRange,
-                                              std::uint64_t,
-                                              std::uint64_t,
-                                              PayloadFootprint,
-                                              PayloadFootprint,
-                                              RegionFootprint,
-                                              RegionFootprint,
-                                              CacheCapacityAnalysis,
-                                              PackedAccessWaste,
-                                              std::uint8_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t analysis_column{0ULL};
     static constexpr std::size_t selections_column{1ULL};
     static constexpr std::size_t element_count_column{2ULL};

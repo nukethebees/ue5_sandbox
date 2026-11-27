@@ -17,31 +17,12 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<float, float, float, float, float, float>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* min_points_xs{};
-    Element<float>* min_points_ys{};
-    Element<float>* min_points_zs{};
-    Element<float>* max_points_xs{};
-    Element<float>* max_points_ys{};
-    Element<float>* max_points_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.min_points_xs,
-                    self.min_points_ys,
-                    self.min_points_zs,
-                    self.max_points_xs,
-                    self.max_points_ys,
-                    self.max_points_zs);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, float, float>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -61,8 +42,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -73,16 +54,16 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
         : Base{other} {}
     auto view_min_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.min_points_xs,
-                this->columns_.min_points_ys,
-                this->columns_.min_points_zs,
+        return {this->template column<0LL>().data(),
+                this->template column<1LL>().data(),
+                this->template column<2LL>().data(),
                 this->num()};
     }
     auto view_max_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.max_points_xs,
-                this->columns_.max_points_ys,
-                this->columns_.max_points_zs,
+        return {this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
+                this->template column<5LL>().data(),
                 this->num()};
     }
 };

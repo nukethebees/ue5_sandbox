@@ -306,7 +306,7 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
                             "CompactConstView",
                             "ViewImpl",
                             "ColumnTypes",
-                            "DataPointers",
+                            "Pointers",
                             "View",
                             "ConstView"}) {
         result.push_back(strings.intern(scope + "::" + name));

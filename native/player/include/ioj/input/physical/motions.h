@@ -8,8 +8,6 @@
 #include "ioj/vector.h"
 #include "motions_compact_view.h"
 
-#include <memory_resource>
-
 namespace ioj {
 
 /* **************************************** */
@@ -19,62 +17,20 @@ namespace ioj {
 // positions: ioj::Vector2f
 // deltas: ioj::Vector2f
 struct PhysicalMotionsRows
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<PhysicalMotionsRows,
-                                             physical_motions_rows::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = physical_motions_rows::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = physical_motions_rows::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = physical_motions_rows::CompactView;
-    using CompactConstView = physical_motions_rows::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PhysicalMotionsRows() noexcept
-        : PhysicalMotionsRows{*std::pmr::get_default_resource()} {}
-    explicit PhysicalMotionsRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~PhysicalMotionsRows() { Operations::release_storage(*this); }
-
-    PhysicalMotionsRows(PhysicalMotionsRows const&) = delete;
-    PhysicalMotionsRows(PhysicalMotionsRows&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(PhysicalMotionsRows const&) -> PhysicalMotionsRows& = delete;
-    auto operator=(PhysicalMotionsRows&& other) -> PhysicalMotionsRows& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = physical_motions_rows::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          PhysicalMotionsRows,
+          physical_motions_rows::ColumnTypes,
+          native_soa::Owner<physical_motions_rows::CompactView,
+                            physical_motions_rows::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PhysicalMotionsRows,
+        physical_motions_rows::ColumnTypes,
+        native_soa::Owner<physical_motions_rows::CompactView,
+                          physical_motions_rows::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto positions(this auto& self) { return self.view().positions(); }
     auto deltas(this auto& self) { return self.view().deltas(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PhysicalMotionsRows,
-                                                                 physical_motions_rows::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

@@ -12,7 +12,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::layout {
 
@@ -28,52 +27,15 @@ namespace ioj::layout {
 // pages: ioj::layout::RegionFootprint
 // capacity_slack_bytes: std::optional<std::uint64_t>
 struct SelectionTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<SelectionTable,
-                                             selection_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = selection_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = selection_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = selection_table::CompactView;
-    using CompactConstView = selection_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    SelectionTable() noexcept
-        : SelectionTable{*std::pmr::get_default_resource()} {}
-    explicit SelectionTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~SelectionTable() { Operations::release_storage(*this); }
-
-    SelectionTable(SelectionTable const&) = delete;
-    SelectionTable(SelectionTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(SelectionTable const&) -> SelectionTable& = delete;
-    auto operator=(SelectionTable&& other) -> SelectionTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = selection_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          SelectionTable,
+          selection_table::ColumnTypes,
+          native_soa::Owner<selection_table::CompactView, selection_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        SelectionTable,
+        selection_table::ColumnTypes,
+        native_soa::Owner<selection_table::CompactView, selection_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto source(this auto& self) { return self.view().source(); }
     auto operation(this auto& self) { return self.view().operation(); }
     auto bytes(this auto& self) { return self.view().bytes(); }
@@ -81,15 +43,8 @@ struct SelectionTable
     auto cache(this auto& self) { return self.view().cache(); }
     auto pages(this auto& self) { return self.view().pages(); }
     auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<SelectionTable,
-                                                                 selection_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(std::size_t selected_source, AccessOperation selected_operation);
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

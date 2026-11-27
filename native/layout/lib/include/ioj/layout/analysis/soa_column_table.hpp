@@ -15,7 +15,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 #include <string_view>
 
 namespace ioj::layout {
@@ -40,52 +39,15 @@ namespace ioj::layout {
 // complete_elements_per_page: std::optional<std::uint64_t>
 // cache_line_tiling: std::optional<ioj::layout::CacheLineTiling>
 struct SoaColumnTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<SoaColumnTable,
-                                             soa_column_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = soa_column_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = soa_column_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = soa_column_table::CompactView;
-    using CompactConstView = soa_column_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    SoaColumnTable() noexcept
-        : SoaColumnTable{*std::pmr::get_default_resource()} {}
-    explicit SoaColumnTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~SoaColumnTable() { Operations::release_storage(*this); }
-
-    SoaColumnTable(SoaColumnTable const&) = delete;
-    SoaColumnTable(SoaColumnTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(SoaColumnTable const&) -> SoaColumnTable& = delete;
-    auto operator=(SoaColumnTable&& other) -> SoaColumnTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = soa_column_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          SoaColumnTable,
+          soa_column_table::ColumnTypes,
+          native_soa::Owner<soa_column_table::CompactView, soa_column_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        SoaColumnTable,
+        soa_column_table::ColumnTypes,
+        native_soa::Owner<soa_column_table::CompactView, soa_column_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto parent(this auto& self) { return self.view().parent(); }
     auto name(this auto& self) { return self.view().name(); }
     auto semantic_type(this auto& self) { return self.view().semantic_type(); }
@@ -103,15 +65,8 @@ struct SoaColumnTable
         return self.view().complete_elements_per_page();
     }
     auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<SoaColumnTable,
-                                                                 soa_column_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

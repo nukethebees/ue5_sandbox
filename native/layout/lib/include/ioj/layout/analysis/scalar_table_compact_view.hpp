@@ -12,6 +12,7 @@
 #include "ioj/layout/analysis/quantized_encoding.hpp"
 #include "ioj/layout/analysis/scalar_table_view.hpp"
 #include "ioj/layout/analysis/varint_encoding.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -27,15 +28,7 @@ namespace scalar_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<lispb::schema::TypeId,
-                                              std::optional<ioj::layout::IntegerDomain>,
-                                              std::optional<ioj::layout::EnumDomain>,
-                                              std::optional<ioj::layout::OptionalSentinelEncoding>,
-                                              std::optional<ioj::layout::OptionalPresenceEncoding>,
-                                              std::optional<ioj::layout::QuantizedEncoding>,
-                                              std::optional<ioj::layout::FixedEncoding>,
-                                              std::optional<ioj::layout::FloatEncoding>,
-                                              std::optional<ioj::layout::VarintEncoding>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t type_column{0ULL};
     static constexpr std::size_t integer_domain_column{1ULL};
     static constexpr std::size_t enum_domain_column{2ULL};

@@ -9,6 +9,7 @@
 #include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_frame_change.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -23,12 +24,7 @@ namespace entity_frame_changes {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<EntityFrameChangeKind,
-                                              std::uint32_t,
-                                              Vector3f,
-                                              Rotator3f,
-                                              ::ioj::Team,
-                                              EntityId> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t kinds_column{0ULL};
     static constexpr std::size_t indices_column{1ULL};
     static constexpr std::size_t locations_column{2ULL};

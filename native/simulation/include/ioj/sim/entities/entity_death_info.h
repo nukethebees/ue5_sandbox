@@ -10,8 +10,6 @@
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/single_allocation/operations.h"
 
-#include <memory_resource>
-
 namespace ioj::sim {
 
 /* **************************************** */
@@ -23,64 +21,20 @@ namespace ioj::sim {
 // killers: EntityId
 // locations: Vector3f
 struct EntityDeathInfo
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
-                                             entity_death_info::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = entity_death_info::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = entity_death_info::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = entity_death_info::CompactView;
-    using CompactConstView = entity_death_info::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    EntityDeathInfo() noexcept
-        : EntityDeathInfo{*std::pmr::get_default_resource()} {}
-    explicit EntityDeathInfo(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~EntityDeathInfo() { Operations::release_storage(*this); }
-
-    EntityDeathInfo(EntityDeathInfo const&) = delete;
-    EntityDeathInfo(EntityDeathInfo&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(EntityDeathInfo const&) -> EntityDeathInfo& = delete;
-    auto operator=(EntityDeathInfo&& other) -> EntityDeathInfo& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = entity_death_info::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          EntityDeathInfo,
+          entity_death_info::ColumnTypes,
+          native_soa::Owner<entity_death_info::CompactView, entity_death_info::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityDeathInfo,
+        entity_death_info::ColumnTypes,
+        native_soa::Owner<entity_death_info::CompactView, entity_death_info::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto reasons(this auto& self) { return self.view().reasons(); }
     auto victims(this auto& self) { return self.view().victims(); }
     auto killers(this auto& self) { return self.view().killers(); }
     auto locations(this auto& self) { return self.view().locations(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
-                                                                 entity_death_info::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

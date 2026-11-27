@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace distribution_table {
@@ -18,7 +17,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     RowRange,
                                                     std::uint64_t,
                                                     std::optional<std::uint64_t>,
@@ -29,37 +31,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
                                                     std::optional<long double>,
                                                     std::optional<long double>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* analysis{};
-    Element<RowRange>* entries{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::optional<std::uint64_t>>* total_weight{};
-    Element<std::optional<std::uint64_t>>* total_extent_bytes{};
-    Element<std::optional<std::uint64_t>>* total_slack_bytes{};
-    Element<std::optional<long double>>* expected_extent_bytes{};
-    Element<std::optional<long double>>* expected_slack_bytes{};
-    Element<std::optional<long double>>* expected_selected_extent_bytes{};
-    Element<std::optional<long double>>* expected_selected_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.analysis,
-                    self.entries,
-                    self.element_count,
-                    self.total_weight,
-                    self.total_extent_bytes,
-                    self.total_slack_bytes,
-                    self.expected_extent_bytes,
-                    self.expected_slack_bytes,
-                    self.expected_selected_extent_bytes,
-                    self.expected_selected_slack_bytes);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -81,8 +53,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -91,22 +63,16 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->column(this->columns_.analysis); }
-    auto entries() const { return this->column(this->columns_.entries); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto total_weight() const { return this->column(this->columns_.total_weight); }
-    auto total_extent_bytes() const { return this->column(this->columns_.total_extent_bytes); }
-    auto total_slack_bytes() const { return this->column(this->columns_.total_slack_bytes); }
-    auto expected_extent_bytes() const {
-        return this->column(this->columns_.expected_extent_bytes);
-    }
-    auto expected_slack_bytes() const { return this->column(this->columns_.expected_slack_bytes); }
-    auto expected_selected_extent_bytes() const {
-        return this->column(this->columns_.expected_selected_extent_bytes);
-    }
-    auto expected_selected_slack_bytes() const {
-        return this->column(this->columns_.expected_selected_slack_bytes);
-    }
+    auto analysis() const { return this->template column<0LL>(); }
+    auto entries() const { return this->template column<1LL>(); }
+    auto element_count() const { return this->template column<2LL>(); }
+    auto total_weight() const { return this->template column<3LL>(); }
+    auto total_extent_bytes() const { return this->template column<4LL>(); }
+    auto total_slack_bytes() const { return this->template column<5LL>(); }
+    auto expected_extent_bytes() const { return this->template column<6LL>(); }
+    auto expected_slack_bytes() const { return this->template column<7LL>(); }
+    auto expected_selected_extent_bytes() const { return this->template column<8LL>(); }
+    auto expected_selected_slack_bytes() const { return this->template column<9LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

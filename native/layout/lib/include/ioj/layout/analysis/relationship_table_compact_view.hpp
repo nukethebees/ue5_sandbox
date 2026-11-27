@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/layout/analysis/relationship_table_view.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -21,10 +22,7 @@ namespace relationship_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              std::optional<std::size_t>,
-                                              lispb::schema::RelationshipId,
-                                              std::optional<ioj::layout::RelationshipMetrics>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t owner_column{0ULL};
     static constexpr std::size_t field_column{1ULL};
     static constexpr std::size_t relationship_column{2ULL};

@@ -9,6 +9,7 @@
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/sim_tick.h"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -22,8 +23,7 @@ namespace entity_history {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<::ioj::Team, KillCount, LifeState, SimTick, Vector3f> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t teams_column{0ULL};
     static constexpr std::size_t kills_column{1ULL};
     static constexpr std::size_t life_state_column{2ULL};

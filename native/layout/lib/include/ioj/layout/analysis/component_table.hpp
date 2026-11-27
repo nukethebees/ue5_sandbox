@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 #include <string_view>
 
 namespace ioj::layout {
@@ -33,52 +32,15 @@ namespace ioj::layout {
 // padding_before_bytes: std::optional<std::uint64_t>
 // slack_bytes: std::optional<std::uint64_t>
 struct ComponentTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<ComponentTable,
-                                             component_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = component_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = component_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = component_table::CompactView;
-    using CompactConstView = component_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    ComponentTable() noexcept
-        : ComponentTable{*std::pmr::get_default_resource()} {}
-    explicit ComponentTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~ComponentTable() { Operations::release_storage(*this); }
-
-    ComponentTable(ComponentTable const&) = delete;
-    ComponentTable(ComponentTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(ComponentTable const&) -> ComponentTable& = delete;
-    auto operator=(ComponentTable&& other) -> ComponentTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = component_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          ComponentTable,
+          component_table::ColumnTypes,
+          native_soa::Owner<component_table::CompactView, component_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        ComponentTable,
+        component_table::ColumnTypes,
+        native_soa::Owner<component_table::CompactView, component_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto parent(this auto& self) { return self.view().parent(); }
     auto name(this auto& self) { return self.view().name(); }
     auto tag(this auto& self) { return self.view().tag(); }
@@ -89,15 +51,8 @@ struct ComponentTable
     auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
     auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<ComponentTable,
-                                                                 component_table::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

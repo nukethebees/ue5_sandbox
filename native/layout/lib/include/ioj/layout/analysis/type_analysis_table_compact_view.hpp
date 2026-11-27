@@ -10,6 +10,7 @@
 #include "ioj/layout/analysis/scenario_id.hpp"
 #include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/layout/analysis/type_analysis_table_view.hpp"
+#include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/compact_view.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -25,13 +26,7 @@ namespace type_analysis_table {
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<lispb::schema::TypeId,
-                                              ScenarioId,
-                                              std::optional<ioj::layout::PhysicalFactId>,
-                                              std::optional<ioj::layout::EnumBacking>,
-                                              std::optional<ioj::layout::AggregateLayout>,
-                                              std::optional<ioj::layout::PackedLayout>,
-                                              std::optional<ioj::layout::SoaLayout>> {
+    : soa_storage_detail::FromPointers<single_allocation_layout::ColumnLayouts, Pointers> {
     static constexpr std::size_t schema_type_column{0ULL};
     static constexpr std::size_t scenario_column{1ULL};
     static constexpr std::size_t physical_column{2ULL};

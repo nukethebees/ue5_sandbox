@@ -11,7 +11,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::layout {
 
@@ -27,52 +26,17 @@ namespace ioj::layout {
 // weighted_extent_bytes: std::optional<std::uint64_t>
 // weighted_slack_bytes: std::optional<std::uint64_t>
 struct DistributionEntryTable
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
-                                             distribution_entry_table::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = distribution_entry_table::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = distribution_entry_table::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = distribution_entry_table::CompactView;
-    using CompactConstView = distribution_entry_table::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    DistributionEntryTable() noexcept
-        : DistributionEntryTable{*std::pmr::get_default_resource()} {}
-    explicit DistributionEntryTable(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~DistributionEntryTable() { Operations::release_storage(*this); }
-
-    DistributionEntryTable(DistributionEntryTable const&) = delete;
-    DistributionEntryTable(DistributionEntryTable&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(DistributionEntryTable const&) -> DistributionEntryTable& = delete;
-    auto operator=(DistributionEntryTable&& other) -> DistributionEntryTable& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = distribution_entry_table::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          DistributionEntryTable,
+          distribution_entry_table::ColumnTypes,
+          native_soa::Owner<distribution_entry_table::CompactView,
+                            distribution_entry_table::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DistributionEntryTable,
+        distribution_entry_table::ColumnTypes,
+        native_soa::Owner<distribution_entry_table::CompactView,
+                          distribution_entry_table::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto component(this auto& self) { return self.view().component(); }
     auto value(this auto& self) { return self.view().value(); }
     auto weight(this auto& self) { return self.view().weight(); }
@@ -80,15 +44,7 @@ struct DistributionEntryTable
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
     auto weighted_extent_bytes(this auto& self) { return self.view().weighted_extent_bytes(); }
     auto weighted_slack_bytes(this auto& self) { return self.view().weighted_slack_bytes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
-                                               distribution_entry_table::ColumnTypes,
-                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

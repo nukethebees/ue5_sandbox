@@ -13,7 +13,6 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace component_table {
@@ -21,7 +20,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
                                                     std::string_view,
                                                     std::string_view,
                                                     lispb::schema::TypeId,
@@ -32,37 +34,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<AnalysisId,
                                                     std::optional<std::uint64_t>,
                                                     std::optional<std::uint64_t>>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* parent{};
-    Element<std::string_view>* name{};
-    Element<std::string_view>* tag{};
-    Element<lispb::schema::TypeId>* semantic_type{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts{};
-    Element<std::optional<std::uint64_t>>* offset_bytes{};
-    Element<std::optional<std::uint64_t>>* extent_bytes{};
-    Element<std::optional<std::uint64_t>>* padding_before_bytes{};
-    Element<std::optional<std::uint64_t>>* slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.parent,
-                    self.name,
-                    self.tag,
-                    self.semantic_type,
-                    self.element_count,
-                    self.element_facts,
-                    self.offset_bytes,
-                    self.extent_bytes,
-                    self.padding_before_bytes,
-                    self.slack_bytes);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -84,8 +56,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -94,16 +66,16 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(this->columns_.parent); }
-    auto name() const { return this->column(this->columns_.name); }
-    auto tag() const { return this->column(this->columns_.tag); }
-    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto element_facts() const { return this->column(this->columns_.element_facts); }
-    auto offset_bytes() const { return this->column(this->columns_.offset_bytes); }
-    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
-    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
-    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
+    auto parent() const { return this->template column<0LL>(); }
+    auto name() const { return this->template column<1LL>(); }
+    auto tag() const { return this->template column<2LL>(); }
+    auto semantic_type() const { return this->template column<3LL>(); }
+    auto element_count() const { return this->template column<4LL>(); }
+    auto element_facts() const { return this->template column<5LL>(); }
+    auto offset_bytes() const { return this->template column<6LL>(); }
+    auto extent_bytes() const { return this->template column<7LL>(); }
+    auto padding_before_bytes() const { return this->template column<8LL>(); }
+    auto slack_bytes() const { return this->template column<9LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

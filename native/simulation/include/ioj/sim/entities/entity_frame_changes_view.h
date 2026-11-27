@@ -12,7 +12,6 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cstdint>
-#include <type_traits>
 
 namespace ioj::sim {
 namespace entity_frame_changes {
@@ -20,27 +19,17 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::
-    ColumnTypes<EntityFrameChangeKind, std::uint32_t, Vector3f, Rotator3f, ::ioj::Team, EntityId>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityFrameChangeKind>* kinds{};
-    Element<std::uint32_t>* indices{};
-    Element<Vector3f>* locations{};
-    Element<Rotator3f>* rotations{};
-    Element<::ioj::Team>* teams{};
-    Element<EntityId>* ids{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.kinds, self.indices, self.locations, self.rotations, self.teams, self.ids);
-    }
-};
+using Pointers = soa_storage_detail::ColumnPointers<EntityFrameChangeKind,
+                                                    std::uint32_t,
+                                                    Vector3f,
+                                                    Rotator3f,
+                                                    ::ioj::Team,
+                                                    EntityId>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -58,8 +47,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -68,12 +57,12 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto kinds() const { return this->column(this->columns_.kinds); }
-    auto indices() const { return this->column(this->columns_.indices); }
-    auto locations() const { return this->column(this->columns_.locations); }
-    auto rotations() const { return this->column(this->columns_.rotations); }
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto ids() const { return this->column(this->columns_.ids); }
+    auto kinds() const { return this->template column<0LL>(); }
+    auto indices() const { return this->template column<1LL>(); }
+    auto locations() const { return this->template column<2LL>(); }
+    auto rotations() const { return this->template column<3LL>(); }
+    auto teams() const { return this->template column<4LL>(); }
+    auto ids() const { return this->template column<5LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

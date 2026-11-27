@@ -12,7 +12,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
 namespace relationship_table {
@@ -20,28 +19,16 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes =
-    soa_storage_detail::ColumnTypes<AnalysisId,
-                                    std::optional<std::size_t>,
-                                    lispb::schema::RelationshipId,
-                                    std::optional<ioj::layout::RelationshipMetrics>>;
-
 /* **************************************** */
 // Column pointers
 /* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* owner{};
-    Element<std::optional<std::size_t>>* field{};
-    Element<lispb::schema::RelationshipId>* relationship{};
-    Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.owner, self.field, self.relationship, self.metrics);
-    }
-};
+using Pointers =
+    soa_storage_detail::ColumnPointers<AnalysisId,
+                                       std::optional<std::size_t>,
+                                       lispb::schema::RelationshipId,
+                                       std::optional<ioj::layout::RelationshipMetrics>>;
+
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -54,8 +41,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -64,10 +51,10 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto owner() const { return this->column(this->columns_.owner); }
-    auto field() const { return this->column(this->columns_.field); }
-    auto relationship() const { return this->column(this->columns_.relationship); }
-    auto metrics() const { return this->column(this->columns_.metrics); }
+    auto owner() const { return this->template column<0LL>(); }
+    auto field() const { return this->template column<1LL>(); }
+    auto relationship() const { return this->template column<2LL>(); }
+    auto metrics() const { return this->template column<3LL>(); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

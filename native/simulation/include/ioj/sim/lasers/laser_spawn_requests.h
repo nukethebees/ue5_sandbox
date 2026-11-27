@@ -13,7 +13,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim::lasers {
 
@@ -36,52 +35,17 @@ namespace ioj::sim::lasers {
 // instigator_ids: EntityId
 // sources: ioj::sim::LaserSource
 struct LaserSpawnRequests
-    : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<LaserSpawnRequests,
-                                             laser_spawn_requests::ColumnTypes,
-                                             native_soa::StorageOperations> {
-    using soa_schema = laser_spawn_requests::Schema;
-    using Operations = native_soa::StorageOperations;
-    using Layout = laser_spawn_requests::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-    static constexpr auto capacity_granularity{Layout::capacity_granularity};
-    static constexpr auto allocation_alignment{Layout::allocation_alignment};
-    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
-    static constexpr auto max_capacity{Layout::max_capacity};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using CompactView = laser_spawn_requests::CompactView;
-    using CompactConstView = laser_spawn_requests::CompactConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    LaserSpawnRequests() noexcept
-        : LaserSpawnRequests{*std::pmr::get_default_resource()} {}
-    explicit LaserSpawnRequests(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-
-    ~LaserSpawnRequests() { Operations::release_storage(*this); }
-
-    LaserSpawnRequests(LaserSpawnRequests const&) = delete;
-    LaserSpawnRequests(LaserSpawnRequests&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-
-    auto operator=(LaserSpawnRequests const&) -> LaserSpawnRequests& = delete;
-    auto operator=(LaserSpawnRequests&& other) -> LaserSpawnRequests& {
-        return Operations::move_assign(*this, other);
-    }
-
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-  protected:
-    template <typename Byte>
-    using DataPointers = laser_spawn_requests::DataPointers<Byte>;
-  public:
+    : soa_storage_detail::OwnerRowOperations<
+          LaserSpawnRequests,
+          laser_spawn_requests::ColumnTypes,
+          native_soa::Owner<laser_spawn_requests::CompactView,
+                            laser_spawn_requests::CompactConstView>> {
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LaserSpawnRequests,
+        laser_spawn_requests::ColumnTypes,
+        native_soa::Owner<laser_spawn_requests::CompactView,
+                          laser_spawn_requests::CompactConstView>>;
+    using RowOperations::RowOperations;
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_rotations(this auto& self) { return self.view().view_rotations(); }
     auto view_base_velocities(this auto& self) { return self.view().view_base_velocities(); }
@@ -90,9 +54,6 @@ struct LaserSpawnRequests
     auto max_distances(this auto& self) { return self.view().max_distances(); }
     auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
     auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<LaserSpawnRequests,
-                                                                 laser_spawn_requests::ColumnTypes,
-                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -135,9 +96,5 @@ struct LaserSpawnRequests
             new_sources);
         return index;
     }
-  private:
-    friend Operations;
-    friend soa_storage_detail::StorageRequirements;
-    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

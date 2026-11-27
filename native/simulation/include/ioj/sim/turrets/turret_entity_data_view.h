@@ -22,7 +22,10 @@ struct Schema;
 struct View;
 struct ConstView;
 
-using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId,
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+using Pointers = soa_storage_detail::ColumnPointers<EntityId,
                                                     std::uint32_t,
                                                     float,
                                                     float,
@@ -46,63 +49,7 @@ using ColumnTypes = soa_storage_detail::ColumnTypes<EntityId,
                                                     float,
                                                     float>;
 
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entity_ids{};
-    Element<std::uint32_t>* integral_biases{};
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* fire_point_locations_xs{};
-    Element<float>* fire_point_locations_ys{};
-    Element<float>* fire_point_locations_zs{};
-    Element<float>* rotations_pitches{};
-    Element<float>* rotations_yaws{};
-    Element<float>* rotations_rolls{};
-    Element<::ioj::Team>* teams{};
-    Element<std::int16_t>* laser_cooldowns{};
-    Element<std::int32_t>* laser_damages{};
-    Element<std::int16_t>* target_refresh_countdowns_periods{};
-    Element<std::int16_t>* target_refresh_countdowns_remaining_ticks{};
-    Element<EntityId>* target_ids{};
-    Element<float>* target_locations_xs{};
-    Element<float>* target_locations_ys{};
-    Element<float>* target_locations_zs{};
-    Element<float>* target_velocities_xs{};
-    Element<float>* target_velocities_ys{};
-    Element<float>* target_velocities_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_ids,
-                    self.integral_biases,
-                    self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.fire_point_locations_xs,
-                    self.fire_point_locations_ys,
-                    self.fire_point_locations_zs,
-                    self.rotations_pitches,
-                    self.rotations_yaws,
-                    self.rotations_rolls,
-                    self.teams,
-                    self.laser_cooldowns,
-                    self.laser_damages,
-                    self.target_refresh_countdowns_periods,
-                    self.target_refresh_countdowns_remaining_ticks,
-                    self.target_ids,
-                    self.target_locations_xs,
-                    self.target_locations_ys,
-                    self.target_locations_zs,
-                    self.target_velocities_xs,
-                    self.target_velocities_ys,
-                    self.target_velocities_zs);
-    }
-};
+using ColumnTypes = soa_storage_detail::FromPointers<soa_storage_detail::ColumnTypes, Pointers>;
 
 struct Schema {
     template <typename Columns, typename Func>
@@ -142,8 +89,8 @@ struct Schema {
 // Views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, Const> {
+    using Base = soa_storage_detail::ViewBase<ColumnTypes, Const>;
     using Base::Base;
     using view_type = View;
     using const_view_type = ConstView;
@@ -152,51 +99,47 @@ struct ViewImpl : soa_storage_detail::ViewBase<ColumnTypes, DataPointers, Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
-    auto integral_biases() const { return this->column(this->columns_.integral_biases); }
+    auto entity_ids() const { return this->template column<0LL>(); }
+    auto integral_biases() const { return this->template column<1LL>(); }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
+        return {this->template column<2LL>().data(),
+                this->template column<3LL>().data(),
+                this->template column<4LL>().data(),
                 this->num()};
     }
     auto view_fire_point_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.fire_point_locations_xs,
-                this->columns_.fire_point_locations_ys,
-                this->columns_.fire_point_locations_zs,
+        return {this->template column<5LL>().data(),
+                this->template column<6LL>().data(),
+                this->template column<7LL>().data(),
                 this->num()};
     }
     auto view_rotations() const
         -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->columns_.rotations_pitches,
-                this->columns_.rotations_yaws,
-                this->columns_.rotations_rolls,
+        return {this->template column<8LL>().data(),
+                this->template column<9LL>().data(),
+                this->template column<10LL>().data(),
                 this->num()};
     }
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto laser_cooldowns() const { return this->column(this->columns_.laser_cooldowns); }
-    auto laser_damages() const { return this->column(this->columns_.laser_damages); }
-    auto target_refresh_countdowns_periods() const {
-        return this->column(this->columns_.target_refresh_countdowns_periods);
-    }
-    auto target_refresh_countdowns_remaining_ticks() const {
-        return this->column(this->columns_.target_refresh_countdowns_remaining_ticks);
-    }
-    auto target_ids() const { return this->column(this->columns_.target_ids); }
+    auto teams() const { return this->template column<11LL>(); }
+    auto laser_cooldowns() const { return this->template column<12LL>(); }
+    auto laser_damages() const { return this->template column<13LL>(); }
+    auto target_refresh_countdowns_periods() const { return this->template column<14LL>(); }
+    auto target_refresh_countdowns_remaining_ticks() const { return this->template column<15LL>(); }
+    auto target_ids() const { return this->template column<16LL>(); }
     auto view_target_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.target_locations_xs,
-                this->columns_.target_locations_ys,
-                this->columns_.target_locations_zs,
+        return {this->template column<17LL>().data(),
+                this->template column<18LL>().data(),
+                this->template column<19LL>().data(),
                 this->num()};
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.target_velocities_xs,
-                this->columns_.target_velocities_ys,
-                this->columns_.target_velocities_zs,
+        return {this->template column<20LL>().data(),
+                this->template column<21LL>().data(),
+                this->template column<22LL>().data(),
                 this->num()};
     }
 };
