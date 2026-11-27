@@ -114,7 +114,16 @@ TEST(GameSettings, BindingConflictsReplaceOnlyTheOtherMapping) {
     EXPECT_FALSE(draft.set_binding(FlightBoostKeyboardMouse, key, false));
     EXPECT_EQ(draft.binding_conflicts(FlightBoostKeyboardMouse, key),
               (std::vector{FlightFirePrimaryKeyboardMouse}));
-    EXPECT_TRUE(draft.set_binding(FlightBoostKeyboardMouse, key, true));
+    draft.manage_binding(FlightBoostKeyboardMouse);
+    draft.navigate_binding(MenuCommand::Accept, false);
+    ASSERT_EQ(draft.binding_edit().prompt, BindingPrompt::Capture);
+    draft.capture_binding(PhysicalKey::GamepadFaceButtonBottom);
+    EXPECT_EQ(draft.binding_edit().prompt, BindingPrompt::Unsupported);
+    draft.capture_binding(key);
+    ASSERT_EQ(draft.binding_edit().prompt, BindingPrompt::Conflict);
+    EXPECT_EQ(draft.pending().controls.bindings[FlightFirePrimaryKeyboardMouse], key);
+    draft.navigate_binding(MenuCommand::Accept, false);
+    EXPECT_EQ(draft.binding_edit().prompt, BindingPrompt::Closed);
     EXPECT_EQ(draft.pending().controls.bindings[FlightFirePrimaryKeyboardMouse],
               PhysicalKey::Unbound);
     EXPECT_EQ(draft.pending().controls.bindings[FlightBoostKeyboardMouse], key);

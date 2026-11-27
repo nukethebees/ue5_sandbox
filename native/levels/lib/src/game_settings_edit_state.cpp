@@ -6,6 +6,7 @@
 #include <ioj/input/logical/flight_controls.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <format>
@@ -190,6 +191,7 @@ void apply_graphics_preset(GameSettingsState& state, GameGraphicsPreset const pr
 }
 
 void GameSettingsEditState::begin(GameSettingsState applied, GameSettingsState defaults) {
+    binding_edit_ = {};
     applied.video.overall_quality = graphics_preset(applied);
     defaults.video.overall_quality = graphics_preset(defaults);
     applied_ = applied;
@@ -198,6 +200,7 @@ void GameSettingsEditState::begin(GameSettingsState applied, GameSettingsState d
 }
 
 void GameSettingsEditState::cancel() {
+    binding_edit_ = {};
     pending_ = applied_;
 }
 
@@ -268,6 +271,100 @@ void GameSettingsEditState::reset_category(GameSettingCategory const category) {
                 pending_, descriptor.id, game_setting_value(defaults_, descriptor.id)));
         }
     }
+}
+
+void GameSettingsEditState::manage_binding(FlightMapping mapping) {
+    binding_edit_ = {.mapping = mapping, .prompt = BindingPrompt::Manage};
+}
+
+auto GameSettingsEditState::binding_action_available(BindingChoice choice) const -> bool {
+    auto const mapping{binding_edit_.mapping};
+    switch (choice) {
+        case BindingChoice::Change:
+            return binding_edit_.prompt == BindingPrompt::Manage;
+        case BindingChoice::Clear:
+            return binding_edit_.prompt == BindingPrompt::Manage &&
+                   pending_.controls.bindings[mapping] != PhysicalKey::Unbound;
+        case BindingChoice::Reset:
+            return binding_edit_.prompt == BindingPrompt::Manage &&
+                   pending_.controls.bindings[mapping] != defaults_.controls.bindings[mapping];
+        case BindingChoice::Replace:
+            return binding_edit_.prompt == BindingPrompt::Conflict;
+        case BindingChoice::Cancel:
+            return binding_edit_.prompt != BindingPrompt::Closed;
+    }
+    std::unreachable();
+}
+
+void GameSettingsEditState::choose_binding_action(BindingChoice choice) {
+    if (!binding_action_available(choice)) {
+        return;
+    }
+
+    switch (choice) {
+        case BindingChoice::Change:
+            binding_edit_.prompt = BindingPrompt::Capture;
+            return;
+        case BindingChoice::Reset:
+            propose_binding(defaults_.controls.bindings[binding_edit_.mapping]);
+            return;
+        case BindingChoice::Clear:
+            propose_binding(PhysicalKey::Unbound);
+            return;
+        case BindingChoice::Replace:
+            set_binding(binding_edit_.mapping, binding_edit_.candidate, true);
+            break;
+        case BindingChoice::Cancel:
+            break;
+    }
+    binding_edit_.prompt = BindingPrompt::Closed;
+}
+
+void GameSettingsEditState::capture_binding(PhysicalKey key) {
+    if (key == PhysicalKey::Escape || key == PhysicalKey::GamepadFaceButtonRight) {
+        choose_binding_action(BindingChoice::Cancel);
+    } else {
+        propose_binding(key);
+    }
+}
+
+void GameSettingsEditState::propose_binding(PhysicalKey key) {
+    auto& edit{binding_edit_};
+    edit.candidate = key;
+    if (key != PhysicalKey::Unbound && !accepts_binding(edit.mapping, key)) {
+        edit.prompt = BindingPrompt::Unsupported;
+        return;
+    }
+    edit.conflicts = binding_conflicts(edit.mapping, key);
+    if (!edit.conflicts.empty()) {
+        edit.prompt = BindingPrompt::Conflict;
+        edit.selected = BindingChoice::Replace;
+        return;
+    }
+    set_binding(edit.mapping, key, false);
+    edit.prompt = BindingPrompt::Closed;
+}
+
+void GameSettingsEditState::navigate_binding(MenuCommand command, bool repeat) {
+    if (command == MenuCommand::Accept || command == MenuCommand::Back) {
+        if (!repeat) {
+            choose_binding_action(command == MenuCommand::Back ? BindingChoice::Cancel
+                                                               : binding_edit_.selected);
+        }
+        return;
+    }
+    constexpr std::array choices{BindingChoice::Change,
+                                 BindingChoice::Clear,
+                                 BindingChoice::Reset,
+                                 BindingChoice::Replace,
+                                 BindingChoice::Cancel};
+    auto index{static_cast<std::size_t>(binding_edit_.selected)};
+    auto const backward{command == MenuCommand::Up || command == MenuCommand::Left ||
+                        command == MenuCommand::Previous};
+    do {
+        index = (index + (backward ? choices.size() - 1 : 1)) % choices.size();
+    } while (!binding_action_available(choices[index]));
+    binding_edit_.selected = choices[index];
 }
 
 auto GameSettingsEditState::applied() const -> GameSettingsState const& {
