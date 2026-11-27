@@ -165,6 +165,21 @@ auto mouse_key(Uint8 button) -> PhysicalKey {
             return {};
     }
 }
+auto modifiers(SDL_Keymod mod) -> host::Modifiers {
+    return host::Modifiers{bool(mod & SDL_KMOD_LSHIFT),
+                           bool(mod & SDL_KMOD_RSHIFT),
+                           bool(mod & SDL_KMOD_LCTRL),
+                           bool(mod & SDL_KMOD_RCTRL),
+                           bool(mod & SDL_KMOD_LALT),
+                           bool(mod & SDL_KMOD_RALT),
+                           bool(mod & SDL_KMOD_LGUI),
+                           bool(mod & SDL_KMOD_RGUI),
+                           bool(mod & SDL_KMOD_CAPS)};
+}
+auto axis_value(SDL_GamepadAxis axis, Sint16 sample) -> float {
+    auto const value{sample / (sample < 0 ? 32768.f : 32767.f)};
+    return axis == SDL_GAMEPAD_AXIS_LEFTY || axis == SDL_GAMEPAD_AXIS_RIGHTY ? -value : value;
+}
 constexpr std::array<PhysicalKey, SDL_GAMEPAD_AXIS_COUNT> axis_keys{
     PhysicalKey::GamepadLeftX,
     PhysicalKey::GamepadLeftY,
@@ -224,25 +239,51 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
     if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
         return input::FocusLost{};
     }
+    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED &&
+        event.window.windowID == SDL_GetWindowID(&window_)) {
+        input::FocusGained baseline;
+        baseline.modifiers = modifiers(SDL_GetModState());
+        int count{};
+        auto const* keyboard{SDL_GetKeyboardState(&count)};
+        for (int i{}; i < count; ++i) {
+            if (keyboard[i]) {
+                SDL_KeyboardEvent key{};
+                key.scancode = static_cast<SDL_Scancode>(i);
+                key.key = SDL_GetKeyFromScancode(key.scancode, SDL_KMOD_NONE, true);
+                baseline.held.push_back(keyboard_key(key));
+            }
+        }
+        auto const mouse{SDL_GetMouseState(nullptr, nullptr)};
+        for (Uint8 i{SDL_BUTTON_LEFT}; i <= SDL_BUTTON_X2; ++i) {
+            if (mouse & SDL_BUTTON_MASK(i)) {
+                baseline.held.emplace_back(mouse_key(i));
+            }
+        }
+        if (gamepad_) {
+            for (int i{}; i < SDL_GAMEPAD_BUTTON_COUNT; ++i) {
+                auto const key{pad_button(i)};
+                if (key != PhysicalKey::Unbound &&
+                    SDL_GetGamepadButton(gamepad_, static_cast<SDL_GamepadButton>(i))) {
+                    baseline.held.emplace_back(key);
+                }
+            }
+            static_assert(axis_keys.size() == baseline.gamepad_axes.size());
+            for (std::size_t i{}; i < axis_keys.size(); ++i) {
+                auto const axis{static_cast<SDL_GamepadAxis>(i)};
+                baseline.gamepad_axes[i] = axis_value(axis, SDL_GetGamepadAxis(gamepad_, axis));
+            }
+        }
+        return baseline;
+    }
     if (!focused()) {
         return {};
     }
     switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
-            auto const mod{event.key.mod};
-            auto const modifiers{host::Modifiers{bool(mod & SDL_KMOD_LSHIFT),
-                                                 bool(mod & SDL_KMOD_RSHIFT),
-                                                 bool(mod & SDL_KMOD_LCTRL),
-                                                 bool(mod & SDL_KMOD_RCTRL),
-                                                 bool(mod & SDL_KMOD_LALT),
-                                                 bool(mod & SDL_KMOD_RALT),
-                                                 bool(mod & SDL_KMOD_LGUI),
-                                                 bool(mod & SDL_KMOD_RGUI),
-                                                 bool(mod & SDL_KMOD_CAPS)}};
             return input::PhysicalButton{keyboard_key(event.key),
                                          event.key.key,
-                                         modifiers,
+                                         modifiers(event.key.mod),
                                          event.key.repeat ? Repeated
                                          : event.key.down ? Pressed
                                                           : Released};
@@ -279,11 +320,9 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gaxis.which) {
                 auto const axis{event.gaxis.axis};
-                auto value{event.gaxis.value / (event.gaxis.value < 0 ? 32768.f : 32767.f)};
-                if (axis == SDL_GAMEPAD_AXIS_LEFTY || axis == SDL_GAMEPAD_AXIS_RIGHTY) {
-                    value = -value;
-                }
-                return input::PhysicalAxis{axis_keys[axis], value};
+                return input::PhysicalAxis{
+                    axis_keys[axis],
+                    axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value)};
             }
             break;
         default:

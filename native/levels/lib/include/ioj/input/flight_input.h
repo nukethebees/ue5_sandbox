@@ -23,12 +23,11 @@ class FlightInputResolver {
     void configure(InputState& state, ControlsSettings const& controls, Context context);
     auto is_pause_button(KeyCode key) const -> bool;
     void button(InputState& state, KeyCode key, ButtonState edge, ControlsSettings const& controls);
-    void axis(InputState& state, KeyCode key, float position, ControlsSettings const& controls);
     void pointer_motion(InputState& state, Vector2f delta, ControlsSettings const& controls);
-    void restore_axis(InputState& state,
-                      KeyCode key,
-                      float position,
-                      ControlsSettings const& controls);
+    void sample_axis(InputState& state,
+                     KeyCode key,
+                     float position,
+                     ControlsSettings const& controls);
     void reset(InputState& state);
   private:
     void update_turn(InputState& state, ControlsSettings const& controls) const;

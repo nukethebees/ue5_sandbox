@@ -225,15 +225,7 @@ void FlightInputResolver::button(InputState& state,
     }
     auto const down{edge == ButtonState::Pressed};
     resolve_digital(state, key, down);
-    restore_axis(state, key, down ? 1.f : 0.f, controls);
-}
-
-void FlightInputResolver::axis(InputState& state,
-                               KeyCode key,
-                               float position,
-                               ControlsSettings const& controls) {
-    resolve_digital(state, key, std::abs(position) >= 0.5f);
-    restore_axis(state, key, position, controls);
+    sample_axis(state, key, down ? 1.f : 0.f, controls);
 }
 
 void FlightInputResolver::pointer_motion(InputState& state,
@@ -255,10 +247,10 @@ void FlightInputResolver::pointer_motion(InputState& state,
     update_turn(state, controls);
 }
 
-void FlightInputResolver::restore_axis(InputState& state,
-                                       KeyCode key,
-                                       float position,
-                                       ControlsSettings const& controls) {
+void FlightInputResolver::sample_axis(InputState& state,
+                                      KeyCode key,
+                                      float position,
+                                      ControlsSettings const& controls) {
     for (std::size_t i{}; i < flight_binding_details::accelerator_mappings.size(); ++i) {
         if (bindings_.matches(flight_binding_details::accelerator_mappings[i], key)) {
             accelerator_sources_[i] = position;

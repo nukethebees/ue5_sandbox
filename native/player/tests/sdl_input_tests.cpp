@@ -185,6 +185,8 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_EQ(ship_frame().events.size(), 1u);
     EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 
+    input_->resolve(commands_,
+                    input::PhysicalButton{PhysicalKey::Down, 0, {}, input::ButtonState::Released});
     view.route = {input::Context::Benchmark};
     view.motion.reset();
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
@@ -199,6 +201,8 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_TRUE(view.keys.empty());
 
     view.route = {input::Context::Menu};
+    input_->resolve(commands_,
+                    input::PhysicalButton{PhysicalKey::Down, 0, {}, input::ButtonState::Released});
     view.menu.capturing_binding = true;
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
@@ -335,11 +339,67 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
               (std::vector{host::PlayerAction::OpenPause, host::PlayerAction::RequestResume}));
     EXPECT_EQ(view.pointer.size(), 2u);
 
+    event.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    event.button.down = false;
+    ASSERT_TRUE(SDL_PushEvent(&event));
+    frame();
+    event.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.down = true;
     view.route.resume_available = false;
     ASSERT_TRUE(SDL_PushEvent(&event));
     frame();
     EXPECT_EQ(view.pointer.back(), host::PointerAction::Down);
     EXPECT_EQ(view.actions.size(), 2u);
+}
+
+TEST_F(SdlPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
+    using enum sim::player::PlayerInputKind;
+    auto route = [&](input::Context context) { input_->synchronize(commands_, {context}, {}); };
+    auto sample = [&](float value) {
+        input_->resolve(commands_,
+                        input::PhysicalAxis{PhysicalKey::GamepadRightTriggerAxis, value});
+    };
+    route(input::Context::Gameplay);
+    sample(0.50f);
+    sample(0.45f);
+    sample(0.51f);
+    route(input::Context::Menu);
+    route(input::Context::Gameplay);
+    sample(0.9f);
+    EXPECT_FALSE(input_->state().held.fire());
+    sample(0.40f);
+    sample(0.51f);
+    input_->refresh_bindings(commands_);
+    sample(0.7f);
+    EXPECT_FALSE(input_->state().held.fire());
+    sample(0.3f);
+    sample(0.6f);
+    input_->resolve(commands_, input::FocusLost{});
+    input::FocusGained baseline;
+    baseline.gamepad_axes[5] = 0.7f;
+    input_->resolve(commands_, baseline);
+    sample(0.8f);
+    EXPECT_FALSE(input_->state().held.fire());
+    sample(0.39f);
+    sample(0.6f);
+    input_->resolve(commands_,
+                    input::PhysicalPointerButton{
+                        {}, PhysicalKey::LeftMouseButton, input::ButtonState::Pressed, 1});
+    input_->resolve(commands_, input::GamepadDisconnected{});
+    EXPECT_TRUE(input_->state().held.fire());
+    input_->resolve(commands_,
+                    input::PhysicalPointerButton{
+                        {}, PhysicalKey::LeftMouseButton, input::ButtonState::Released, 1});
+    ship_frame();
+    EXPECT_EQ(ship_events_,
+              (std::vector{FirePressed,
+                           FireReleased,
+                           FirePressed,
+                           FireReleased,
+                           FirePressed,
+                           FireReleased,
+                           FirePressed,
+                           FireReleased}));
 }
 
 TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {

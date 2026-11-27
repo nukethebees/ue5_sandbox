@@ -59,6 +59,7 @@ class GameInput {
     void apply(std::vector<host::InputEvent>& output, input::WheelMotion event);
     void apply(std::vector<host::InputEvent>& output, input::TextInput const& event);
     void apply(std::vector<host::InputEvent>& output, input::FocusLost);
+    void apply(std::vector<host::InputEvent>& output, input::FocusGained const& event);
     void apply(std::vector<host::InputEvent>& output, input::GamepadDisconnected);
     void release_context(std::vector<host::InputEvent>& output);
 

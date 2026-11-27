@@ -11,14 +11,14 @@ TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
     std::vector<sim::player::PlayerInputKind> ship_events;
     input.configure(state, settings, Context::Gameplay);
     input.button(state, PhysicalKey::LeftMouseButton, ButtonState::Pressed, settings);
-    input.axis(state, PhysicalKey::GamepadRightTriggerAxis, 1.f, settings);
+    input.button(state, PhysicalKey::GamepadRightTriggerAxis, ButtonState::Pressed, settings);
     input.button(state, PhysicalKey::LeftMouseButton, ButtonState::Released, settings);
     ASSERT_EQ(ship_input_frame(state, ship_events).events.size(), 1u);
     EXPECT_EQ(ship_input_frame(state, ship_events).events.front(),
               sim::player::PlayerInputKind::FirePressed);
 
     state.begin_frame();
-    input.axis(state, PhysicalKey::GamepadRightTriggerAxis, 0.f, settings);
+    input.button(state, PhysicalKey::GamepadRightTriggerAxis, ButtonState::Released, settings);
     input.button(state, PhysicalKey::LeftShift, ButtonState::Pressed, settings);
     input.reset(state);
     auto const events{ship_input_frame(state, ship_events).events};
@@ -108,7 +108,7 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     InputState state;
     std::vector<sim::player::PlayerInputKind> ship_events;
     input.configure(state, settings, Context::Gameplay);
-    input.axis(state, PhysicalKey::GamepadLeftX, -1.f, settings);
+    input.sample_axis(state, PhysicalKey::GamepadLeftX, -1.f, settings);
     input.button(state, PhysicalKey::RightMouseButton, ButtonState::Pressed, settings);
     input.pointer_motion(state, {200.f, 0.f}, settings);
     state.begin_frame();

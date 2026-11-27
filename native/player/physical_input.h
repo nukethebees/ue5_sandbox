@@ -5,9 +5,11 @@
 #include <ioj/input/key_code.h>
 #include <ioj/vector.h>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace ioj::input {
 struct PhysicalButton {
@@ -39,6 +41,11 @@ struct TextInput {
 };
 struct GamepadDisconnected {};
 struct FocusLost {};
+struct FocusGained {
+    std::vector<KeyCode> held;
+    std::array<float, 6> gamepad_axes{};
+    host::Modifiers modifiers{};
+};
 using PhysicalEvent = std::variant<PhysicalButton,
                                    PhysicalPointerButton,
                                    PhysicalAxis,
@@ -46,5 +53,6 @@ using PhysicalEvent = std::variant<PhysicalButton,
                                    WheelMotion,
                                    TextInput,
                                    GamepadDisconnected,
-                                   FocusLost>;
+                                   FocusLost,
+                                   FocusGained>;
 }

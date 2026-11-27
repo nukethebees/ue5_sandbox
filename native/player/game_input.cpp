@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -86,12 +87,25 @@ auto observer_action(PhysicalKey key) -> std::optional<DigitalAction> {
             return {};
     }
 }
-void track_button(PhysicalInputState& state, KeyCode key, ButtonState edge) {
+auto track_button(PhysicalInputState& state, KeyCode key, ButtonState edge) -> bool {
     if (edge == ButtonState::Released) {
-        std::erase(state.held, key);
+        return std::erase(state.held, key) != 0;
     } else if (edge == ButtonState::Pressed && !std::ranges::contains(state.held, key)) {
         state.held.push_back(key);
+        return true;
     }
+    return edge == ButtonState::Repeated && std::ranges::contains(state.held, key);
+}
+auto axis_edge(PhysicalInputState& state, KeyCode key, float magnitude)
+    -> std::optional<ButtonState> {
+    auto const held{std::ranges::contains(state.held, key)};
+    auto const active{held ? magnitude > 0.40f : magnitude >= 0.50f};
+    if (held == active) {
+        return {};
+    }
+    auto const edge{active ? ButtonState::Pressed : ButtonState::Released};
+    track_button(state, key, edge);
+    return edge;
 }
 }
 
@@ -144,14 +158,14 @@ void GameInput::refresh_bindings(std::vector<host::InputEvent>& output) {
     flight_.configure(state_, controls_, route_.context);
     publish_transitions(output, first);
     if (route_.context == Context::Gameplay) {
+        for (auto key : physical_.held) {
+            flight_.sample_axis(state_, key, 1.f, controls_);
+        }
         for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
-            auto const [axis, positive, negative]{game_input_tables::gamepad_axes[i]};
-            auto const position{physical_.gamepad_axes[i]};
-            flight_.restore_axis(state_, axis, position, controls_);
-            flight_.restore_axis(state_, positive, position >= 0.5f ? 1.f : 0.f, controls_);
-            if (negative != PhysicalKey::Unbound) {
-                flight_.restore_axis(state_, negative, position <= -0.5f ? 1.f : 0.f, controls_);
-            }
+            flight_.sample_axis(state_,
+                                game_input_tables::gamepad_axes[i].axis,
+                                physical_.gamepad_axes[i],
+                                controls_);
         }
     }
 }
@@ -294,7 +308,9 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalButt
     if (!is_gamepad_control(event.key.key)) {
         physical_.modifiers = event.modifiers;
     }
-    track_button(physical_, event.key, event.state);
+    if (!track_button(physical_, event.key, event.state)) {
+        return;
+    }
     button(output, event.key, event.state, event.character);
     auto const modifiers{physical_.modifiers};
     if (editing_text() && event.key == PhysicalKey::BackSpace &&
@@ -309,7 +325,9 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::TextInput co
     }
 }
 void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalPointerButton event) {
-    track_button(physical_, event.key, event.state);
+    if (!track_button(physical_, event.key, event.state)) {
+        return;
+    }
     auto const found{std::ranges::find(game_input_tables::pointer_keys, event.key)};
     assert(found != game_input_tables::pointer_keys.end());
     auto const mask{
@@ -382,35 +400,44 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalAxis
     auto const axis{std::ranges::find(
         game_input_tables::gamepad_axes, event.key, &game_input_tables::GamepadAxisKeys::axis)};
     assert(axis != game_input_tables::gamepad_axes.end());
-    auto& sample{physical_.gamepad_axes[axis - game_input_tables::gamepad_axes.begin()]};
-    auto const before{std::exchange(sample, event.position)};
+    auto const sample{event.position};
+    physical_.gamepad_axes[axis - game_input_tables::gamepad_axes.begin()] = sample;
+    auto const edge{axis_edge(physical_, axis->axis, std::abs(sample))};
     if (route_.context == Context::Menu && menu_mode_ == input::MenuInputMode::Raw) {
         output.emplace_back(host::MenuAxis{event.key, sample, physical_.modifiers});
     } else if (route_.context == Context::Gameplay) {
-        flight_.axis(state_, event.key, sample, controls_);
+        if (edge) {
+            flight_.button(state_, event.key, *edge, controls_);
+        }
+        flight_.sample_axis(state_, event.key, sample, controls_);
     }
-    if ((before >= 0.5f) != (sample >= 0.5f)) {
-        button(
-            output, axis->positive, sample >= 0.5f ? ButtonState::Pressed : ButtonState::Released);
-    }
-    if (axis->negative != PhysicalKey::Unbound && (before <= -0.5f) != (sample <= -0.5f)) {
-        button(
-            output, axis->negative, sample <= -0.5f ? ButtonState::Pressed : ButtonState::Released);
+    auto direction = [&](PhysicalKey key, float position) {
+        if (key != PhysicalKey::Unbound) {
+            if (auto change{axis_edge(physical_, key, position)}) {
+                button(output, key, *change);
+            }
+        }
+    };
+    if (sample >= 0.f) {
+        direction(axis->negative, -sample);
+        direction(axis->positive, sample);
+    } else {
+        direction(axis->positive, sample);
+        direction(axis->negative, -sample);
     }
 }
 void GameInput::apply(std::vector<host::InputEvent>& output, input::GamepadDisconnected) {
+    for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
+        if (physical_.gamepad_axes[i] != 0.f) {
+            apply(output, input::PhysicalAxis{game_input_tables::gamepad_axes[i].axis, 0.f});
+        }
+    }
     for (auto key : physical_.held) {
         if (is_gamepad_control(key.key)) {
             button(output, key, ButtonState::Released);
         }
     }
     std::erase_if(physical_.held, [](KeyCode key) { return is_gamepad_control(key.key); });
-    for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
-        if (physical_.gamepad_axes[i] != 0.f) {
-            apply(output, input::PhysicalAxis{game_input_tables::gamepad_axes[i].axis, 0.f});
-        }
-    }
-    repeat_delays_ = {};
 }
 void GameInput::apply(std::vector<host::InputEvent>& output, input::FocusLost) {
     apply(output, input::GamepadDisconnected{});
@@ -419,6 +446,21 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::FocusLost) {
     pointer_capture_ = {};
     release_context(output);
     flight_.reset(state_);
+}
+void GameInput::apply(std::vector<host::InputEvent>& output, input::FocusGained const& event) {
+    physical_.held = event.held;
+    physical_.modifiers = event.modifiers;
+    physical_.gamepad_axes = event.gamepad_axes;
+    for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
+        auto const [axis, positive, negative]{game_input_tables::gamepad_axes[i]};
+        auto const position{event.gamepad_axes[i]};
+        axis_edge(physical_, axis, std::abs(position));
+        axis_edge(physical_, positive, position);
+        if (negative != PhysicalKey::Unbound) {
+            axis_edge(physical_, negative, -position);
+        }
+    }
+    refresh_bindings(output);
 }
 void GameInput::repeat_navigation(std::vector<host::InputEvent>& output, double seconds) {
     for (std::size_t i{}; i < game_input_tables::repeating_actions.size(); ++i) {
