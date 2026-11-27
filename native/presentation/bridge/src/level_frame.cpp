@@ -42,7 +42,6 @@ auto player_frame(sim::player::Sim const& player, sim::LevelReadAccess const& vi
             .transform = physical.transform,
             .body_transform = player.presentation_state().body_transform,
             .middle_socket = socket,
-            .firing_mode = player.laser_firing_mode,
             .weapon_range = player.laser_effective_range(),
             .status = {player.health(view.entity_tables().health),
                        player.speed(),
@@ -58,7 +57,8 @@ auto player_frame(sim::player::Sim const& player, sim::LevelReadAccess const& vi
                        .throttle = intent.accelerator,
                        .boost_brake_state = player.controller_state().effective_action,
                        .crosshair_origin = socket.location,
-                       .crosshair_direction = socket.forward()}};
+                       .crosshair_direction = socket.forward()},
+            .sampled_speed = {player.speed_samples, player.speed_sample_index}};
 }
 }
 
@@ -156,11 +156,10 @@ auto level_frame(sim::LevelSim const& level) -> presentation::LevelFrame {
         .entity_bounds = sim::collision::world_aabbs::Schema::with_columns(
             bounds,
             [](auto... columns) { return sim::collision::world_aabbs::ConstView{columns...}; }),
-        .entity_counts = {view.entity_ledger().count_alive_per_team_and_type()},
+        .entity_counts = view.entity_ledger().count_alive_per_team_and_type(),
         .events = frame_events(view.frame_events())};
     if (auto const* player{view.player()}) {
         frame.player = player_frame(*player, view);
-        frame.sampled_speed.emplace(player->speed_samples, player->speed_sample_index);
     }
     return frame;
 }

@@ -10,14 +10,15 @@
 namespace ioj::presentation {
 namespace hud_detail {
 template <typename T>
-auto replace(T& current, T next) -> bool {
+auto replace(T& current, T const& next) -> bool {
     auto const changed{current != next};
-    current = std::move(next);
+    current = next;
     return changed;
 }
 }
 
-void HudModel::initialise(LevelFrame const& frame) {
+void HudModel::initialise(sim::EntityCounts const& counts,
+                          std::optional<PlayerFrame> const& player) {
     deactivate();
     tick_loop_.initialise();
     std::array const periods{settings_.player_status_update_period,
@@ -31,23 +32,24 @@ void HudModel::initialise(LevelFrame const& frame) {
             static_cast<PeriodicTickCountdown8::counter_type>(ticks)));
     }
     active_ = true;
-    force_sample(frame);
+    force_sample(counts, player);
 }
 void HudModel::deactivate() {
     active_ = false;
     update_timers_.reset();
     entity_count_data_ = {};
-    player_status_data_ = {};
-    player_flight_data_ = {};
+    player_data_.reset();
 }
-auto HudModel::advance(double const delta_seconds, LevelFrame const& frame) -> HudChanges {
+auto HudModel::advance(double const delta_seconds,
+                       sim::EntityCounts const& counts,
+                       std::optional<PlayerFrame> const& player) -> HudChanges {
     HudChanges changes;
     if (!active()) {
         return changes;
     }
     tick_loop_.add_time(delta_seconds);
     while (tick_loop_.try_tick()) {
-        auto const next{tick(1, frame)};
+        auto const next{tick(1, counts, player)};
         changes.entity_counts |= next.entity_counts;
         changes.player_status |= next.player_status;
         changes.player_flight |= next.player_flight;
@@ -55,41 +57,47 @@ auto HudModel::advance(double const delta_seconds, LevelFrame const& frame) -> H
     }
     return changes;
 }
-auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks, LevelFrame const& frame)
-    -> HudChanges {
+auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks,
+                    sim::EntityCounts const& counts,
+                    std::optional<PlayerFrame> const& player) -> HudChanges {
     assert(num_ticks >= 0);
     HudChanges changes;
     if (!active()) {
         return changes;
     }
-    changes.player_flight = hud_detail::replace(
-        player_flight_data_,
-        frame.player.transform([](auto const& player) { return player.flight; }));
-    changes.sampled_speed = num_ticks > 0 && frame.sampled_speed.has_value();
+    assert(player_data_.has_value() == player.has_value());
     update_timers_.tick(num_ticks);
-    if (update_timers_.try_consume(0)) {
-        changes.player_status = hud_detail::replace(
-            player_status_data_,
-            frame.player.transform([](auto const& player) { return player.status; }));
+    auto const sample_status{update_timers_.try_consume(0)};
+    if (player) {
+        changes.player_flight = hud_detail::replace(player_data_->flight, player->flight);
+        changes.sampled_speed = num_ticks > 0;
+        if (sample_status) {
+            changes.player_status = hud_detail::replace(player_data_->status, player->status);
+        }
     }
     if (update_timers_.try_consume(1)) {
-        changes.entity_counts = hud_detail::replace(entity_count_data_, frame.entity_counts);
+        changes.entity_counts = hud_detail::replace(entity_count_data_, counts);
     }
     return changes;
 }
-auto HudModel::force_sample(LevelFrame const& frame) -> HudChanges {
+auto HudModel::force_sample(sim::EntityCounts const& counts,
+                            std::optional<PlayerFrame> const& player) -> HudChanges {
     if (!active()) {
         return {};
     }
-    auto const entity_counts{hud_detail::replace(entity_count_data_, frame.entity_counts)};
-    return {.entity_counts = entity_counts,
-            .player_status = hud_detail::replace(
-                player_status_data_,
-                frame.player.transform([](auto const& player) { return player.status; })),
-            .player_flight = hud_detail::replace(
-                player_flight_data_,
-                frame.player.transform([](auto const& player) { return player.flight; })),
-            .sampled_speed = frame.sampled_speed.has_value()};
+    HudChanges changes{.entity_counts = hud_detail::replace(entity_count_data_, counts)};
+    if (player) {
+        if (!player_data_) {
+            player_data_.emplace(player->status, player->flight);
+            changes.player_status = true;
+            changes.player_flight = true;
+        } else {
+            changes.player_status = hud_detail::replace(player_data_->status, player->status);
+            changes.player_flight = hud_detail::replace(player_data_->flight, player->flight);
+        }
+        changes.sampled_speed = true;
+    }
+    return changes;
 }
 auto HudModel::seconds_per_tick() const -> float {
     return static_cast<float>(tick_loop_.get_tick_period());

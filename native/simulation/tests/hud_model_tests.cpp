@@ -21,24 +21,24 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
     auto const frame = [&] { return bridge::level_frame(simulation); };
-    hud.initialise(frame());
+    auto const initial{frame()};
+    hud.initialise(initial.entity_counts, initial.player);
 
     EXPECT_TRUE(hud.active());
-    EXPECT_FALSE(hud.player_status_data());
-    EXPECT_FALSE(hud.player_flight_data());
-    EXPECT_FALSE(frame().sampled_speed);
-    auto const& counts{hud.entity_count_data().alive_per_team_and_type};
+    EXPECT_FALSE(hud.player_data());
+    EXPECT_FALSE(frame().player);
+    auto const& counts{hud.entity_count_data()};
     EXPECT_EQ((counts[Team::Blue, EntityType::CapitalShip]), 1);
     EXPECT_EQ((counts[Team::Red, EntityType::CapitalShip]), 1);
-    auto const changes{hud.force_sample(frame())};
+    auto const changes{hud.force_sample(initial.entity_counts, initial.player)};
     EXPECT_FALSE(changes.entity_counts);
     EXPECT_FALSE(changes.player_status);
     EXPECT_FALSE(changes.player_flight);
 
     hud.deactivate();
     EXPECT_FALSE(hud.active());
-    EXPECT_FALSE(frame().sampled_speed);
-    EXPECT_FALSE(hud.tick(1, frame()).entity_counts);
+    EXPECT_FALSE(frame().player);
+    EXPECT_FALSE(hud.tick(1, initial.entity_counts, initial.player).entity_counts);
 }
 
 TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
@@ -49,7 +49,8 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
     auto const frame = [&] { return bridge::level_frame(simulation); };
-    hud.initialise(frame());
+    auto const initial{frame()};
+    hud.initialise(initial.entity_counts, initial.player);
     auto const victim{simulation.capital_ships().get_entities().entity_ids()[0]};
     harness.queue_kills(std::array{victim});
     simulation.start();
@@ -57,10 +58,11 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
 
     auto const team{Team::Red};
     auto const type{EntityType::CapitalShip};
-    EXPECT_FALSE(hud.tick(14, frame()).entity_counts);
-    EXPECT_EQ((hud.entity_count_data().alive_per_team_and_type[team, type]), 1);
-    EXPECT_TRUE(hud.tick(1, frame()).entity_counts);
-    EXPECT_EQ((hud.entity_count_data().alive_per_team_and_type[team, type]), 0);
+    auto const updated{frame()};
+    EXPECT_FALSE(hud.tick(14, updated.entity_counts, updated.player).entity_counts);
+    EXPECT_EQ((hud.entity_count_data()[team, type]), 1);
+    EXPECT_TRUE(hud.tick(1, updated.entity_counts, updated.player).entity_counts);
+    EXPECT_EQ((hud.entity_count_data()[team, type]), 0);
 }
 
 TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
@@ -84,37 +86,36 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
     auto const rival{capitals.get_entities().entity_ids()[2]};
     presentation::HudModel hud;
     auto const frame = [&] { return bridge::level_frame(simulation); };
-    hud.initialise(frame());
-    ASSERT_TRUE(hud.player_status_data());
-    EXPECT_EQ(hud.player_status_data()->health.health.value(), 37);
-    EXPECT_EQ(hud.player_status_data()->health.max_health.value(), 100);
+    auto const initial{frame()};
+    hud.initialise(initial.entity_counts, initial.player);
+    ASSERT_TRUE(hud.player_data());
+    EXPECT_EQ(hud.player_data()->status.health.health.value(), 37);
+    EXPECT_EQ(hud.player_data()->status.health.max_health.value(), 100);
     {
-        auto const samples{frame().sampled_speed};
-        ASSERT_TRUE(samples);
+        auto const samples{frame().player->sampled_speed};
         auto const* player_simulation{simulation.player_ship_simulation()};
-        EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
-        EXPECT_EQ(samples->samples.size(), player_simulation->speed_samples.size());
-        EXPECT_EQ(samples->oldest_index, 0);
+        EXPECT_EQ(samples.samples.data(), player_simulation->speed_samples.data());
+        EXPECT_EQ(samples.samples.size(), player_simulation->speed_samples.size());
+        EXPECT_EQ(samples.oldest_index, 0);
     }
 
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[0]}, player_id);
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[1]}, rival);
     simulation.start();
     harness.advance(0.05);
-    hud.force_sample(frame());
+    auto const updated{frame()};
+    hud.force_sample(updated.entity_counts, updated.player);
 
-    ASSERT_TRUE(hud.player_status_data());
-    EXPECT_EQ(hud.player_status_data()->points, 1);
-    ASSERT_TRUE(hud.player_flight_data());
+    ASSERT_TRUE(hud.player_data());
+    EXPECT_EQ(hud.player_data()->status.points, 1);
     {
-        auto const samples{frame().sampled_speed};
-        ASSERT_TRUE(samples);
+        auto const samples{frame().player->sampled_speed};
         auto const* player_simulation{simulation.player_ship_simulation()};
-        EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
-        EXPECT_EQ(samples->oldest_index, player_simulation->speed_sample_index);
-        ASSERT_GT(samples->oldest_index, 0);
-        EXPECT_GT(samples->samples[samples->oldest_index - 1].x(), 0.0);
-        EXPECT_GT(samples->samples[samples->oldest_index - 1].y(), 0.0);
+        EXPECT_EQ(samples.samples.data(), player_simulation->speed_samples.data());
+        EXPECT_EQ(samples.oldest_index, player_simulation->speed_sample_index);
+        ASSERT_GT(samples.oldest_index, 0);
+        EXPECT_GT(samples.samples[samples.oldest_index - 1].x(), 0.0);
+        EXPECT_GT(samples.samples[samples.oldest_index - 1].y(), 0.0);
     }
 }
 

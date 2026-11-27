@@ -51,12 +51,17 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void configure(sim::HudSettings settings) { model_.configure(settings); }
     auto settings() const -> sim::HudSettings const& { return model_.settings(); }
 
-    void initialise(presentation::LevelFrame const& level,
+    void initialise(std::span<presentation::AgentDisplayBatch const> batches,
+                    sim::EntityCounts const& entity_counts,
+                    std::optional<presentation::PlayerFrame> const& player,
                     sim::EntityTypeRadii const& radii,
                     FLevelVisualConfig const& level_config,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
-    void advance(double dt, presentation::LevelFrame const& level);
+    void advance(double dt,
+                 std::span<presentation::AgentDisplayBatch const> batches,
+                 sim::EntityCounts const& entity_counts,
+                 std::optional<presentation::PlayerFrame> const& player);
 
     void register_hud(USimulationHudWidget& hud);
     void unregister_hud(USimulationHudWidget& hud);
@@ -65,9 +70,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         return model_.active() ? EHUDManagerState::Active : EHUDManagerState::Disabled;
     }
     auto get_registered_hud_count() const noexcept -> int32 { return registered_huds.Num(); }
-    auto get_entity_count_data() const -> presentation::EntityCountHudData const& {
-        return model_.entity_count_data();
-    }
 
   private:
     using FWorldSoftTargetCustomDataBuffer =
@@ -83,8 +85,11 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         presentation::SoftTargetState soft_targets{};
     };
 
-    void update_entity_overlays(presentation::LevelFrame const& level, float delta_seconds);
-    void update_entity_overlay(presentation::LevelFrame const& level,
+    void update_entity_overlays(std::span<presentation::AgentDisplayBatch const> batches,
+                                std::optional<presentation::PlayerFrame> const& player,
+                                float delta_seconds);
+    void update_entity_overlay(std::span<presentation::AgentDisplayBatch const> batches,
+                               std::optional<presentation::PlayerFrame> const& player,
                                FRegisteredHud& registration,
                                float delta_seconds,
                                bool render_world_target);
@@ -96,21 +101,27 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                FLinearColor neutral_color,
                                FLinearColor in_range_color,
                                FWorldSoftTargetCustomDataBuffer& custom_data);
-    void update_radars(presentation::LevelFrame const& level);
-    void update_radar(presentation::LevelFrame const& level, FRegisteredHud& registration);
+    void update_radars(std::span<presentation::AgentDisplayBatch const> batches,
+                       std::optional<presentation::PlayerFrame> const& player);
+    void update_radar(std::span<presentation::AgentDisplayBatch const> batches,
+                      std::optional<presentation::PlayerFrame> const& player,
+                      FRegisteredHud& registration);
 
     template <typename Hud>
-    void update_hud(presentation::LevelFrame const& level,
+    void update_hud(std::optional<presentation::PlayerFrame> const& player,
                     Hud& hud,
                     presentation::HudChanges const& changes);
-    void update_huds(presentation::LevelFrame const& level,
+    void update_huds(std::optional<presentation::PlayerFrame> const& player,
                      presentation::HudChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
-    void update_player_status_hud(UShipHudWidget& hud) const;
-    void update_player_flight_hud(UShipHudWidget& hud) const;
+    void update_player_status_hud(UShipHudWidget& hud,
+                                  presentation::PlayerStatusHudData const& status) const;
+    void update_player_flight_hud(UShipHudWidget& hud,
+                                  presentation::PlayerFlightHudData const& flight) const;
 #if WITH_EDITOR
-    void update_sampled_speed_hud(presentation::LevelFrame const& level, UShipHudWidget& hud) const;
+    void update_sampled_speed_hud(presentation::SampledSpeedHudView const& speed,
+                                  UShipHudWidget& hud) const;
 #endif
 
     presentation::HudModel model_;

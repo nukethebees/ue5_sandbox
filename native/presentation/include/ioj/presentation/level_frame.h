@@ -1,18 +1,17 @@
 #pragma once
 
 #include <ioj/presentation/agent_display_batch.h>
-#include <ioj/presentation/entity_count_hud_data.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
 #include <ioj/rotators3f_view.h>
 #include <ioj/sim/collision/world_aabbs_view.h>
 #include <ioj/sim/entities/entity_frame_change.h>
+#include <ioj/sim/entities/team_entity_array.h>
 #include <ioj/sim/lasers/laser_hit_details_view.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/frame_event_counts.h>
 #include <ioj/sim/levels/level_state.h>
-#include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/player_event_kind.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/transform3d.h>
@@ -29,10 +28,10 @@ struct PlayerFrame {
     Transform3d transform;
     Transform3d body_transform;
     Transform3d middle_socket;
-    sim::LaserFiringState firing_mode;
     float weapon_range;
     PlayerStatusHudData status;
     PlayerFlightHudData flight;
+    SampledSpeedHudView sampled_speed;
 };
 
 struct TargetView {
@@ -91,9 +90,8 @@ struct LevelFrame {
     std::span<float const> spinner_yaws;
     LaserView lasers;
     sim::collision::world_aabbs::ConstView entity_bounds;
-    EntityCountHudData entity_counts;
+    sim::EntityCounts const& entity_counts;
     std::optional<PlayerFrame> player{};
-    std::optional<SampledSpeedHudView> sampled_speed{};
     FrameEvents events;
 };
 }

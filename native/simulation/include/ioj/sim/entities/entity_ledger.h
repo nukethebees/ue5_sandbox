@@ -50,7 +50,7 @@ class EntityLedger {
     auto issued_counts() const noexcept -> EntityTypeSizes const& { return issued_counts_; }
     auto kills(EntityId id) const -> KillCount;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
-    auto count_alive_per_team_and_type() const noexcept -> EntityCounts {
+    auto count_alive_per_team_and_type() const noexcept -> EntityCounts const& {
         return statistics_.count_alive_per_team_and_type();
     }
     auto count_kills(Team team) const noexcept -> KillCount { return statistics_.kill_count(team); }

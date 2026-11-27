@@ -41,7 +41,12 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig config,
     presentation_.Emplace(components_, MoveTemp(config), MoveTemp(player), frame, audio);
     components_.collision_grid->set_static_bounds(static_bounds);
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.initialise(frame, radii, presentation_->config, components_.soft_targets);
+    hud_manager_.initialise(frame.agents,
+                            frame.entity_counts,
+                            frame.player,
+                            radii,
+                            presentation_->config,
+                            components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {
@@ -67,7 +72,7 @@ void FLevelPresentationHost::tick(double const dt, presentation::LevelFrame cons
     }
 
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.advance(dt, frame);
+    hud_manager_.advance(dt, frame.agents, frame.entity_counts, frame.player);
     presentation_->tick(static_cast<float>(dt), frame);
 }
 

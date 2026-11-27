@@ -80,7 +80,8 @@ TEST(LevelLifetime, DisconnectsHudAndReturnsOverflowBeforeReusingArena) {
             add_player_spawn(data, make_player_spawn(fixture));
             {
                 LevelSim level{std::move(data).compile(), arena};
-                hud.initialise(bridge::level_frame(level));
+                auto const frame{bridge::level_frame(level)};
+                hud.initialise(frame.entity_counts, frame.player);
                 ASSERT_TRUE(hud.active());
                 EXPECT_GT(upstream.outstanding.load(), 1u);
                 hud.deactivate();
