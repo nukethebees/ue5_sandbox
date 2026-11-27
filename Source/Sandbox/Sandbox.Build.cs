@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Net.NetworkInformation;
+using System.IO;
 using UnrealBuildTool;
 
 public class Sandbox : ModuleRules
@@ -42,6 +42,19 @@ public class Sandbox : ModuleRules
             "UMG",
             "SandboxUI",
         });
+
+        if (Target.Type == TargetType.Game)
+        {
+            string scriptsRoot = Path.Combine(ModuleDirectory, "..", "..", "LevelScripts");
+            foreach (string script in Directory.EnumerateFiles(scriptsRoot, "*.scm", SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(scriptsRoot, script).Replace(Path.DirectorySeparatorChar, '/');
+                if (!relative.Equals("Settings/user-settings.scm", StringComparison.OrdinalIgnoreCase))
+                {
+                    RuntimeDependencies.Add("$(ProjectDir)/LevelScripts/" + relative, StagedFileType.NonUFS);
+                }
+            }
+        }
 
         Target.Logger.LogInformation("=== Sandbox Build.cs [Start] ===");
         Target.Logger.LogInformation($"OptimizeCode : {OptimizeCode}");

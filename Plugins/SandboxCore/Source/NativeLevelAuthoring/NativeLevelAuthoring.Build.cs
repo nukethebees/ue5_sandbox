@@ -30,16 +30,6 @@ public class NativeLevelAuthoring : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string scriptsRoot = Path.Combine(repositoryRoot, "LevelScripts");
-        foreach (string script in Directory.EnumerateFiles(scriptsRoot, "*.scm", SearchOption.AllDirectories))
-        {
-            string relative = Path.GetRelativePath(scriptsRoot, script).Replace(Path.DirectorySeparatorChar, '/');
-            if (!relative.Equals("Settings/user-settings.scm", StringComparison.OrdinalIgnoreCase))
-            {
-                RuntimeDependencies.Add("$(ProjectDir)/LevelScripts/" + relative, StagedFileType.NonUFS);
-            }
-        }
-
         string nativeToolchain =
             Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(
