@@ -64,8 +64,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     USaveGameViewerWidget(FObjectInitializer const& object_initializer);
 
     void present(MenuUpdate const& update);
-    void focus_primary_action();
-    [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
     void select_profile(FString const& profile_id);
     void select_outcome(FString const& outcome_id);
@@ -75,32 +73,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
                                  profiles::CreateProfileResult result);
     void begin_create_profile();
     void cancel_create_profile();
-    void request_back();
-
-    /* **************************************** */
-    // Selection queries
-    /* **************************************** */
-    [[nodiscard]] auto get_profile_count() const noexcept -> int32 {
-        return view_state_.profiles.Num();
-    }
-    [[nodiscard]] auto get_outcome_count() const noexcept -> int32 {
-        return view_state_.outcomes.Num();
-    }
-    [[nodiscard]] auto get_selected_profile_id() const -> FString const& {
-        return selected_profile_id_;
-    }
-    [[nodiscard]] auto get_selected_profile_name() const -> FText const& {
-        return view_state_.profile_name;
-    }
-    [[nodiscard]] auto get_selected_outcome_id() const -> FString const& {
-        return selected_outcome_id_;
-    }
-    [[nodiscard]] auto can_activate_selected_profile() const noexcept -> bool {
-        return view_state_.can_activate;
-    }
-    [[nodiscard]] auto is_create_profile_open() const noexcept -> bool {
-        return create_profile_open_;
-    }
 
     FSaveGameModalStateChanged modal_state_changed;
   protected:
@@ -119,7 +91,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void handle_create_profile(FString const& display_name);
     void handle_activate_profile();
     void handle_reset_test_profile();
-    void refresh_and_select(FString const& profile_id);
     void show_create_result(profiles::CreateProfileResult result);
     void show_create_profile_error(FText const& error);
 
@@ -144,14 +115,11 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     // State
     /* **************************************** */
-    FString selected_profile_id_{};
-    FString selected_outcome_id_{};
     FSaveGameViewState view_state_{};
     TSharedPtr<SSaveGameViewerView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
     UGameUiStyleSubsystem* style_{nullptr};
-    bool create_profile_open_{};
 };
 
 } // namespace ioj

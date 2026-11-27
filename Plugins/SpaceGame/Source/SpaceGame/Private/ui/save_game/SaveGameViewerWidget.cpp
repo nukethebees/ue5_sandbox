@@ -91,7 +91,7 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
                                                   FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    focus_primary_action();
+    present({player_menu().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -104,22 +104,11 @@ void USaveGameViewerWidget::present(MenuUpdate const& update) {
     }
 }
 
-void USaveGameViewerWidget::focus_primary_action() {
-    if (view_.IsValid()) {
-        view_->focus_selected_profile();
-    }
-}
-
-auto USaveGameViewerWidget::get_focus_target() const -> UWidget* {
-    return const_cast<USaveGameViewerWidget*>(this);
-}
-
 void USaveGameViewerWidget::refresh() {
     queue_profile_action(host::ProfileActionKind::Refresh, {}, this);
 }
 
 void USaveGameViewerWidget::begin_create_profile() {
-    create_profile_open_ = true;
     if (view_.IsValid()) {
         view_->show_create_profile();
     }
@@ -128,19 +117,11 @@ void USaveGameViewerWidget::begin_create_profile() {
 }
 
 void USaveGameViewerWidget::cancel_create_profile() {
-    create_profile_open_ = false;
     if (view_.IsValid()) {
         view_->hide_create_profile();
     }
 
     modal_state_changed.Broadcast(false);
-}
-
-void USaveGameViewerWidget::request_back() {
-    if (create_profile_open_) {
-        cancel_create_profile();
-        return;
-    }
 }
 
 void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
@@ -158,16 +139,16 @@ void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind
         case Activate:
         case ResetTestProfile:
             if (result == profiles::CreateProfileResult::succeeded) {
-                refresh_and_select(to_fstring(player_profiles().active_profile_id));
+                rebuild_profiles();
             }
 
             return;
         case Refresh:
             rebuild_profiles();
-            focus_primary_action();
+            present({player_menu().focus, MenuOperation::Focus});
             return;
         case SelectReport:
-            if (selected_profile_id_ == to_fstring(text)) {
+            if (player_menu().selected_profile == text) {
                 auto const& report{player_profiles().report};
                 if (result == profiles::CreateProfileResult::succeeded && report) {
                     rebuild_outcomes(*report);
@@ -186,7 +167,7 @@ void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult res
     switch (result) {
         case profiles::CreateProfileResult::succeeded: {
             cancel_create_profile();
-            refresh_and_select(to_fstring(player_profiles().active_profile_id));
+            rebuild_profiles();
             return;
         }
         case profiles::CreateProfileResult::empty_name: {
@@ -214,11 +195,7 @@ void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult res
 }
 
 void USaveGameViewerWidget::handle_activate_profile() {
-    if (selected_profile_id_.IsEmpty()) {
-        return;
-    }
-
-    queue_profile_action(host::ProfileActionKind::Activate, to_string(selected_profile_id_), this);
+    queue_profile_action(host::ProfileActionKind::Activate, player_menu().selected_profile, this);
 }
 
 void USaveGameViewerWidget::handle_reset_test_profile() {
@@ -230,11 +207,6 @@ void USaveGameViewerWidget::handle_reset_test_profile() {
 /* **************************************** */
 // Data sources and selection
 /* **************************************** */
-void USaveGameViewerWidget::refresh_and_select(FString const& profile_id) {
-    selected_profile_id_ = profile_id;
-    rebuild_profiles();
-}
-
 void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
     if (view_.IsValid()) {
         view_->show_create_error(error);
@@ -267,13 +239,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
         FText::Format(NSLOCTEXT("SaveGameViewer", "ArchiveStatus", "{0} SERVICE RECORDS AVAILABLE"),
                       FText::AsNumber(profile_count));
 
-    auto const requested_profile{selected_profile_id_};
-    selected_profile_id_.Reset();
-    apply_profile_selection(requested_profile.IsEmpty() ? to_fstring(profiles[0].profile_id)
-                                                        : requested_profile);
-    if (selected_profile_id_.IsEmpty()) {
-        apply_profile_selection(to_fstring(profiles[0].profile_id));
-    }
+    apply_profile_selection(to_fstring(player_menu().selected_profile));
 
     publish_all();
 }
@@ -294,13 +260,7 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
             continue;
         }
 
-        auto const profile_changed{selected_profile_id_ != profile_id};
-        selected_profile_id_ = profile_id;
         view_state_.selected_profile_index = index;
-        if (profile_changed) {
-            selected_outcome_id_.Reset();
-        }
-
         show_profile(profile, browser.active_profile_id);
 
         queue_profile_action(host::ProfileActionKind::SelectReport, to_string(profile_id), this);
@@ -320,7 +280,6 @@ void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView con
     view_state_.outcome_kills = FText::GetEmpty();
 
     if (report.outcomes.empty()) {
-        selected_outcome_id_.Reset();
         return;
     }
 
@@ -333,13 +292,7 @@ void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView con
         });
     }
 
-    auto const requested_outcome{selected_outcome_id_};
-    selected_outcome_id_.Reset();
-    apply_outcome_selection(requested_outcome.IsEmpty() ? to_fstring(report.outcomes[0].outcome_id)
-                                                        : requested_outcome);
-    if (selected_outcome_id_.IsEmpty()) {
-        apply_outcome_selection(to_fstring(report.outcomes[0].outcome_id));
-    }
+    apply_outcome_selection(to_fstring(player_menu().selected_outcome));
 }
 
 void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
@@ -349,7 +302,7 @@ void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
 
 void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
     auto const& report{player_profiles().report};
-    if (!report || report->profile_id != TCHAR_TO_UTF8(*selected_profile_id_)) {
+    if (!report || report->profile_id != player_menu().selected_profile) {
         return;
     }
 
@@ -357,7 +310,6 @@ void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
     for (int32 index{}; index < outcome_count; ++index) {
         auto const& outcome{report->outcomes[index]};
         if (outcome.outcome_id == TCHAR_TO_UTF8(*outcome_id)) {
-            selected_outcome_id_ = outcome_id;
             view_state_.selected_outcome_index = index;
             show_outcome(outcome);
             return;
@@ -413,8 +365,6 @@ void USaveGameViewerWidget::show_outcome(profiles::LevelOutcomeSummary const& ou
 }
 
 void USaveGameViewerWidget::show_empty_profiles() {
-    selected_profile_id_.Reset();
-    selected_outcome_id_.Reset();
     view_state_ = FSaveGameViewState{};
     view_state_.archive_status =
         NSLOCTEXT("SaveGameViewer", "NoProfiles", "NO SERVICE RECORDS AVAILABLE");

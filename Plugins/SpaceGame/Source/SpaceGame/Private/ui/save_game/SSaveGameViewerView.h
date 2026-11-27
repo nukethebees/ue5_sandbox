@@ -11,6 +11,7 @@ class STextBlock;
 class SVerticalBox;
 
 namespace ioj {
+enum class MenuControl;
 class SGameButton;
 
 DECLARE_DELEGATE_OneParam(FOnSaveProfileSelected, FString const&);
@@ -42,7 +43,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     void replace_profile(FSaveGameViewState const& state);
     void update_outcome(FSaveGameViewState const& state);
     void present(MenuUpdate const& update);
-    void focus_selected_profile();
     void show_create_profile();
     void hide_create_profile();
     void show_create_error(FText const& error);
@@ -50,7 +50,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     auto SupportsKeyboardFocus() const -> bool override { return true; }
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-    auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
     /* **************************************** */
     // Layout construction
@@ -67,7 +66,7 @@ class SSaveGameViewerView final : public SCompoundWidget {
     /* **************************************** */
     auto handle_profile(FString profile_id) -> FReply;
     auto handle_outcome(FString outcome_id) -> FReply;
-    auto handle_action(FSimpleDelegate delegate) -> FReply;
+    auto handle_action(MenuControl control) -> FReply;
     auto handle_confirm_create() -> FReply;
     void handle_name_committed(FText const& text, ETextCommit::Type commit_type);
     void rebuild_profiles();
