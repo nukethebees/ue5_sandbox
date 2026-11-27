@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/host/input.h>
+#include <ioj/input/ship_input.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
@@ -25,7 +26,7 @@ class SdlInput {
     void handle(SDL_Event const& event);
     void finish_frame(double dt);
     auto events() const -> std::span<host::InputEvent const> { return events_; }
-    auto ship_frame() const { return flight_.frame(); }
+    auto ship_frame() { return input::ship_input_frame(state_, ship_events_); }
   private:
     void key(input::KeyCode code, bool down, bool repeat, Uint32 character);
     void axis_value(std::size_t axis, float value);
@@ -37,7 +38,9 @@ class SdlInput {
     host::InputRoute route_{};
     host::Modifiers modifiers_{};
     bool raw_menu_input_{};
-    input::FlightInput flight_;
+    input::FlightInputResolver flight_;
+    input::InputState state_;
+    std::vector<sim::player::PlayerInputKind> ship_events_;
     std::vector<host::InputEvent> events_;
     Uint32 ui_mouse_buttons_{};
     std::array<float, SDL_GAMEPAD_AXIS_COUNT> axes_{};

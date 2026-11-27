@@ -191,14 +191,14 @@ constexpr std::array<float, 5> viewer_speeds{5000.f, 15000.f, 50000.f, 150000.f,
 SdlInput::SdlInput(SDL_Window& window, ControlsSettings const& controls)
     : window_{window}
     , controls_{controls} {
-    flight_.configure(controls_, route_.context);
+    flight_.configure(state_, controls_, route_.context);
 }
 SdlInput::~SdlInput() {
     SDL_CloseGamepad(gamepad_);
 }
 void SdlInput::begin_frame() {
     events_.clear();
-    flight_.begin_frame();
+    state_.begin_frame();
 }
 void SdlInput::synchronize(host::InputRoute current, host::MenuStatus menu) {
     bool const raw{menu.capturing_binding || menu.editing_text};
@@ -231,22 +231,31 @@ void SdlInput::synchronize(host::InputRoute current, host::MenuStatus menu) {
     }
 }
 void SdlInput::refresh_bindings() {
-    flight_.configure(controls_, route_.context);
+    flight_.configure(state_, controls_, route_.context);
     if (route_.context == input::Context::Gameplay) {
         for (std::size_t axis{}; axis < axes_.size(); ++axis) {
             float const position{axes_[axis]};
-            flight_.restore_axis(axis_keys[axis], position, controls_);
-            flight_.restore_axis(positive_keys[axis], position >= 0.5f ? 1.f : 0.f, controls_);
+            flight_.restore_axis(state_, axis_keys[axis], position, controls_);
+            flight_.restore_axis(state_, positive_keys[axis], position >= 0.5f ? 1.f : 0.f, controls_);
             if (axis < negative_keys.size()) {
-                flight_.restore_axis(negative_keys[axis], position <= -0.5f ? 1.f : 0.f, controls_);
+                flight_.restore_axis(state_, negative_keys[axis], position <= -0.5f ? 1.f : 0.f, controls_);
             }
         }
     }
 }
 void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character) {
     using enum host::PlayerAction;
+    auto const flight_button = [&] {
+        auto const first{state_.transitions.size()};
+        flight_.button(state_, code, down ? input::ButtonState::Pressed : input::ButtonState::Released, controls_);
+        auto const changes{std::span{state_.transitions}.subspan(first)};
+        return std::ranges::any_of(changes, [](auto transition) {
+            return transition.action == input::DigitalAction::Pause &&
+                   transition.state == input::ButtonState::Pressed;
+        });
+    };
     if (route_.resume_available && flight_.is_pause_button(code)) {
-        if (!repeat && flight_.update(code, down ? 1.f : 0.f, controls_)) {
+        if (!repeat && flight_button()) {
             events_.emplace_back(RequestResume);
         }
         return;
@@ -264,7 +273,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         return;
     }
     if (route_.context == input::Context::Gameplay) {
-        if (flight_.update(code, down ? 1.f : 0.f, controls_)) {
+        if (flight_button()) {
             events_.emplace_back(OpenPause);
         }
         return;
@@ -290,12 +299,12 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         }
         return;
     }
-    if (down && flight_.update(code, 1.f, controls_)) {
+    if (down && flight_button()) {
         events_.emplace_back(OpenPause);
         return;
     }
     if (!down) {
-        flight_.update(code, 0.f, controls_);
+        flight_button();
     }
     if (code == PhysicalKey::RightMouseButton && down) {
         viewer_looking_ = !viewer_looking_;
@@ -336,7 +345,7 @@ void SdlInput::handle(SDL_Event const& event) {
         ui_mouse_buttons_ = 0;
         modifiers_ = {};
         release_gamepad();
-        flight_.reset();
+        flight_.reset(state_);
         viewer_buttons_ = {};
         viewer_looking_ = false;
         viewer_dx_ = 0.f;
@@ -410,8 +419,7 @@ void SdlInput::handle(SDL_Event const& event) {
         }
         case SDL_EVENT_MOUSE_MOTION:
             if (route_.context == input::Context::Gameplay) {
-                flight_.update(PhysicalKey::MouseX, event.motion.xrel, controls_);
-                flight_.update(PhysicalKey::MouseY, event.motion.yrel, controls_);
+                flight_.pointer_motion(state_, {event.motion.xrel, event.motion.yrel}, controls_);
             } else if (viewer_looking_) {
                 viewer_dx_ += event.motion.xrel;
                 viewer_dy_ -= event.motion.yrel;
@@ -480,9 +488,8 @@ void SdlInput::axis_value(std::size_t axis, float value) {
     axes_[axis] = value;
     if (route_.context == input::Context::Menu && raw_menu_input_) {
         events_.emplace_back(host::MenuAxis{axis_keys[axis], value, modifiers_});
-    } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
-               flight_.update(axis_keys[axis], value, controls_)) {
-        events_.emplace_back(host::PlayerAction::OpenPause);
+    } else if (route_.context == input::Context::Gameplay || route_.movable_viewer) {
+        flight_.axis(state_, axis_keys[axis], value, controls_);
     }
     // Digital aliases are independently rebindable in the Controls menu.
     if (route_.context == input::Context::Menu && !raw_menu_input_ && axis < 2) {
@@ -537,7 +544,7 @@ void SdlInput::finish_frame(double dt) {
         }
     }
     if (route_.context == input::Context::Gameplay) {
-        events_.emplace_back(host::SteeringIndicator{flight_.steering()});
+        events_.emplace_back(host::SteeringIndicator{state_.pointer_steering});
     }
     if (route_.movable_viewer) {
         auto const speed{viewer_speeds[speed_index_] * (viewer_buttons_[6] ? 4.f : 1.f)};

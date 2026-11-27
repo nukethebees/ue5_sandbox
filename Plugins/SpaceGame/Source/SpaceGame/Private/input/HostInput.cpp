@@ -2,6 +2,7 @@
 #include "input/BindingCapture.h"
 #include "input/BindingKey.h"
 #include <ioj/host/input.h>
+#include <ioj/input/flight_controls.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>

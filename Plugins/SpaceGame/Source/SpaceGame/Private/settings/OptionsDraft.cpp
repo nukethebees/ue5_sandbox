@@ -7,7 +7,7 @@
 #include "SpaceGame/settings/ControlChordBindingView.h"
 #include "SpaceGame/settings/GameSettingOption.h"
 #include "SpaceGame/UnrealMessages.h"
-#include <ioj/input/flight_input.h>
+#include <ioj/input/flight_controls.h>
 #include <ioj/settings/control_bindings.h>
 #include <ioj/settings/game_setting.h>
 #include <ioj/settings/game_setting_category.h>
@@ -368,9 +368,9 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
     for (auto const& control : input::flight_controls()) {
         auto const key{input::bound_key(control, draft_.pending().controls)};
         auto const group{
-            control.action == input::FlightAction::Pause  ? EControlBindingGroup::Utility
-            : control.action == input::FlightAction::Fire ? EControlBindingGroup::Combat
-                                                          : EControlBindingGroup::Flight};
+            control.group == input::BindingGroup::Utility  ? EControlBindingGroup::Utility
+            : control.group == input::BindingGroup::Combat ? EControlBindingGroup::Combat
+                                                           : EControlBindingGroup::Flight};
         auto const device{is_gamepad_mapping(control.mapping)
                               ? FHardwareDeviceIdentifier::DefaultGamepad
                               : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};

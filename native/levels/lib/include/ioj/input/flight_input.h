@@ -1,71 +1,42 @@
 #pragma once
 
-#include <ioj/input/actions.h>
-#include <ioj/input/flight_mapping.h>
-#include <ioj/input/key_code.h>
-#include <ioj/settings/controls_settings.h>
-#include <ioj/sim/player/player_events.h>
-#include <ioj/vector.h>
+#include <ioj/input/flight_controls.h>
+#include <ioj/input/input_state.h>
 
+#include <array>
+#include <bitset>
 #include <cstdint>
-#include <memory_resource>
-#include <optional>
-#include <span>
-#include <string>
-#include <string_view>
-#include <vector>
 
 namespace ioj::input {
-enum class FlightAction {
-    Pause,
-    Accelerate,
-    Boost,
-    Brake,
-    EmergencyBrake,
-    Fire,
-    Steer,
-    PointerPitch,
-    PointerYaw,
-    Pitch,
-    Yaw
-};
-
-struct FlightControl {
-    FlightMapping mapping;
-    FlightAction action;
-    KeyCode default_key;
-    std::string_view label;
-    int display_order;
-};
-auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool;
-auto flight_controls() -> std::span<FlightControl const>;
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> KeyCode;
-
-struct FlightBinding {
-    FlightAction action;
-    KeyCode key;
-    float value{};
-};
-
-class FlightInput {
+class FlightBindings {
   public:
-    FlightInput();
-
-    void configure(ControlsSettings const& controls, Context context);
-    auto is_pause_button(KeyCode key) const -> bool;
-    void restore_axis(KeyCode key, float position, ControlsSettings const& controls);
-    // Returns true on the rising edge of the pause action.
-    auto update(KeyCode key, float next, ControlsSettings const& controls) -> bool;
-    void reset();
-    void begin_frame();
-    auto frame() const -> sim::player::PlayerInputFrame { return events_.view(); }
-    auto steering() const -> std::optional<Vector2d> { return steering_; }
+    FlightBindings() = default;
+    FlightBindings(ControlsSettings const& controls, Context context);
+    auto matches(FlightMapping mapping, KeyCode key) const -> bool;
   private:
-    auto value(FlightAction action) const -> float;
-    void update_axes(ControlsSettings const& controls);
+    EnumArray<std::uint32_t, FlightMapping> bound_characters_;
+    EnumArray<PhysicalKey, FlightMapping> bound_keys_;
+};
 
-    std::vector<FlightBinding> bindings_;
-    sim::player::PlayerInputEvents events_;
-    std::optional<Vector2d> steering_;
+class FlightInputResolver {
+  public:
+    void configure(InputState& state, ControlsSettings const& controls, Context context);
+    auto is_pause_button(KeyCode key) const -> bool;
+    void button(InputState& state, KeyCode key, ButtonState edge, ControlsSettings const& controls);
+    void axis(InputState& state, KeyCode key, float position, ControlsSettings const& controls);
+    void pointer_motion(InputState& state, Vector2f delta, ControlsSettings const& controls);
+    void restore_axis(InputState& state,
+                      KeyCode key,
+                      float position,
+                      ControlsSettings const& controls);
+    void reset(InputState& state);
+  private:
+    void resolve_digital(InputState& state, KeyCode key, bool down);
+
+    FlightBindings bindings_;
+    std::bitset<enum_count<FlightMapping>()> active_digital_sources_;
+    std::array<float, 2> accelerator_sources_{};
+    Vector2f gamepad_turn_{};
+    Vector2f pointer_turn_{};
 };
 }
