@@ -22,7 +22,6 @@
 #include "Framework/Application/SlateApplication.h"
 #include "GenericPlatform/GenericWindow.h"
 #include "HAL/Platform.h"
-#include "HAL/PlatformApplicationMisc.h" // IWYU pragma: keep
 #include "Kismet/GameplayStatics.h"
 #include "Logging/LogMacros.h"
 #include "Logging/LogVerbosity.h"
@@ -133,7 +132,6 @@ auto IojPlayer_ExitRequested() -> bool {
 
 void IojPlayer_BeginFrame() {
     clear_consumed_messages();
-    FPlatformApplicationMisc::PumpMessages(true);
 }
 
 auto IojPlayer_InitializeWindow(int x, int y, int width, int height, bool activate) -> bool {

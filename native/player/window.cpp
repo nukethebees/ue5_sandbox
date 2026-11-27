@@ -3,7 +3,6 @@
 #include <ioj/settings/player_settings.h>
 
 #include <SDL3/SDL_error.h>
-#include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_stdinc.h>
@@ -23,9 +22,7 @@ Window::~Window() {
 
 auto Window::create() -> ApplicationResult {
     SDL_SetMainReady();
-    // Slate pumps the process message queue and owns keyboard and mouse input.
-    SDL_SetHint(SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP, "0");
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         return ApplicationResult{std::unexpect, SDL_GetError()};
     }
 

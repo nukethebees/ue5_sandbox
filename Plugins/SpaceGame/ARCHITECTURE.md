@@ -4,7 +4,9 @@
 flowchart TD
     A[Application] -->|owns and advances| S[LevelSim]
     A -->|ticks| U[Unreal]
-    U -->|typed requests and ship input| A
+    SDL[SDL devices] --> A
+    A -->|menu events and viewer motion| U
+    U -->|typed requests| A
     S -->|borrowed simulation data| H[FLevelPresentationHost]
     H --> V[Player view and HUD]
 ```

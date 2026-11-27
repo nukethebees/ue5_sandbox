@@ -3,10 +3,10 @@
 #include "player/cli_args.h"
 #include "player/engine.h"
 #include "player/loaded_level.h"
+#include "player/sdl_input.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
 #include <ioj/bridge/level_catalog.h>
-#include <ioj/host/input.h>
 #include <ioj/bridge/level_frame.h>
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
@@ -289,12 +289,16 @@ auto Application::play(Window& window,
     auto const deadline{previous_frame_time + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
+    SdlInput input{*window.sdl_window(), settings_.applied().controls};
+    auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
+        input.begin_frame();
         SDL_Event event;
         bool close_requested{};
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
+            input.handle(event);
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                 case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -337,6 +341,10 @@ auto Application::play(Window& window,
             }
         }
 
+        auto const input_time{std::chrono::steady_clock::now()};
+        auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
+        last_input_frame = input_time;
+        input.finish_frame(std::min(input_delta.count(), max_frame_delta_seconds));
         if (auto result{tick_engine()}; !result) {
             return result;
         }
@@ -407,7 +415,7 @@ auto Application::play(Window& window,
         }
 
         if (host::presents_level()) {
-            level->simulation.append_player_input(messages.ship_input);
+            level->simulation.append_player_input(input.ship_frame());
 
             auto const frame_time{std::chrono::steady_clock::now()};
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&

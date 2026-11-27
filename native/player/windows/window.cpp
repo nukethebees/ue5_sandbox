@@ -10,30 +10,12 @@ namespace ioj {
 namespace {
 auto CALLBACK forward_window_message(
     HWND hwnd, UINT message, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR) -> LRESULT {
-    // UELibrary_WndProc falls back to DefWindowProc, bypassing SDL's original procedure.
-    // Give SDL the window-management messages and let Slate handle input and activation.
-    switch (message) {
-        case WM_CLOSE:
-        case WM_SYSCOMMAND:
-        case WM_NCCALCSIZE:
-        case WM_NCHITTEST:
-        case WM_NCLBUTTONDOWN:
-        case WM_NCLBUTTONUP:
-        case WM_NCLBUTTONDBLCLK:
-        case WM_ENTERSIZEMOVE:
-        case WM_EXITSIZEMOVE:
-        case WM_WINDOWPOSCHANGING:
-        case WM_WINDOWPOSCHANGED:
-        case WM_SIZE:
-        case WM_MOVE:
-        case WM_GETMINMAXINFO:
-        case WM_DISPLAYCHANGE:
-        case WM_DPICHANGED:
-        case WM_NCDESTROY:
-            return DefSubclassProc(hwnd, message, wp, lp);
-        default:
-            return UELibrary_WndProc(hwnd, message, wp, lp);
+    // SDL owns the window procedure and its input devices. Slate still needs the window
+    // activation notifications for viewport focus, capture and popup dismissal.
+    if (message == WM_ACTIVATE || message == WM_ACTIVATEAPP) {
+        UELibrary_WndProc(hwnd, message, wp, lp);
     }
+    return DefSubclassProc(hwnd, message, wp, lp);
 }
 }
 

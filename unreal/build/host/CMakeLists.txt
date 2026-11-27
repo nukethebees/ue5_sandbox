@@ -23,6 +23,7 @@ target_sources(IojPlayer
     "${host_directory}/main.cpp"
     "${host_directory}/cli_args.cpp"
     "${host_directory}/application.cpp"
+    "${host_directory}/sdl_input.cpp"
     "${host_directory}/loaded_level.cpp"
     "${host_directory}/engine.cpp"
     "${host_directory}/windows/engine.cpp"

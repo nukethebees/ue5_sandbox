@@ -16,8 +16,8 @@ auto engine_arguments(std::filesystem::path const& project_directory,
                       LaunchDisplayMode mode,
                       std::filesystem::path const& user_directory) -> std::wstring {
     auto const project{project_directory / L"Sandbox.uproject"};
-    auto arguments{
-        std::format(L"\"{}\" /SpaceGame/Levels/MainMenu -game -windowed", project.native())};
+    auto arguments{std::format(L"\"{}\" /SpaceGame/Levels/MainMenu -game -windowed -NoGamepad",
+                               project.native())};
 
     if (mode == LaunchDisplayMode::Headless) {
         arguments += L" -RenderOffScreen -nullrhi -nosound -nosplash -unattended";

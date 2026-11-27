@@ -8,4 +8,4 @@ The CMake target `IojPlayer` builds `ioj.exe`. The executable owns the simulatio
 `native-presentation-bridge` to publish level initialisation data and resolved frame views.
 Unreal consumes the contract in `native/presentation/include` and links the presentation
 algorithms in `native/presentation/lib`. Frame columns are borrowed for one synchronous call.
-Unreal returns input and UI requests to the executable after its engine tick.
+SDL supplies keyboard, mouse and gamepad events to the executable. Flight input goes directly to the simulation. The executable sends menu input to Slate and viewer motion to the camera. Unreal returns UI requests after its engine tick.
