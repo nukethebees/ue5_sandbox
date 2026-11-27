@@ -13,6 +13,7 @@ target_sources(native-levels
     lib/src/game_settings.cpp
     lib/src/game_settings_edit_state.cpp
     lib/src/input_response.cpp
+    lib/src/key_code.cpp
     lib/src/flight_input.cpp
 )
 target_include_directories(native-levels
