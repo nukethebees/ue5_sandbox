@@ -19,6 +19,7 @@ class ACameraActor;
 struct FLevelCompletion;
 
 namespace ioj {
+struct MenuUpdate;
 class UTestBatchGameUiData;
 class ATestBatchOrchestrator;
 class ATestSpaceShip;
@@ -34,6 +35,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
     auto present_pause(host::PauseCommand command) -> bool;
+    void present_menu(MenuUpdate const& update);
     auto main_menu() const -> UMainMenuWidget* { return modal_ui_.main_menu(); }
     void present_viewer_motion(host::ViewerMotion const& motion, double dt);
     void present_steering(TOptional<FVector2D> position);

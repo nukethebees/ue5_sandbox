@@ -69,6 +69,11 @@ void select_benchmark_button(bool end_selected) {
         hud->select_button(end_selected);
     }
 }
+void present_menu(MenuUpdate const& update) {
+    if (auto* player{controller()}) {
+        player->present_menu(update);
+    }
+}
 void present_viewer(ViewerStep const& step) {
     auto* const player{controller()};
     check(player);

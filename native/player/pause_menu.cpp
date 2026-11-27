@@ -36,6 +36,9 @@ auto PauseMenu::activate(Item item) -> Command {
 
 auto PauseMenu::navigate(MenuCommand command, bool repeated) -> Command {
     using enum MenuCommand;
+    if (view == PauseMenuView::Options && command == Back && !repeated) {
+        return activate(Item::Resume);
+    }
     if (options_modal || pending || view != PauseMenuView::Sidebar) {
         return {};
     }

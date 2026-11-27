@@ -17,8 +17,7 @@ struct InputReceiver {
     virtual ~InputReceiver();
   public:
     virtual auto routing() const -> InputRouting = 0;
-    virtual void consume(std::span<host::MenuEvent const> events) = 0;
-    virtual void consume(std::span<host::PresentationEvent const> events) = 0;
+    virtual void consume(host::InputBatch events) = 0;
 };
 
 class InputSystem {
@@ -33,10 +32,6 @@ class InputSystem {
         return logical_.viewer_step(seconds);
     }
     auto steering() const -> std::optional<Vector2d> { return logical_.state().pointer_steering; }
-    auto menu_input() const -> std::span<host::MenuEvent const> { return dispatch_.menu_input(); }
-    auto presentation_input() const -> std::span<host::PresentationEvent const> {
-        return dispatch_.presentation_input();
-    }
 
   private:
     void synchronize(InputReceiver& receiver);

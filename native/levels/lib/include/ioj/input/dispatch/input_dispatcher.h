@@ -13,44 +13,61 @@ struct LogicalInputState;
 class InputDispatcher {
   public:
     void begin_frame();
-    void push(host::MenuEvent event);
-    void push(host::PresentationEvent event);
+    void push(host::PlayerAction event);
+    void push(host::MenuButton event);
+    void push(PhysicalKey event);
+    void push(host::MenuKey event);
+    void push(host::MenuPointer event);
+    void push(host::MenuText event);
     void publish_ship(LogicalInputState const& state);
 
     auto ship_input() const -> sim::player::PlayerInputFrame;
-    auto menu_input() const -> std::span<host::MenuEvent const> { return menu_; }
-    auto presentation_input() const -> std::span<host::PresentationEvent const> {
-        return presentation_;
-    }
+    auto buttons() const -> std::span<host::MenuButton const> { return buttons_; }
     auto size() const -> std::size_t { return order_.size(); }
-
     void deliver_from(std::size_t first, auto& receiver) const {
         auto pending{std::span{order_}.subspan(first)};
         while (!pending.empty()) {
-            auto const [presentation, row]{pending.front()};
+            auto const [kind, row]{pending.front()};
             std::size_t count{1};
-            while (count < pending.size() && pending[count].presentation == presentation) {
+            while (count < pending.size() && pending[count].kind == kind) {
                 ++count;
             }
-
-            if (presentation) {
-                receiver.consume(presentation_input().subspan(row, count));
-            } else {
-                receiver.consume(menu_input().subspan(row, count));
+            switch (kind) {
+                case Kind::PlayerAction:
+                    receiver.consume(std::span{actions_}.subspan(row, count));
+                    break;
+                case Kind::MenuButton:
+                    receiver.consume(std::span{buttons_}.subspan(row, count));
+                    break;
+                case Kind::PhysicalKey:
+                    receiver.consume(std::span{candidates_}.subspan(row, count));
+                    break;
+                case Kind::MenuKey:
+                    receiver.consume(std::span{keys_}.subspan(row, count));
+                    break;
+                case Kind::MenuPointer:
+                    receiver.consume(std::span{pointers_}.subspan(row, count));
+                    break;
+                case Kind::MenuText:
+                    receiver.consume(std::span{text_}.subspan(row, count));
+                    break;
             }
             pending = pending.subspan(count);
         }
     }
-
   private:
+    enum class Kind { PlayerAction, MenuButton, PhysicalKey, MenuKey, MenuPointer, MenuText };
     struct Entry {
-        bool presentation;
+        Kind kind;
         std::size_t row;
     };
-
     std::vector<Entry> order_;
-    std::vector<host::MenuEvent> menu_;
-    std::vector<host::PresentationEvent> presentation_;
+    std::vector<host::PlayerAction> actions_;
+    std::vector<host::MenuButton> buttons_;
+    std::vector<PhysicalKey> candidates_;
+    std::vector<host::MenuKey> keys_;
+    std::vector<host::MenuPointer> pointers_;
+    std::vector<host::MenuText> text_;
     std::vector<sim::player::PlayerInputKind> ship_events_;
     float pitch_{};
     float yaw_{};

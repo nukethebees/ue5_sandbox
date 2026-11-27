@@ -38,7 +38,6 @@ void UOptionsWidget::NativeOnInitialized() {
         return;
     }
 
-    settings_->save_completed.AddUObject(this, &ThisClass::handle_save_completed);
     settings_->settings_changed.AddUObject(this, &ThisClass::refresh_view);
     settings_->display_confirmation_changed.AddUObject(
         this, &ThisClass::handle_display_confirmation_changed);
@@ -54,15 +53,6 @@ void UOptionsWidget::NativeOnAddedToFocusPath(FFocusEvent const& event) {
     content_focused.Broadcast();
 }
 
-void UOptionsWidget::NativeDestruct() {
-    cancel_leave();
-    if (IsValid(settings_)) {
-        settings_->cancel();
-    }
-
-    Super::NativeDestruct();
-}
-
 auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     if (!IsValid(settings_) || !IsValid(style_)) {
         return SNew(STextBlock)
@@ -70,7 +60,7 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     }
 
     return SAssignNew(options_view_, SGameOptionsView)
-        .IsEnabled_Lambda([this] { return !settings_->save_pending(); })
+        .IsEnabled_Lambda([this] { return !player_menu().saving; })
         .Settings(settings_)
         .Capabilities(&system_capabilities())
         .Style(&style_->get_ui_style())
@@ -78,9 +68,6 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .Page_UObject(this, &ThisClass::page)
         .OnApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_apply))
         .OnReset(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset))
-        .OnDirtyApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_apply))
-        .OnDirtyDiscard(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_discard))
-        .OnDirtyStay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_stay))
         .OnConfirmDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_confirm_display))
         .OnRevertDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_revert_display))
         .OnInteractionModalChanged(FOnOptionsInteractionModalChanged::CreateUObject(
@@ -100,86 +87,22 @@ auto UOptionsWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
-void UOptionsWidget::select_page(MainMenuItem page, FSimpleDelegate shown) {
-    if (page == page_) {
-        shown.ExecuteIfBound();
+void UOptionsWidget::show_page(MainMenuItem page) {
+    if (rendered_page_ == page) {
         return;
     }
-
-    request_leave(
-        FSimpleDelegate::CreateUObject(this, &ThisClass::open_page, page, MoveTemp(shown)));
-}
-
-void UOptionsWidget::open_page(MainMenuItem page, FSimpleDelegate shown) {
-    page_ = page;
+    rendered_page_ = page;
     if (auto category{settings_category(page)}) {
         settings_->load(GetOwningLocalPlayer());
     }
-    if (options_view_.IsValid()) {
+    if (options_view_) {
         options_view_->show_page();
     }
-    shown.ExecuteIfBound();
 }
 
-void UOptionsWidget::request_leave(FSimpleDelegate continuation, FSimpleDelegate cancelled) {
-    if (!IsValid(settings_)) {
-        continuation.ExecuteIfBound();
-        return;
-    }
-
-    if (settings_->save_pending() || settings_->is_awaiting_display_confirmation()) {
-        cancelled.ExecuteIfBound();
-        return;
-    }
-
-    if (!settings_->is_dirty()) {
-        continuation.ExecuteIfBound();
-        return;
-    }
-
-    leave_continuation_ = MoveTemp(continuation);
-    leave_cancelled_ = MoveTemp(cancelled);
-    if (options_view_.IsValid()) {
-        options_view_->show_dirty_prompt();
-    }
-
-    modal_state_changed.Broadcast(true);
+auto UOptionsWidget::page() const -> MainMenuItem {
+    return player_menu().page;
 }
-
-void UOptionsWidget::request_back() {
-    if (IsValid(settings_) && settings_->save_pending()) {
-        return;
-    }
-
-    if (options_view_.IsValid() && options_view_->dismiss_interaction_modal()) {
-        return;
-    }
-
-    if (options_view_.IsValid() && options_view_->is_dirty_prompt_visible()) {
-        options_view_->hide_dirty_prompt();
-        cancel_leave();
-        return;
-    }
-
-    if (IsValid(settings_) && settings_->is_awaiting_display_confirmation()) {
-        settings_->revert_display_changes();
-        return;
-    }
-
-    if (IsValid(settings_) && settings_->is_dirty()) {
-        if (options_view_.IsValid()) {
-            options_view_->show_dirty_prompt();
-        }
-
-        modal_state_changed.Broadcast(true);
-        return;
-    }
-
-    if (IsValid(settings_)) {
-        settings_->cancel();
-    }
-}
-
 void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {
         options_view_->focus_content();
@@ -187,58 +110,21 @@ void UOptionsWidget::focus_content() {
 }
 
 void UOptionsWidget::handle_apply() {
-    if (auto category{settings_category(page_)}) {
-        settings_->apply(*category);
+    if (auto category{settings_category(page())}) {
+        if (!settings_->apply(*category)) {
+            queue_input_action(host::SettingsSaveResult{false});
+        }
     }
 }
 
 void UOptionsWidget::handle_reset() {
-    auto const category{settings_category(page_)};
+    auto const category{settings_category(page())};
     if (IsValid(settings_) && category.has_value()) {
         settings_->reset_category(*category);
         if (*category == GameSettingCategory::Controls && options_view_.IsValid()) {
             options_view_->refresh_controls();
         }
     }
-}
-
-void UOptionsWidget::handle_dirty_apply() {
-    if (!IsValid(settings_)) {
-        return;
-    }
-
-    if (options_view_.IsValid()) {
-        options_view_->hide_dirty_prompt();
-    }
-
-    if (!settings_->apply(settings_category(page_).GetValue())) {
-        cancel_leave();
-        return;
-    }
-}
-
-void UOptionsWidget::handle_save_completed(bool succeeded) {
-    if (succeeded && leave_continuation_.IsBound()) {
-        complete_leave();
-    } else {
-        cancel_leave();
-    }
-}
-
-void UOptionsWidget::handle_dirty_discard() {
-    if (options_view_.IsValid()) {
-        options_view_->hide_dirty_prompt();
-    }
-    settings_->cancel();
-    complete_leave();
-}
-
-void UOptionsWidget::handle_dirty_stay() {
-    if (options_view_.IsValid()) {
-        options_view_->hide_dirty_prompt();
-    }
-
-    cancel_leave();
 }
 
 void UOptionsWidget::handle_confirm_display() {
@@ -262,26 +148,15 @@ void UOptionsWidget::handle_interaction_modal_changed(bool const visible) {
     modal_state_changed.Broadcast(visible);
 }
 
+void UOptionsWidget::present(MenuUpdate const& update) {
+    if (options_view_) {
+        options_view_->present(update);
+    }
+}
 void UOptionsWidget::refresh_view() {
     if (options_view_.IsValid()) {
         options_view_->refresh();
     }
-}
-
-void UOptionsWidget::complete_leave() {
-    leave_cancelled_.Unbind();
-    auto continuation{MoveTemp(leave_continuation_)};
-    leave_continuation_.Unbind();
-
-    modal_state_changed.Broadcast(false);
-    continuation.ExecuteIfBound();
-}
-
-void UOptionsWidget::cancel_leave() {
-    auto cancelled{MoveTemp(leave_cancelled_)};
-    leave_continuation_.Unbind();
-    modal_state_changed.Broadcast(false);
-    cancelled.ExecuteIfBound();
 }
 
 } // namespace ioj

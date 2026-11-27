@@ -35,7 +35,6 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void NativeOnInitialized() override;
     void NativeConstruct() override;
     auto focus_target() const -> UWidget* override;
-    auto handle_back() -> bool override;
 
     /* **************************************** */
     // Bound widgets

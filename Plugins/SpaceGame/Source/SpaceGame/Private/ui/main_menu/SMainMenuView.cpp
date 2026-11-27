@@ -17,7 +17,7 @@ void SMainMenuView::Construct(FArguments const& args) {
     page_ = args._Page;
     check(style_ != nullptr);
     on_item_ = args._OnItem;
-    on_focus_content_ = args._OnFocusContent;
+    on_restore_focus_ = args._OnRestoreFocus;
 
     SAssignNew(level_content_, SBox)[args._LevelContent.Widget];
     SAssignNew(content_switcher_, SWidgetSwitcher) +
@@ -73,56 +73,14 @@ void SMainMenuView::set_navigation_enabled(bool const enabled) {
     }
 }
 
-void SMainMenuView::focus_navigation() {
-    auto const index{static_cast<int32>(page_.Get())};
-    if (page_buttons_.IsValidIndex(index) && page_buttons_[index].IsValid()) {
-        page_buttons_[index]->focus();
-    }
-}
-
-void SMainMenuView::focus_content_on_next_focus() {
-    focus_content_next_ = true;
-}
-
 auto SMainMenuView::OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
     -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    if (focus_content_next_) {
-        focus_content_next_ = false;
-        on_focus_content_.ExecuteIfBound();
-    } else {
-        focus_navigation();
-    }
+    on_restore_focus_.ExecuteIfBound();
     return FReply::Handled();
 }
 
-auto SMainMenuView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply {
-    auto const key{key_event.GetKey()};
-    if (navigation_enabled_ && navigation_has_focus() &&
-        (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right)) {
-        on_focus_content_.ExecuteIfBound();
-        return FReply::Handled();
-    }
-    if (navigation_enabled_ && !navigation_has_focus() &&
-        (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left)) {
-        focus_navigation();
-        return FReply::Handled();
-    }
-    return SCompoundWidget::OnKeyDown(geometry, key_event);
-}
-auto SMainMenuView::focused_item() const -> std::optional<MainMenuItem> {
-    if (quit_button_ && quit_button_->has_focus()) {
-        return MainMenuItem::Quit;
-    }
-    auto const count{page_buttons_.Num()};
-    for (int32 index{}; index < count; ++index) {
-        if (page_buttons_[index]->has_focus()) {
-            return static_cast<MainMenuItem>(index);
-        }
-    }
-    return {};
-}
 void SMainMenuView::focus_item(MainMenuItem item) {
     if (item == MainMenuItem::Quit) {
         quit_button_->focus();
@@ -174,14 +132,18 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
              EGameUiIcon::Hive);
 
     add_section(navigation, NSLOCTEXT("MainMenu", "ConfigurationSection", "CONFIGURATION"));
-    add_page(
-        navigation, MainMenuItem::Video, NSLOCTEXT("MainMenu", "Video", "Video"), EGameUiIcon::Video);
+    add_page(navigation,
+             MainMenuItem::Video,
+             NSLOCTEXT("MainMenu", "Video", "Video"),
+             EGameUiIcon::Video);
     add_page(navigation,
              MainMenuItem::Gameplay,
              NSLOCTEXT("MainMenu", "Gameplay", "Gameplay"),
              EGameUiIcon::Gameplay);
-    add_page(
-        navigation, MainMenuItem::Audio, NSLOCTEXT("MainMenu", "Audio", "Audio"), EGameUiIcon::Audio);
+    add_page(navigation,
+             MainMenuItem::Audio,
+             NSLOCTEXT("MainMenu", "Audio", "Audio"),
+             EGameUiIcon::Audio);
     add_page(navigation,
              MainMenuItem::Controls,
              NSLOCTEXT("MainMenu", "Controls", "Controls"),
@@ -243,14 +205,17 @@ void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
                              FText text,
                              EGameUiIcon const icon) {
     TSharedPtr<SHiveNavigationButton> button;
-    navigation->AddSlot().AutoHeight().Padding(
-        FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
-        [SAssignNew(button, SHiveNavigationButton)
-             .Style(style_)
-             .Icon(&style_->icon(icon))
-             .Text(MoveTemp(text))
-             .Audio(audio_)
-             .OnClicked(this, &SMainMenuView::activate_item, page)];
+    navigation->AddSlot().AutoHeight().Padding(FMargin{
+        0.0f,
+        0.0f,
+        0.0f,
+        style_->chrome()
+            .navigation_spacing})[SAssignNew(button, SHiveNavigationButton)
+                                      .Style(style_)
+                                      .Icon(&style_->icon(icon))
+                                      .Text(MoveTemp(text))
+                                      .Audio(audio_)
+                                      .OnClicked(this, &SMainMenuView::activate_item, page)];
     page_buttons_.Add(button);
 }
 
@@ -269,7 +234,4 @@ auto SMainMenuView::page_content_index(MainMenuItem const page) const -> int32 {
     return 2;
 }
 
-auto SMainMenuView::navigation_has_focus() const -> bool {
-    return focused_item().has_value();
-}
 } // namespace ioj

@@ -70,21 +70,12 @@ void UPauseMenuWidget::NativeConstruct() {
 
 void UPauseMenuWidget::prepare_for_open() {
     options_modal_visible_ = false;
-    options_widget->select_page(MainMenuItem::Audio, {});
+    options_widget->show_page(MainMenuItem::Audio);
     set_navigation_enabled(true);
 }
 
 auto UPauseMenuWidget::focus_target() const -> UWidget* {
     return resume_button->focus_target();
-}
-
-auto UPauseMenuWidget::handle_back() -> bool {
-    if (options_modal_visible_) {
-        options_widget->request_back();
-    } else {
-        send_event({host::PauseWidgetEventKind::Activate, host::PauseMenuItem::Resume});
-    }
-    return true;
 }
 
 auto UPauseMenuWidget::button_for(host::PauseMenuItem item) const -> UMenuButtonWidget* {
@@ -117,22 +108,13 @@ void UPauseMenuWidget::present(host::PauseCommand command) {
             button_for(command.item)->focus_target()->SetKeyboardFocus();
             break;
         case CheckLeave:
-            options_widget->request_leave(
-                FSimpleDelegate::CreateUObject(
-                    this,
-                    &ThisClass::send_event,
-                    host::PauseWidgetEvent{host::PauseWidgetEventKind::LeaveAccepted,
-                                           command.item}),
-                FSimpleDelegate::CreateUObject(
-                    this,
-                    &ThisClass::send_event,
-                    host::PauseWidgetEvent{host::PauseWidgetEventKind::LeaveCancelled,
-                                           command.item}));
+            checkNoEntry();
             break;
         case ShowPage:
-            options_widget->select_page(
-                command.item == host::PauseMenuItem::Audio ? MainMenuItem::Audio : MainMenuItem::Controls,
-                FSimpleDelegate::CreateUObject(options_widget, &UOptionsWidget::focus_content));
+            options_widget->show_page(command.item == host::PauseMenuItem::Audio
+                                          ? MainMenuItem::Audio
+                                          : MainMenuItem::Controls);
+            options_widget->present({player_menu().focus, MenuOperation::Focus});
             set_navigation_enabled(!options_modal_visible_);
             break;
         case Finish:
@@ -163,7 +145,8 @@ void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
                                quit_button}) {
         if (IsValid(button)) {
             auto const page{options_widget->page()};
-            button->SetIsEnabled(enabled && !(button == audio_button && page == MainMenuItem::Audio) &&
+            button->SetIsEnabled(enabled &&
+                                 !(button == audio_button && page == MainMenuItem::Audio) &&
                                  !(button == controls_button && page == MainMenuItem::Controls));
         }
     }

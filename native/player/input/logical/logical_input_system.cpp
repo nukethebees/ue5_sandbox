@@ -268,6 +268,12 @@ void LogicalInputSystem::button(InputDispatcher& output,
                                 ButtonState edge,
                                 bool repeat) {
     auto const down{edge != ButtonState::Released};
+    if (route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::BindingCapture) {
+        if (down && !repeat) {
+            output.push(key);
+        }
+        return;
+    }
     if ((route_.resume_available || route_.context == InputContext::Observer ||
          route_.context == InputContext::Gameplay) &&
         (route_.context == InputContext::Gameplay || is_pause_button(controls_.bindings, key))) {
@@ -278,7 +284,8 @@ void LogicalInputSystem::button(InputDispatcher& output,
         publish_transitions(output, first);
         return;
     }
-    if (route_.context == InputContext::Menu && menu_mode_ != MenuInputMode::Navigation) {
+    if (editing_text() && key != PhysicalKey::Tab && key != PhysicalKey::Escape &&
+        key != PhysicalKey::Enter && key != PhysicalKey::NumPadEnter && !is_gamepad_control(key)) {
         output.push(host::MenuKey{key, down, repeat, physical_.modifiers});
         return;
     }
@@ -370,6 +377,13 @@ void LogicalInputSystem::apply(InputDispatcher& output, PhysicalPointerButton ev
     auto const mask{
         static_cast<std::uint8_t>(1u << (found - game_input_tables::pointer_keys.begin()))};
     auto const captured{(pointer_capture_ & mask) != 0};
+    if (route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::BindingCapture &&
+        !captured) {
+        if (event.state == ButtonState::Pressed) {
+            output.push(event.key);
+        }
+        return;
+    }
     if ((route_.resume_available || route_.context == InputContext::Observer) &&
         is_pause_button(controls_.bindings, event.key) && !captured) {
         button(output, event.key, event.state);
@@ -406,7 +420,7 @@ void LogicalInputSystem::apply(InputDispatcher& output, PointerMotion event) {
         auto& look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         look.x() += event.delta.x();
         look.y() -= event.delta.y();
-    } else {
+    } else if (menu_mode_ != MenuInputMode::BindingCapture) {
         output.push(host::MenuPointer{{host::PointerAction::Move,
                                        PhysicalKey::Unbound,
                                        event.position.x(),
@@ -420,6 +434,13 @@ void LogicalInputSystem::apply(InputDispatcher& output, WheelMotion event) {
         return;
     }
     if (route_.context == InputContext::Menu) {
+        if (menu_mode_ == MenuInputMode::BindingCapture) {
+            if (event.steps != 0.f) {
+                output.push(event.steps > 0.f ? PhysicalKey::MouseScrollUp
+                                              : PhysicalKey::MouseScrollDown);
+            }
+            return;
+        }
         output.push(host::MenuPointer{{host::PointerAction::Wheel,
                                        PhysicalKey::Unbound,
                                        event.position.x(),
@@ -448,8 +469,10 @@ void LogicalInputSystem::apply(InputDispatcher& output, PhysicalAxis event) {
     auto const edge{physical_.axis_edge(axis->axis, std::abs(sample))};
     auto const focused{physical_.focus == WindowFocus::Gained};
     if (focused && route_.context == InputContext::Menu &&
-        menu_mode_ != MenuInputMode::Navigation) {
-        output.push(host::MenuAxis{event.key, sample, physical_.modifiers});
+        menu_mode_ == MenuInputMode::BindingCapture) {
+        if (edge == ButtonState::Pressed) {
+            output.push(event.key);
+        }
     } else if (focused && route_.context == InputContext::Gameplay) {
         if (edge) {
             map_flight_button(flight_, state_, event.key, *edge, controls_, route_.context);

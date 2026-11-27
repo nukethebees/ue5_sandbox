@@ -26,6 +26,7 @@ SPACEGAME_API void request_level_catalog(ULevelSelectWidget& widget);
 bool request_menu(session::LevelSelectRequest request);
 SPACEGAME_API auto menu_selection() -> std::optional<session::LevelSelectRequest>&;
 auto supported_resolutions() -> std::span<ScreenResolution const>;
+SPACEGAME_API void hit_menu_control(MenuTarget target);
 void queue_input_action(host::WidgetAction action);
 void request_simulation_mode(levels::LaunchMode mode);
 void clear_requested_simulation_mode();

@@ -33,8 +33,7 @@ auto UGameUiRootLayout::initialise(UTestBatchGameUiData& ui_data) -> bool {
     return true;
 }
 
-auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
-                                       FName const preferred_level_id) -> bool {
+auto UGameUiRootLayout::show_main_menu() -> bool {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(screen_stack)) {
         UE_LOG(LogSandboxUI,
@@ -54,7 +53,7 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
         return false;
     }
 
-    main_menu->prepare_for_open(level_select_class, show_level_select_screen, preferred_level_id);
+    main_menu->prepare_for_open(level_select_class);
     show_widget(*screen_stack, *main_menu);
     return true;
 }

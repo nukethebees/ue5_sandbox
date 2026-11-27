@@ -108,6 +108,9 @@ auto supported_resolutions() -> std::span<ScreenResolution const> {
     return window_resolutions;
 }
 
+void hit_menu_control(MenuTarget target) {
+    queue_input_action(MenuHit{std::move(target)});
+}
 void queue_input_action(host::WidgetAction action) {
     pending_actions.push_back(action);
 }

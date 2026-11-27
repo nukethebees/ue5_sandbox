@@ -5,6 +5,8 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
@@ -271,6 +273,28 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
     control_context_ = context;
     return true;
 }
+void ASpaceGamePlayerController::present_menu(MenuUpdate const& update) {
+    switch (player_menu().screen) {
+        case MenuScreen::Main:
+            if (auto* main{modal_ui_.main_menu()}) {
+                main->present(update);
+            }
+            break;
+        case MenuScreen::Pause:
+            if (auto* pause{modal_ui_.pause_menu()}) {
+                pause->get_options_widget()->present(update);
+            }
+            break;
+        case MenuScreen::Completion:
+            if (update.operation == MenuOperation::Activate) {
+                return_to_level_select();
+            }
+            break;
+        case MenuScreen::Closed:
+            break;
+    }
+}
+
 void ASpaceGamePlayerController::present_steering(TOptional<FVector2D> position) {
     hud_.set_mouse_steering(position);
 }

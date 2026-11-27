@@ -11,7 +11,7 @@
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
-#include <ioj/input/dispatch/menu_navigation.h>
+#include <ioj/input/dispatch/player_menu.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
@@ -36,6 +36,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -259,22 +260,28 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 }
 namespace {
 struct PlayerInputSession : InputReceiver {
-    PlayerInputSession(SDL_Window& window,
-                       ControlsSettings const& controls,
-                       KeyboardLayout& layout,
+    PlayerInputSession(Window& game_window,
+                       PlayerSettings const& player_settings,
+                       PlayerMenu& player_menu,
                        LevelStorage& levels,
                        std::chrono::steady_clock::time_point& previous_frame)
         : storage{levels}
         , previous_frame_time{previous_frame}
-        , input{window, controls, layout} {}
+        , window{game_window}
+        , settings{player_settings}
+        , menu{player_menu}
+        , input{*window.sdl_window(), settings.applied().controls, menu.keyboard} {}
 
     auto routing() const -> InputRouting override {
-        auto const menu{host::menu_status()};
         auto const* level{storage.get()};
-        auto const route{level && !level->presentation_setup
-                             ? level->pause_menu.route(level_input_route(*level))
-                             : InputRoute{}};
-        return {route, menu.input_mode};
+        auto route{level && !level->presentation_setup
+                       ? level->pause_menu.route(level_input_route(*level))
+                       : InputRoute{}};
+        if (menu.prompt != OptionsPrompt::None ||
+            menu.draft.binding_edit().prompt != BindingPrompt::Closed || menu.saving) {
+            route.resume_available = false;
+        }
+        return {route, menu.input_mode()};
     }
     void update_pause_simulation(LoadedLevel& level) {
         auto const request{level.pause_menu.simulation_request(level.simulation.state())};
@@ -287,7 +294,29 @@ struct PlayerInputSession : InputReceiver {
     }
     void present_pause(LoadedLevel& level, PauseMenu::Command command) {
         update_pause_simulation(level);
-        if (command && !host::present_pause(*command)) {
+        if (!command) {
+            return;
+        }
+        if (command->kind == host::PauseCommandKind::CheckLeave) {
+            if (menu.leave_ready()) {
+                present_pause(level,
+                              level.pause_menu.widget_event(
+                                  {host::PauseWidgetEventKind::LeaveAccepted, command->item}));
+            } else {
+                host::present_menu({menu.focus, MenuOperation::Focus});
+            }
+            return;
+        }
+        if (command->kind == host::PauseCommandKind::Open) {
+            menu.open(MenuScreen::Pause);
+        } else if (command->kind == host::PauseCommandKind::ShowPage) {
+            menu.select_page(command->item == host::PauseMenuItem::Audio ? MainMenuItem::Audio
+                                                                         : MainMenuItem::Controls);
+            menu.select(menu.primary_target(settings.view()));
+        } else if (command->kind == host::PauseCommandKind::Finish) {
+            menu.open(MenuScreen::Closed);
+        }
+        if (!host::present_pause(*command)) {
             pause_presentation =
                 std::unexpected{"Could not present the native pause menu. See the game log."};
         }
@@ -326,6 +355,35 @@ struct PlayerInputSession : InputReceiver {
                 break;
         }
     }
+    void finish_leave(bool accepted) {
+        if (auto* level{storage.get()};
+            menu.screen == MenuScreen::Pause && level && level->pause_menu.pending) {
+            auto const kind{accepted ? host::PauseWidgetEventKind::LeaveAccepted
+                                     : host::PauseWidgetEventKind::LeaveCancelled};
+            present_pause(*level,
+                          level->pause_menu.widget_event({kind, *level->pause_menu.pending}));
+        } else if (auto update{menu.finish_main_leave(accepted)}) {
+            host::present_menu(*update);
+        }
+    }
+
+    void present_menu(MenuUpdate const& update) {
+        if (menu.prompt == OptionsPrompt::Dirty && update.operation == MenuOperation::Activate) {
+            auto const choice{std::get<MenuControl>(update.target)};
+            menu.set_prompt(OptionsPrompt::None);
+            if (choice == MenuControl::Discard) {
+                menu.draft.cancel();
+            }
+            host::present_menu({menu.focus, MenuOperation::Focus});
+            if (choice == MenuControl::Save) {
+                host::present_menu(update);
+            } else {
+                finish_leave(choice == MenuControl::Discard);
+            }
+        } else {
+            host::present_menu(update);
+        }
+    }
     void process_widget_actions() {
         for (;;) {
             auto const actions{host::take_widget_actions()};
@@ -333,56 +391,84 @@ struct PlayerInputSession : InputReceiver {
                 break;
             }
             for (auto const& action : actions) {
-                if (auto const* item{std::get_if<MainMenuItem>(&action)}) {
-                    host::activate_main_item(*item);
+                if (auto const* hit{std::get_if<MenuHit>(&action)}) {
+                    if (auto update{menu.activate(
+                            hit->target, settings.view(), window.supported_resolutions())}) {
+                        present_menu(*update);
+                    }
                 } else if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
                     if (auto* level{storage.get()}) {
                         present_pause(*level, level->pause_menu.widget_event(*event));
                     }
+                } else if (auto const* result{std::get_if<host::SettingsSaveResult>(&action)}) {
+                    finish_leave(result->succeeded);
                 } else {
                     dispatch(std::get<host::PlayerAction>(action));
                 }
             }
         }
     }
-    void consume(std::span<host::MenuEvent const> events) override {
-        for (auto const& event : events) {
-            if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
-                dispatch(*action);
-            } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
-                auto const focus{host::menu_status().main_focus};
-                using enum MenuCommand;
-                auto* level{storage.get()};
-                if (level && level->pause_menu.view == PauseMenuView::Sidebar &&
-                    !level->pause_menu.options_modal) {
-                    if (button->down) {
-                        present_pause(*level,
-                                      level->pause_menu.navigate(button->command, button->repeat));
-                    }
-                } else if (focus && (button->command == Up || button->command == Down)) {
-                    if (button->down) {
-                        host::focus_main_item(move_main_selection(*focus, button->command));
-                    }
-                } else if (focus && button->command == Accept) {
-                    if (button->down && !button->repeat) {
-                        host::activate_main_item(*focus);
-                    }
-                } else {
-                    host::present_menu_button(*button);
-                }
+    void navigate_menu(host::MenuButton button) {
+        if (auto update{menu.navigate(
+                button.command, button.repeat, settings.view(), window.supported_resolutions())}) {
+            present_menu(*update);
+        }
+    }
+    void consume(std::span<host::PlayerAction const> actions) {
+        for (auto action : actions) {
+            dispatch(action);
+            process_widget_actions();
+        }
+    }
+    void consume(std::span<PhysicalKey const> keys) {
+        for (auto key : keys) {
+            menu.draft.capture_binding(key);
+            host::present_menu({menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+        }
+    }
+    void consume(std::span<host::MenuButton const> buttons) {
+        for (auto const& button : buttons) {
+            if (!button.down) {
+                continue;
+            }
+            auto* level{storage.get()};
+            if (menu.draft.binding_edit().prompt != BindingPrompt::Closed) {
+                menu.draft.navigate_binding(button.command, button.repeat);
+                host::present_menu(
+                    {menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+            } else if (level &&
+                       (level->pause_menu.view == PauseMenuView::Sidebar ||
+                        (level->pause_menu.view == PauseMenuView::Options &&
+                         button.command == MenuCommand::Back)) &&
+                       !level->pause_menu.options_modal && menu.prompt == OptionsPrompt::None) {
+                present_pause(*level, level->pause_menu.navigate(button.command, button.repeat));
+            } else {
+                navigate_menu(button);
             }
             process_widget_actions();
         }
     }
-    void consume(std::span<host::PresentationEvent const> events) override {
-        for (auto const& event : events) {
-            host::present_input(event);
-            process_widget_actions();
-        }
+    void consume(host::InputBatch events) override {
+        std::visit(
+            [this](auto rows) {
+                using Row = typename decltype(rows)::value_type;
+                if constexpr (std::is_same_v<Row, host::MenuKey> ||
+                              std::is_same_v<Row, host::MenuText> ||
+                              std::is_same_v<Row, host::MenuPointer>) {
+                    host::present_input(rows);
+                } else {
+                    consume(rows);
+                }
+            },
+            events);
+        process_widget_actions();
     }
 
     LevelStorage& storage;
     std::chrono::steady_clock::time_point& previous_frame_time;
+    Window& window;
+    PlayerSettings const& settings;
+    PlayerMenu& menu;
     InputSystem input;
     ApplicationResult pause_presentation{};
     bool end_selected{};
@@ -423,11 +509,15 @@ auto Application::play(Window& window,
     auto const deadline{previous_frame_time + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
-    PlayerInputSession play_input{
-        *window.sdl_window(), settings_.applied().controls, menu_.keyboard, storage, previous_frame_time};
+    PlayerInputSession play_input{window, settings_, menu_, storage, previous_frame_time};
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
+        if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
+            menu_.display_seconds_remaining() == 0) {
+            host::present_menu({MenuControl::RevertDisplay, MenuOperation::Activate});
+        }
+        play_input.process_widget_actions();
         auto const input_time{std::chrono::steady_clock::now()};
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
@@ -742,6 +832,15 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
                 edit.action == host::PreferenceAction::PreviewDisplay
                     ? window.preview({edit.values.video.window_mode, edit.values.video.resolution})
                     : window.revert_preview()};
+            menu_.saving = false;
+            if (result && edit.action == host::PreferenceAction::RevertDisplay) {
+                menu_.draft.cancel();
+                menu_.set_prompt(OptionsPrompt::None);
+            } else if (result || menu_.prompt == OptionsPrompt::Display) {
+                menu_.display_deadline =
+                    std::chrono::steady_clock::now() + std::chrono::seconds{15};
+                menu_.set_prompt(OptionsPrompt::Display);
+            }
             host::preference_result(index, result ? std::string_view{} : result.error());
             continue;
         }
@@ -751,6 +850,8 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
         if (result) {
             result = settings_.save_category(edit.category, edit.values, edit.original_settings);
         }
+        menu_.saving = false;
+        menu_.set_prompt(OptionsPrompt::None);
         if (!result) {
             if (edit.category == GameSettingCategory::Video) {
                 if (auto rollback{window.revert_preview()}; !rollback) {
@@ -779,6 +880,7 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
         }
 
         host::present_settings(settings_.view(), window.supported_resolutions());
+        menu_.draft.begin(settings_.view().applied_values, settings_.view().defaults);
         host::preference_result(index, {});
     }
     return controls_changed;

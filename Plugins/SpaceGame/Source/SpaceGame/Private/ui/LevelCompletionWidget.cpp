@@ -18,7 +18,6 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 
 void ULevelCompletionWidget::prepare_for_open(FLevelCompletion completion) {
     completion_ = MoveTemp(completion);
-    action_requested_ = false;
     refresh_view();
 }
 
@@ -59,10 +58,6 @@ auto ULevelCompletionWidget::focus_target() const -> UWidget* {
     return const_cast<ULevelCompletionWidget*>(this);
 }
 
-auto ULevelCompletionWidget::handle_back() -> bool {
-    return true;
-}
-
 auto ULevelCompletionWidget::NativeOnFocusReceived(FGeometry const& geometry,
                                                    FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
@@ -80,12 +75,7 @@ void ULevelCompletionWidget::ReleaseSlateResources(bool const release_children) 
 }
 
 void ULevelCompletionWidget::request_return_to_level_select() {
-    if (action_requested_) {
-        return;
-    }
-
-    action_requested_ = true;
-    return_to_level_select_requested.Broadcast();
+    hit_menu_control(MenuControl::ReturnToLevels);
 }
 
 void ULevelCompletionWidget::refresh_view() {

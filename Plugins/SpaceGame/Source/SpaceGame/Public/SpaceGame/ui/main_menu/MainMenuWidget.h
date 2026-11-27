@@ -2,13 +2,14 @@
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/input/dispatch/menu_navigation.h>
+#include <ioj/input/logical/actions.h>
 
 #include <optional>
 
 #include "MainMenuWidget.generated.h"
 
 namespace ioj {
+struct MenuUpdate;
 class SMainMenuView;
 class UGameUiStyleSubsystem;
 class ULevelSelectWidget;
@@ -20,13 +21,11 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     GENERATED_BODY()
   public:
     UMainMenuWidget();
-    auto focused_item() const -> std::optional<MainMenuItem>;
+    void present(MenuUpdate const& update);
     void focus_item(MainMenuItem item);
     void activate_item(MainMenuItem item);
 
-    void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
-                          bool focus_level_content,
-                          FName preferred_level_id);
+    void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class);
   protected:
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
@@ -34,14 +33,11 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     auto focus_target() const -> UWidget* override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-    auto handle_back() -> bool override;
   private:
     void create_content_widgets();
-    void request_page(MainMenuItem page);
     void show_page(MainMenuItem page);
-    void request_quit();
     void quit_game();
-    void focus_active_content();
+    void restore_focus();
     void handle_page_modal_changed(bool visible);
 
     UPROPERTY(Transient)
@@ -56,8 +52,5 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     TSubclassOf<ULevelSelectWidget> level_select_class_{};
     TSharedPtr<SMainMenuView> view_{};
     FGameUiStyle fallback_style_{};
-    FName preferred_level_id_{NAME_None};
-    bool focus_level_content_{};
-    bool page_modal_visible_{};
 };
 } // namespace ioj

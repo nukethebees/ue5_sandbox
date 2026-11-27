@@ -35,24 +35,15 @@ void UMainMenuWidget::NativeOnInitialized() {
     }
 }
 
-void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
-                                       bool const focus_level_content,
-                                       FName const preferred_level_id) {
+void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class) {
     level_select_class_ = level_select_class;
-    focus_level_content_ = focus_level_content;
-    preferred_level_id_ = preferred_level_id;
     create_content_widgets();
 
     if (IsValid(level_select_widget_)) {
-        level_select_widget_->prepare_for_open(preferred_level_id_);
         level_select_widget_->refresh();
         if (view_.IsValid()) {
             view_->set_level_content(level_select_widget_->TakeWidget());
         }
-    }
-
-    if (focus_level_content_ && view_.IsValid()) {
-        view_->focus_content_on_next_focus();
     }
 }
 
@@ -66,21 +57,18 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
                                                         : SNullWidget::NullWidget};
 
-    auto result{SAssignNew(view_, SMainMenuView)
-                    .Style(style)
-                    .Page_UObject(options_widget_, &UOptionsWidget::page)
-                    .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
-                                           : FGameAudioFacade{})
-                    .LevelContent()[level_content]
-                    .ArchiveContent()[archive_content]
-                    .OptionsContent()[options_content]
-                    .OnItem(FOnMainMenuItem::CreateLambda(
-                        [](MainMenuItem item) { queue_input_action(item); }))
-                    .OnFocusContent(
-                        FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
-    if (focus_level_content_) {
-        view_->focus_content_on_next_focus();
-    }
+    auto result{
+        SAssignNew(view_, SMainMenuView)
+            .Style(style)
+            .Page_UObject(options_widget_, &UOptionsWidget::page)
+            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                   : FGameAudioFacade{})
+            .LevelContent()[level_content]
+            .ArchiveContent()[archive_content]
+            .OptionsContent()[options_content]
+            .OnItem(
+                FOnMainMenuItem::CreateLambda([](MainMenuItem item) { hit_menu_control(item); }))
+            .OnRestoreFocus(FSimpleDelegate::CreateUObject(this, &ThisClass::restore_focus))};
 
     return result;
 }
@@ -99,34 +87,10 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
     if (view_.IsValid()) {
-        if (focus_level_content_) {
-            focus_level_content_ = false;
-            focus_active_content();
-        } else {
-            view_->focus_navigation();
-        }
+        restore_focus();
     }
 
     return FReply::Handled();
-}
-
-auto UMainMenuWidget::handle_back() -> bool {
-    if (page_modal_visible_) {
-        if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::DataArchive &&
-            IsValid(save_game_viewer_)) {
-            save_game_viewer_->request_back();
-        } else if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
-            options_widget_->request_back();
-        }
-
-        return true;
-    }
-
-    if (view_.IsValid()) {
-        view_->focus_navigation();
-    }
-
-    return true;
 }
 
 void UMainMenuWidget::create_content_widgets() {
@@ -173,76 +137,58 @@ void UMainMenuWidget::create_content_widgets() {
             : IsValid(world)         ? CreateWidget<ULevelSelectWidget>(
                                            world, level_select_class_, TEXT("level_select_page"))
                                      : nullptr;
-        if (IsValid(level_select_widget_)) {
-            level_select_widget_->prepare_for_open(preferred_level_id_);
-        }
     }
 }
 
-auto UMainMenuWidget::focused_item() const -> std::optional<MainMenuItem> {
-    return view_ && !page_modal_visible_ ? view_->focused_item() : std::nullopt;
+void UMainMenuWidget::present(MenuUpdate const& update) {
+    if (auto item{std::get_if<MainMenuItem>(&update.target)}) {
+        if (options_widget_) {
+            options_widget_->refresh_view();
+        }
+        if (update.operation == MenuOperation::Activate) {
+            activate_item(*item);
+        } else {
+            focus_item(*item);
+        }
+    } else if (player_menu().page == MainMenuItem::SelectLevel && level_select_widget_) {
+        level_select_widget_->present(update);
+    } else if (player_menu().page == MainMenuItem::DataArchive && save_game_viewer_) {
+        save_game_viewer_->present(update);
+    } else if (options_widget_) {
+        options_widget_->present(update);
+    }
 }
 void UMainMenuWidget::focus_item(MainMenuItem item) {
-    if (view_ && !page_modal_visible_) {
+    if (view_) {
         view_->focus_item(item);
     }
 }
 void UMainMenuWidget::activate_item(MainMenuItem item) {
     if (item == MainMenuItem::Quit) {
-        request_quit();
+        quit_game();
     } else {
-        request_page(item);
+        show_page(item);
     }
 }
-void UMainMenuWidget::request_page(MainMenuItem const page) {
-    if (page_modal_visible_ || !IsValid(options_widget_)) {
-        return;
-    }
-    options_widget_->select_page(page,
-                                 FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
-}
-
-void UMainMenuWidget::show_page(MainMenuItem const page) {
-    if (view_.IsValid()) {
+void UMainMenuWidget::show_page(MainMenuItem page) {
+    options_widget_->show_page(page);
+    if (view_) {
         view_->refresh_page();
     }
-
-    if (page == MainMenuItem::SelectLevel && IsValid(level_select_widget_)) {
+    if (page == MainMenuItem::SelectLevel && level_select_widget_) {
         level_select_widget_->refresh();
     }
-}
-
-void UMainMenuWidget::request_quit() {
-    if (page_modal_visible_) {
-        return;
-    }
-
-    if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
-        options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
-        return;
-    }
-
-    quit_game();
 }
 
 void UMainMenuWidget::quit_game() {
     UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }
 
-void UMainMenuWidget::focus_active_content() {
-    if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::SelectLevel &&
-        IsValid(level_select_widget_)) {
-        level_select_widget_->focus_primary_action();
-    } else if (IsValid(options_widget_) && options_widget_->page() == MainMenuItem::DataArchive &&
-               IsValid(save_game_viewer_)) {
-        save_game_viewer_->focus_primary_action();
-    } else if (IsValid(options_widget_) && options_widget_->page() >= MainMenuItem::Video) {
-        options_widget_->focus_content();
-    }
+void UMainMenuWidget::restore_focus() {
+    present({player_menu().focus, MenuOperation::Focus});
 }
 
 void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
-    page_modal_visible_ = visible;
     if (view_.IsValid()) {
         view_->set_navigation_enabled(!visible);
     }

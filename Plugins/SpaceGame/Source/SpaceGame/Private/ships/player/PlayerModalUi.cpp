@@ -73,14 +73,7 @@ auto FPlayerModalUi::show_main_menu() -> bool {
         return false;
     }
 
-    auto& request{menu_selection()};
-    if (!root_->show_main_menu(request.has_value(),
-                               request ? FName{*to_fstring(request->preferred_level_id.value)}
-                                       : NAME_None)) {
-        return false;
-    }
-
-    return true;
+    return root_->show_main_menu();
 }
 
 /* **************************************** */
@@ -118,9 +111,6 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
         return false;
     }
 
-    completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
-    completion_menu_->return_to_level_select_requested.AddUObject(
-        &owner, &ASpaceGamePlayerController::return_to_level_select);
     completion_menu_->closed.RemoveAll(&owner);
     completion_menu_->closed.AddUObject(
         &owner, &ASpaceGamePlayerController::on_completion_menu_deactivated);
@@ -135,7 +125,6 @@ void FPlayerModalUi::detach_callbacks(ASpaceGamePlayerController& owner) {
 
     if (IsValid(completion_menu_)) {
         completion_menu_->closed.RemoveAll(&owner);
-        completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     }
 }
 void FPlayerModalUi::clear_modals(ASpaceGamePlayerController& owner) {
@@ -170,7 +159,6 @@ void FPlayerModalUi::close_pause(ASpaceGamePlayerController& owner) {
 void FPlayerModalUi::close_completion(ASpaceGamePlayerController& owner) {
     if (IsValid(completion_menu_)) {
         completion_menu_->closed.RemoveAll(&owner);
-        completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     }
 
     completion_menu_ = nullptr;

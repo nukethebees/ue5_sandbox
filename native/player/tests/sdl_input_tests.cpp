@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -30,7 +31,7 @@ static_assert(!is_keyboard_key(PhysicalKey::GamepadLeftX));
 struct Presentation {
     KeyboardLayout layout;
     InputRoute route;
-    MenuStatus menu;
+    MenuInputMode mode{};
     Modifiers modifiers;
     std::vector<MenuCommand> commands;
     std::vector<PhysicalKey> keys;
@@ -40,23 +41,6 @@ struct Presentation {
     std::vector<PlayerAction> actions;
 };
 Presentation presentation;
-}
-
-namespace ioj::host {
-
-void present_input(PresentationEvent const& event) {
-    auto& view{tests::presentation};
-    if (auto const* key{std::get_if<MenuKey>(&event)}; key && key->down) {
-        view.keys.push_back(key->key);
-    }
-    if (auto const* text{std::get_if<MenuText>(&event)}) {
-        view.text += text->text;
-    }
-    if (auto const* pointer{std::get_if<MenuPointer>(&event)}) {
-        view.pointer.push_back(pointer->pointer.action);
-    }
-}
-
 }
 
 namespace ioj::tests {
@@ -87,36 +71,46 @@ class SdlPlayerInput
         }
     }
     auto routing() const -> InputRouting override {
-        return {pause_menu_.route(host::tests::presentation.route),
-                host::tests::presentation.menu.input_mode};
+        return {pause_menu_.route(host::tests::presentation.route), host::tests::presentation.mode};
     }
-    void consume(std::span<host::MenuEvent const> events) override {
-        for (auto const& event : events) {
-            if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
-                host::tests::presentation.actions.push_back(*action);
-                if (auto command{pause_menu_.handle(*action, sim::LevelState::Running)}) {
-                    pause_commands_.push_back(*command);
-                    if (command->kind == host::PauseCommandKind::CheckLeave) {
-                        pause_menu_.widget_event(
-                            {host::PauseWidgetEventKind::LeaveAccepted, command->item});
+    void consume(host::InputBatch events) override {
+        auto& view{host::tests::presentation};
+        std::visit(
+            [&](auto rows) {
+                using T = typename decltype(rows)::value_type;
+                for (auto const& row : rows) {
+                    if constexpr (std::is_same_v<T, host::PlayerAction>) {
+                        view.actions.push_back(row);
+                        if (auto command{pause_menu_.handle(row, sim::LevelState::Running)}) {
+                            pause_commands_.push_back(*command);
+                            if (command->kind == host::PauseCommandKind::CheckLeave) {
+                                pause_menu_.widget_event(
+                                    {host::PauseWidgetEventKind::LeaveAccepted, command->item});
+                            }
+                        }
+                    } else if constexpr (std::is_same_v<T, host::MenuButton>) {
+                        if (row.down && pause_menu_.view == PauseMenuView::Sidebar) {
+                            if (auto command{pause_menu_.navigate(row.command, row.repeat)}) {
+                                pause_commands_.push_back(*command);
+                            }
+                        } else if (row.down) {
+                            view.commands.push_back(row.command);
+                            view.modifiers = row.modifiers;
+                        }
+                    } else if constexpr (std::is_same_v<T, host::MenuPointer>) {
+                        view.pointer.push_back(row.pointer.action);
+                    } else if constexpr (std::is_same_v<T, host::MenuText>) {
+                        view.text += row.text;
+                    } else if constexpr (std::is_same_v<T, host::MenuKey>) {
+                        if (row.down) {
+                            view.keys.push_back(row.key);
+                        }
+                    } else {
+                        view.keys.push_back(row);
                     }
                 }
-            } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
-                if (button->down && pause_menu_.view == PauseMenuView::Sidebar) {
-                    if (auto command{pause_menu_.navigate(button->command, button->repeat)}) {
-                        pause_commands_.push_back(*command);
-                    }
-                } else if (button->down) {
-                    host::tests::presentation.commands.push_back(button->command);
-                    host::tests::presentation.modifiers = button->modifiers;
-                }
-            }
-        }
-    }
-    void consume(std::span<host::PresentationEvent const> events) override {
-        for (auto const& event : events) {
-            host::present_input(event);
-        }
+            },
+            events);
     }
     void key_event(SDL_Keycode key,
                    SDL_Scancode scancode,
@@ -143,7 +137,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
               SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_SCANCODE_W, SDL_KMOD_NONE, false)));
     key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
-    view.menu.input_mode = MenuInputMode::TextEntry;
+    view.mode = MenuInputMode::TextEntry;
     SDL_Event text{};
     text.text.type = SDL_EVENT_TEXT_INPUT;
     text.text.windowID = SDL_GetWindowID(window_);
@@ -152,7 +146,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     frame();
     EXPECT_EQ(view.commands, std::vector{MenuCommand::Down});
     EXPECT_EQ(view.text, "abc");
-    view.menu.input_mode = MenuInputMode::Navigation;
+    view.mode = MenuInputMode::Navigation;
     key_event(SDLK_TAB,
               SDL_SCANCODE_TAB,
               SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
@@ -211,7 +205,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
 
     view.route = {InputContext::Menu};
     key_event(SDLK_DOWN, SDL_SCANCODE_DOWN, SDL_KMOD_NONE, false);
-    view.menu.input_mode = MenuInputMode::BindingCapture;
+    view.mode = MenuInputMode::BindingCapture;
     key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
     key_event(SDLK_A, SDL_SCANCODE_UNKNOWN);
     key_event(SDLK_RETURN, SDL_SCANCODE_KP_ENTER);
@@ -282,7 +276,7 @@ TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModi
     ASSERT_EQ(transitions.size(), 4u);
     std::size_t transition_index{};
     for (std::size_t i{}; i < dispatch_.size(); ++i) {
-        auto const& button{std::get<host::MenuButton>(dispatch_.menu_input()[i])};
+        auto const& button{dispatch_.buttons()[i]};
         EXPECT_EQ(button.command, i < 3 ? MenuCommand::Previous : MenuCommand::Down);
         EXPECT_EQ(button.down, i != 2 && i != 5);
         EXPECT_EQ(button.repeat, i == 1 || i == 4);
@@ -335,8 +329,8 @@ TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     map(PhysicalButton{PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed});
     input_.repeat_navigation(dispatch_, 0.41);
     ASSERT_EQ(dispatch_.size(), 2u);
-    EXPECT_FALSE(std::get<host::MenuButton>(dispatch_.menu_input().front()).repeat);
-    EXPECT_TRUE(std::get<host::MenuButton>(dispatch_.menu_input().back()).repeat);
+    EXPECT_FALSE(dispatch_.buttons().front().repeat);
+    EXPECT_TRUE(dispatch_.buttons().back().repeat);
 }
 
 TEST_F(SdlPlayerInput, FocusChangesAndButtonsInOnePollRespectEventOrder) {

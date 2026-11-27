@@ -7,6 +7,7 @@
 #include <ioj/vector.h>
 
 #include <optional>
+#include <span>
 #include <string>
 #include <variant>
 
@@ -41,11 +42,6 @@ struct MenuKey {
     bool repeat{};
     Modifiers modifiers{};
 };
-struct MenuAxis {
-    PhysicalKey key;
-    float value;
-    Modifiers modifiers;
-};
 struct MenuPointer {
     PointerInput pointer;
     Modifiers modifiers;
@@ -58,7 +54,10 @@ struct ViewerStep {
     ViewerMotion motion;
     double seconds;
 };
-using PresentationEvent =
-    std::variant<MenuKey, MenuAxis, MenuPointer, MenuText>;
-using MenuEvent = std::variant<PlayerAction, MenuButton>;
+using InputBatch = std::variant<std::span<PlayerAction const>,
+                                std::span<MenuButton const>,
+                                std::span<PhysicalKey const>,
+                                std::span<MenuKey const>,
+                                std::span<MenuPointer const>,
+                                std::span<MenuText const>>;
 }

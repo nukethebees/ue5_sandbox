@@ -20,7 +20,7 @@ class SPACEGAME_API UGameUiRootLayout : public UUserWidget {
     GENERATED_BODY()
   public:
     auto initialise(UTestBatchGameUiData& ui_data) -> bool;
-    auto show_main_menu(bool show_level_select, FName preferred_level_id = NAME_None) -> bool;
+    auto show_main_menu() -> bool;
     auto show_pause_menu() -> UPauseMenuWidget*;
     auto show_level_completion(FLevelCompletion data) -> ULevelCompletionWidget*;
     void clear_menus();

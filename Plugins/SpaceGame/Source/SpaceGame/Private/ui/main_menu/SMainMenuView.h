@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ioj/input/dispatch/player_menu.h>
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/input/dispatch/player_menu.h>
 
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/SCompoundWidget.h>
@@ -28,22 +28,18 @@ class SMainMenuView final : public SCompoundWidget {
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
     SLATE_NAMED_SLOT(FArguments, OptionsContent)
     SLATE_EVENT(FOnMainMenuItem, OnItem)
-    SLATE_EVENT(FSimpleDelegate, OnFocusContent)
+    SLATE_EVENT(FSimpleDelegate, OnRestoreFocus)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
     void refresh_page();
     void set_level_content(TSharedRef<SWidget> content);
     void set_navigation_enabled(bool enabled);
-    void focus_navigation();
-    auto focused_item() const -> std::optional<MainMenuItem>;
     void focus_item(MainMenuItem item);
-    void focus_content_on_next_focus();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-    auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
     auto build_header() const -> TSharedRef<SWidget>;
     auto build_navigation() -> TSharedRef<SWidget>;
@@ -55,18 +51,16 @@ class SMainMenuView final : public SCompoundWidget {
                   EGameUiIcon icon);
     auto activate_item(MainMenuItem item) -> FReply;
     auto page_content_index(MainMenuItem page) const -> int32;
-    auto navigation_has_focus() const -> bool;
 
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
     FOnMainMenuItem on_item_{};
-    FSimpleDelegate on_focus_content_{};
+    FSimpleDelegate on_restore_focus_{};
     TArray<TSharedPtr<SHiveNavigationButton>> page_buttons_{};
     TSharedPtr<SHiveNavigationButton> quit_button_{};
     TSharedPtr<SWidgetSwitcher> content_switcher_{};
     TSharedPtr<SBox> level_content_{};
     TAttribute<MainMenuItem> page_;
     bool navigation_enabled_{true};
-    bool focus_content_next_{};
 };
 } // namespace ioj

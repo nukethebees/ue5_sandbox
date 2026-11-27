@@ -1,34 +1,19 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include "input/BindingCapture.h"
-#include <SpaceGame/UnrealMessages.h>
 #include <ioj/host/input.h>
-#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
-#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
+#include <SpaceGame/UnrealMessages.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Engine/Engine.h>
 #include <Engine/GameViewportClient.h>
-#include <Engine/LocalPlayer.h>
-#include <Engine/World.h>
 #include <Framework/Application/SlateApplication.h>
 #include <GenericPlatform/GenericPlatformInputDeviceMapper.h>
 #include <Input/Events.h>
 #include <InputCoreTypes.h>
-#include <Widgets/Input/SEditableText.h>
 #include <Widgets/SWindow.h>
-#include <Widgets/Text/SMultiLineEditableText.h>
-
-#include <type_traits>
-#include <variant>
 
 namespace ioj::host {
 namespace {
-auto controller() -> ASpaceGamePlayerController* {
-    auto* const world{GEngine->GameViewport->GetWorld()};
-    return world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController()) : nullptr;
-}
 auto slate_key(PhysicalKey key) -> FKey {
     if (key == PhysicalKey::Unbound) {
         return EKeys::Invalid;
@@ -59,22 +44,6 @@ auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
             modifiers.right_command(),
             modifiers.caps_lock()};
 }
-}
-auto menu_status() -> MenuStatus {
-    auto* const player{controller()};
-    auto const widget{FSlateApplication::Get().GetKeyboardFocusedWidget()};
-    auto const editing{
-        widget &&
-        (widget->GetType() == SEditableText::StaticWidgetClass().GetWidgetType() ||
-         widget->GetType() == SMultiLineEditableText::StaticWidgetClass().GetWidgetType())};
-    auto const* main{player ? player->main_menu() : nullptr};
-    auto const capturing{widget && widget->GetMetaData<FBindingCapture>().IsValid()};
-    auto const mode{capturing ? MenuInputMode::BindingCapture
-                    : editing ? MenuInputMode::TextEntry
-                              : MenuInputMode::Navigation};
-    return {mode, main ? main->focused_item() : std::nullopt};
-}
-namespace {
 void ui_key(PhysicalKey code, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const key{slate_key(code)};
@@ -89,12 +58,6 @@ void ui_key(PhysicalKey code, bool down, bool repeat, Modifiers modifiers) {
     } else {
         slate.ProcessKeyUpEvent(event);
     }
-}
-void ui_axis(PhysicalKey code, float value, Modifiers modifiers) {
-    auto& slate{FSlateApplication::Get()};
-    auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
-    slate.ProcessAnalogInputEvent(FAnalogInputEvent{
-        slate_key(code), modifier_state(modifiers), device, false, 0, 0, value});
 }
 void ui_pointer(PointerInput const& event, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
@@ -144,96 +107,20 @@ void ui_text(std::string_view text, Modifiers modifiers) {
     }
 }
 }
-void focus_main_item(MainMenuItem item) {
-    if (auto* player{controller()}) {
-        if (auto* main{player->main_menu()}) {
-            main->focus_item(item);
-        }
+void present_input(std::span<MenuKey const> keys) {
+    for (auto const& key : keys) {
+        ui_key(key.key, key.down, key.repeat, key.modifiers);
     }
 }
-void activate_main_item(MainMenuItem item) {
-    if (auto* player{controller()}) {
-        if (auto* main{player->main_menu()}) {
-            main->activate_item(item);
-        }
+void present_input(std::span<MenuText const> text) {
+    for (auto const& entry : text) {
+        ui_text(entry.text, entry.modifiers);
     }
 }
-void present_menu_button(MenuButton button) {
-    PhysicalKey key{};
-    switch (button.command) {
-        case MenuCommand::Up:
-            key = PhysicalKey::Up;
-            break;
-        case MenuCommand::Down:
-            key = PhysicalKey::Down;
-            break;
-        case MenuCommand::Left:
-            key = PhysicalKey::Left;
-            break;
-        case MenuCommand::Right:
-            key = PhysicalKey::Right;
-            break;
-        case MenuCommand::Next:
-            button.modifiers.set_left_shift(false);
-            button.modifiers.set_right_shift(false);
-            key = PhysicalKey::Tab;
-            break;
-        case MenuCommand::Previous:
-            if (!button.modifiers.left_shift() && !button.modifiers.right_shift()) {
-                button.modifiers.set_left_shift(true);
-            }
-            key = PhysicalKey::Tab;
-            break;
-        case MenuCommand::Accept:
-            key = PhysicalKey::Enter;
-            break;
-        case MenuCommand::Back:
-            key = PhysicalKey::Escape;
-            break;
+void present_input(std::span<MenuPointer const> pointers) {
+    for (auto const& entry : pointers) {
+        ui_pointer(entry.pointer, entry.modifiers);
     }
-    ui_key(key, button.down, button.repeat, button.modifiers);
-}
-void present_input(PresentationEvent const& event) {
-    auto const focused{FSlateApplication::Get().GetKeyboardFocusedWidget()};
-    auto capture{focused ? focused->GetMetaData<FBindingCapture>() : nullptr};
-    std::visit(
-        [&capture](auto const& item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, MenuKey>) {
-                if (capture) {
-                    if (item.down && !item.repeat) {
-                        capture->on_key.Execute(item.key);
-                    }
-                    return;
-                }
-                ui_key(item.key, item.down, item.repeat, item.modifiers);
-            } else if constexpr (std::is_same_v<T, MenuAxis>) {
-                if (capture) {
-                    if (FMath::Abs(item.value) >= 0.5f) {
-                        capture->on_key.Execute(item.key);
-                    }
-                    return;
-                }
-                ui_axis(item.key, item.value, item.modifiers);
-            } else if constexpr (std::is_same_v<T, MenuText>) {
-                ui_text(item.text, item.modifiers);
-            } else if constexpr (std::is_same_v<T, MenuPointer>) {
-                if (capture) {
-                    if (item.pointer.action == PointerAction::Down ||
-                        item.pointer.action == PointerAction::DoubleClick) {
-                        capture->on_key.Execute(item.pointer.button);
-                    } else if (item.pointer.action == PointerAction::Wheel &&
-                               item.pointer.wheel != 0.f) {
-                        capture->on_key.Execute(item.pointer.wheel > 0.f
-                                                    ? PhysicalKey::MouseScrollUp
-                                                    : PhysicalKey::MouseScrollDown);
-                    }
-                    return;
-                }
-                ui_pointer(item.pointer, item.modifiers);
-            }
-        },
-        event);
 }
 
 }

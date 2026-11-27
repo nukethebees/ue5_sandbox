@@ -7,17 +7,37 @@
 namespace ioj {
 void InputDispatcher::begin_frame() {
     order_.clear();
-    menu_.clear();
-    presentation_.clear();
+    actions_.clear();
+    buttons_.clear();
+    candidates_.clear();
+    keys_.clear();
+    pointers_.clear();
+    text_.clear();
     ship_events_.clear();
 }
-void InputDispatcher::push(host::MenuEvent event) {
-    menu_.push_back(std::move(event));
-    order_.push_back({false, menu_.size() - 1});
+void InputDispatcher::push(host::PlayerAction event) {
+    order_.push_back({Kind::PlayerAction, actions_.size()});
+    actions_.push_back(event);
 }
-void InputDispatcher::push(host::PresentationEvent event) {
-    presentation_.push_back(std::move(event));
-    order_.push_back({true, presentation_.size() - 1});
+void InputDispatcher::push(host::MenuButton event) {
+    order_.push_back({Kind::MenuButton, buttons_.size()});
+    buttons_.push_back(event);
+}
+void InputDispatcher::push(PhysicalKey event) {
+    order_.push_back({Kind::PhysicalKey, candidates_.size()});
+    candidates_.push_back(event);
+}
+void InputDispatcher::push(host::MenuKey event) {
+    order_.push_back({Kind::MenuKey, keys_.size()});
+    keys_.push_back(event);
+}
+void InputDispatcher::push(host::MenuPointer event) {
+    order_.push_back({Kind::MenuPointer, pointers_.size()});
+    pointers_.push_back(event);
+}
+void InputDispatcher::push(host::MenuText event) {
+    order_.push_back({Kind::MenuText, text_.size()});
+    text_.push_back(std::move(event));
 }
 void InputDispatcher::publish_ship(LogicalInputState const& state) {
     using enum sim::player::PlayerInputKind;

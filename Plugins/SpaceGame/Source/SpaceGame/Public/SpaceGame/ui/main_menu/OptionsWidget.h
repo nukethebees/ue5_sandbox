@@ -7,6 +7,7 @@
 #include "OptionsWidget.generated.h"
 
 namespace ioj {
+struct MenuUpdate;
 enum class GameSettingCategory : uint8;
 class SGameOptionsView;
 class UOptionsDraft;
@@ -20,11 +21,11 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
   public:
     UOptionsWidget(FObjectInitializer const& object_initializer);
 
-    auto page() const -> MainMenuItem { return page_; }
-    void select_page(MainMenuItem page, FSimpleDelegate shown);
-    void request_leave(FSimpleDelegate continuation, FSimpleDelegate cancelled = {});
-    void request_back();
+    auto page() const -> MainMenuItem;
+    void show_page(MainMenuItem page);
+    void refresh_view();
     void focus_content();
+    void present(MenuUpdate const& update);
 
     FOptionsModalStateChanged modal_state_changed;
     FSimpleMulticastDelegate content_focused;
@@ -32,26 +33,17 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void NativeOnInitialized() override;
     void NativeConstruct() override;
     void NativeOnAddedToFocusPath(FFocusEvent const& event) override;
-    void NativeDestruct() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void open_page(MainMenuItem page, FSimpleDelegate shown);
     void handle_apply();
     void handle_reset();
-    void handle_dirty_apply();
-    void handle_save_completed(bool succeeded);
-    void handle_dirty_discard();
-    void handle_dirty_stay();
     void handle_confirm_display();
     void handle_revert_display();
     void handle_display_confirmation_changed(bool visible);
     void handle_interaction_modal_changed(bool visible);
-    void refresh_view();
-    void complete_leave();
-    void cancel_leave();
 
     UPROPERTY(Transient)
     UOptionsDraft* settings_{nullptr};
@@ -60,8 +52,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     UGameUiStyleSubsystem* style_{nullptr};
 
     TSharedPtr<SGameOptionsView> options_view_{};
-    FSimpleDelegate leave_continuation_{};
-    FSimpleDelegate leave_cancelled_{};
-    MainMenuItem page_{MainMenuItem::SelectLevel};
+    TOptional<MainMenuItem> rendered_page_{};
 };
 } // namespace ioj
