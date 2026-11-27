@@ -156,8 +156,10 @@ fn require_package(inventory: &str, package: &str) -> Result<()> {
 
 fn verify_inventory(project: &Path, text: &str) -> Result<()> {
     let inventory = text.replace('\\', "/").to_lowercase();
-    if contains(&inventory, "LevelScripts/Settings/user-settings.scm") {
-        return Err("Personal user-settings.scm was packaged".into());
+    for name in ["user-settings.scm", "preferences.scm"] {
+        if contains(&inventory, &format!("LevelScripts/Settings/{name}")) {
+            return Err(format!("Personal {name} was packaged").into());
+        }
     }
 
     for package in MAPS.into_iter().chain(["/Game/UI/DA_ui_data"]) {
@@ -300,15 +302,17 @@ fn verify(
 
     verify_inventory(&project, &inventory)?;
     let staged = package.join("Sandbox/LevelScripts");
-    let personal = Path::new("Settings/user-settings.scm");
-    if staged.join(personal).exists() {
-        return Err("Personal user-settings.scm was staged".into());
+    let personal = [Path::new("Settings/user-settings.scm"), Path::new("Settings/preferences.scm")];
+    for path in personal {
+        if staged.join(path).exists() {
+            return Err(format!("Personal {} was staged", path.display()).into());
+        }
     }
     let source = project.join("LevelScripts");
     let mut count = 0;
     for script in files(&source, "scm", true)? {
         let relative = script.strip_prefix(&source)?;
-        if relative != personal {
+        if !personal.contains(&relative) {
             require_file(&staged.join(relative))?;
             count += 1;
         }

@@ -47,14 +47,14 @@ auto user_settings_path(std::filesystem::path const& user_directory,
                         std::filesystem::path const& editor_scripts_directory,
                         std::filesystem::path const& local_data) -> std::filesystem::path {
     if (!user_directory.empty()) {
-        return user_directory / "Config/user-settings.scm";
+        return user_directory / "Config/preferences.scm";
     }
 
     if (!editor_scripts_directory.empty()) {
-        return editor_scripts_directory / "Settings/user-settings.scm";
+        return editor_scripts_directory / "Settings/preferences.scm";
     }
 
-    return local_data / "IsleOfJebbers/Config/user-settings.scm";
+    return local_data / "IsleOfJebbers/Config/preferences.scm";
 }
 
 auto open_profiles(std::filesystem::path const& project_directory,

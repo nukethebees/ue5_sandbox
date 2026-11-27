@@ -141,7 +141,7 @@ static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities(
 
 TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
     TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "Config/user-settings.scm"};
+    auto const path{directory.path() / "Config/preferences.scm"};
     ScreenResolution const desktop{2560, 1440};
     auto config{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
     ASSERT_TRUE(config) << config.error();
@@ -178,7 +178,7 @@ TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
 
 TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
     TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "Config/user-settings.scm"};
+    auto const path{directory.path() / "Config/preferences.scm"};
     ScreenResolution const desktop{1920, 1080};
     PlayerSettings settings;
     ASSERT_TRUE(settings.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
@@ -204,7 +204,7 @@ TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
 TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     TemporaryLevelDirectory directory;
     std::filesystem::path const scripts{IOJ_LEVEL_SCRIPTS};
-    auto const path{directory.path() / "Settings/user-settings.scm"};
+    auto const path{directory.path() / "Settings/preferences.scm"};
     ScreenResolution const desktop{2560, 1440};
     auto const config{read_user_settings(scripts, path, desktop)};
     ASSERT_TRUE(config) << config.error();
@@ -254,7 +254,7 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
 
 TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInvalidValues) {
     TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "Settings/user-settings.scm"};
+    auto const path{directory.path() / "Settings/preferences.scm"};
     auto const ini{directory.path() / "Saved/Config/GameUserSettings.ini"};
     std::filesystem::create_directories(path.parent_path());
     std::filesystem::create_directories(ini.parent_path());
@@ -281,7 +281,7 @@ TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInva
     ASSERT_TRUE(write_files({{path, invalid_source}}));
     auto const invalid{read()};
     ASSERT_FALSE(invalid);
-    EXPECT_NE(invalid.error().find("user-settings.scm"), std::string::npos);
+    EXPECT_NE(invalid.error().find("preferences.scm"), std::string::npos);
     EXPECT_NE(invalid.error().find("mouse-turn-sensitivity"), std::string::npos);
     EXPECT_EQ(read_file(path), invalid_source);
 }
@@ -290,7 +290,7 @@ TEST(NativeSettings, SavedPreferencesInheritNewDefaultsUntilOverridden) {
     TemporaryLevelDirectory directory;
     auto const settings{directory.path() / "Settings"};
     auto const defaults{settings / "user-defaults.scm"};
-    auto const path{settings / "user-settings.scm"};
+    auto const path{settings / "preferences.scm"};
     std::filesystem::create_directories(settings);
     std::filesystem::copy_file(
         std::filesystem::path{IOJ_LEVEL_SCRIPTS} / "Settings/user-defaults.scm", defaults);

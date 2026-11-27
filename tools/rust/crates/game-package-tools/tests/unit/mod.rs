@@ -162,13 +162,15 @@ fn missing_files_and_containers_are_rejected() {
 #[test]
 fn personal_script_is_never_shipped_and_factory_scripts_are_loose() {
     let fixture = Fixture::new();
-    let personal = "LevelScripts/Settings/user-settings.scm";
-    write(&fixture.request.project_root.join(personal));
-    assert_eq!(fixture.verify().unwrap(), 1);
-    let staged = fixture.request.package_root.join("Sandbox").join(personal);
-    write(&staged);
-    assert!(fixture.verify().unwrap_err().to_string().contains("user-settings.scm"));
-    fs::remove_file(staged).unwrap();
+    for filename in ["user-settings.scm", "preferences.scm"] {
+        let personal = Path::new("LevelScripts/Settings").join(filename);
+        write(&fixture.request.project_root.join(&personal));
+        assert_eq!(fixture.verify().unwrap(), 1);
+        let staged = fixture.request.package_root.join("Sandbox").join(personal);
+        write(&staged);
+        assert!(fixture.verify().unwrap_err().to_string().contains(filename));
+        fs::remove_file(staged).unwrap();
+    }
     fs::remove_file(fixture.request.package_root.join("Sandbox/LevelScripts/Nested/Scenario.scm")).unwrap();
     assert!(fixture.verify().unwrap_err().to_string().contains("Scenario.scm"));
 }

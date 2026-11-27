@@ -48,7 +48,8 @@ public class Sandbox : ModuleRules
             foreach (string script in Directory.EnumerateFiles(scriptsRoot, "*.scm", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(scriptsRoot, script).Replace(Path.DirectorySeparatorChar, '/');
-                if (!relative.Equals("Settings/user-settings.scm", StringComparison.OrdinalIgnoreCase))
+                if (!relative.Equals("Settings/user-settings.scm", StringComparison.OrdinalIgnoreCase) &&
+                    !relative.Equals("Settings/preferences.scm", StringComparison.OrdinalIgnoreCase))
                 {
                     RuntimeDependencies.Add("$(ProjectDir)/LevelScripts/" + relative, StagedFileType.NonUFS);
                 }
