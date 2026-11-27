@@ -11,27 +11,15 @@ inline auto can_hold_chord_key(FKey const& key) -> bool {
            key != EKeys::MouseScrollUp && key != EKeys::MouseScrollDown;
 }
 
-inline auto native_control_binding_address(FControlBindingAddress const& address)
-    -> ControlBindingAddress {
-    return {to_string(address.profile_id),
-            to_string(address.mapping_name.ToString().ToLower()),
-            to_string(address.hardware_device_id.ToString().ToLower()),
-            address.slot};
-}
-
-inline auto engine_control_binding_address(ControlBindingAddress const& address)
-    -> FControlBindingAddress {
-    return {to_fstring(address.profile_id),
-            FName{*to_fstring(address.mapping_name)},
-            FName{*to_fstring(address.hardware_device_id)},
-            address.slot};
+inline auto native_binding_key(FKey const& key) -> input::KeyCode {
+    return key.IsValid() ? input::parse_key(to_string(key.GetFName().ToString()))
+                         : input::KeyCode{};
 }
 
 inline auto control_binding_identity(FControlBindingAddress const& address,
                                      EHardwareDevicePrimaryType const device_type)
     -> ControlBindingIdentity {
-    return control_binding_identity(native_control_binding_address(address),
-                                    static_cast<std::uint32_t>(device_type));
+    return control_binding_identity(address, static_cast<std::uint32_t>(device_type));
 }
 
 inline auto control_binding_matches_device(FControlBindingView const& binding,
@@ -43,16 +31,10 @@ inline auto control_binding_matches_device(FControlBindingView const& binding,
 }
 
 inline auto native_control_binding(FControlBindingView const& binding) -> ControlBindingSnapshot {
-    return {.address = native_control_binding_address(binding.address),
-            .current_key = binding.current_key.IsValid()
-                             ? to_string(binding.current_key.GetFName().ToString().ToLower())
-                             : "",
-            .default_key = binding.default_key.IsValid()
-                             ? to_string(binding.default_key.GetFName().ToString().ToLower())
-                             : "",
-            .chord = binding.chord.IsSet()
-                       ? std::optional{native_control_binding_address(binding.chord->address)}
-                       : std::nullopt};
+    return {.address = binding.address,
+            .current_key = native_binding_key(binding.current_key),
+            .default_key = native_binding_key(binding.default_key),
+            .chord = binding.chord.IsSet() ? std::optional{binding.chord->address} : std::nullopt};
 }
 
 inline auto native_control_bindings(TConstArrayView<FControlBindingView> const bindings)

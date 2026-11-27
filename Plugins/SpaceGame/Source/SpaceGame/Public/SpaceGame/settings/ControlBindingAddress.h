@@ -1,14 +1,7 @@
 #pragma once
 
-#include <CoreMinimal.h>
+#include <ioj/settings/control_binding_address.h>
 
 namespace ioj {
-struct FControlBindingAddress {
-    auto operator==(FControlBindingAddress const&) const -> bool = default;
-
-    FString profile_id;
-    FName mapping_name;
-    FName hardware_device_id;
-    uint32 slot{};
-};
+using FControlBindingAddress = ControlBindingAddress;
 }

@@ -6,13 +6,12 @@
 #include <algorithm>
 #include <cstdint>
 #include <span>
-#include <string_view>
 #include <vector>
 
 namespace ioj {
 inline auto control_binding_identity(ControlBindingAddress const& address,
                                      std::uint32_t const device_type) -> ControlBindingIdentity {
-    return {address.mapping_name, address.hardware_device_id, address.slot, device_type};
+    return {address.mapping, address.slot, device_type};
 }
 
 inline auto control_binding_matches_device(std::uint32_t const binding_device,
@@ -39,17 +38,18 @@ inline auto control_bindings_changed(std::span<ControlBindingSnapshot const> con
 
 inline auto control_binding_conflicts(std::span<ControlBindingSnapshot const> const bindings,
                                       ControlBindingAddress const& address,
-                                      std::string_view const key) -> std::vector<std::size_t> {
+                                      input::KeyCode const key) -> std::vector<std::size_t> {
     std::vector<std::size_t> result;
     auto const target{std::ranges::find(bindings, address, &ControlBindingSnapshot::address)};
-    if (target == bindings.end() || key.empty()) {
+    if (target == bindings.end() || key == PhysicalKey::Unbound) {
         return result;
     }
     auto const count{bindings.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& binding{bindings[index]};
-        if (target->chord == binding.chord && binding.address.profile_id == address.profile_id &&
-            binding.address.hardware_device_id == address.hardware_device_id &&
+        if (target->chord == binding.chord &&
+            binding.address.profile_index == address.profile_index &&
+            is_gamepad_mapping(binding.address.mapping) == is_gamepad_mapping(address.mapping) &&
             binding.address != address && binding.current_key == key) {
             result.push_back(index);
         }
@@ -59,19 +59,20 @@ inline auto control_binding_conflicts(std::span<ControlBindingSnapshot const> co
 
 inline auto control_chord_binding_conflicts(std::span<ControlBindingSnapshot const> const bindings,
                                             ControlBindingAddress const& address,
-                                            std::string_view const activator_key,
-                                            std::string_view const action_key)
+                                            input::KeyCode const activator_key,
+                                            input::KeyCode const action_key)
     -> std::vector<std::size_t> {
     std::vector<std::size_t> result;
     auto const target{std::ranges::find(bindings, address, &ControlBindingSnapshot::address)};
-    if (target == bindings.end() || !target->chord || activator_key.empty() || action_key.empty()) {
+    if (target == bindings.end() || !target->chord || activator_key == PhysicalKey::Unbound ||
+        action_key == PhysicalKey::Unbound) {
         return result;
     }
     auto const count{bindings.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& binding{bindings[index]};
-        if (binding.address.profile_id != address.profile_id ||
-            binding.address.hardware_device_id != address.hardware_device_id ||
+        if (binding.address.profile_index != address.profile_index ||
+            is_gamepad_mapping(binding.address.mapping) != is_gamepad_mapping(address.mapping) ||
             binding.address == address || binding.address == *target->chord) {
             continue;
         }

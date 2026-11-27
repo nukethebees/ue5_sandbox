@@ -116,11 +116,8 @@ auto UOptionsDraft::save(GameSettingCategory category) -> bool {
         std::vector<KeyBinding> overrides;
         for (auto const& row : bindings_) {
             if (row.is_modified()) {
-                auto const key{row.current_key.IsValid()
-                                   ? to_string(row.current_key.GetFName().ToString())
-                                   : std::string{}};
-                overrides.push_back({*input::parse_mapping(to_string(row.address.mapping_name.ToString())),
-                                     input::parse_key(key)});
+                auto const key{native_binding_key(row.current_key)};
+                overrides.push_back({row.address.mapping, key});
             }
         }
         requested.controls.bindings = std::move(overrides);
@@ -374,11 +371,11 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
             control.action == input::FlightAction::Pause  ? EControlBindingGroup::Utility
             : control.action == input::FlightAction::Fire ? EControlBindingGroup::Combat
                                                           : EControlBindingGroup::Flight};
-        auto const device{control.gamepad ? FHardwareDeviceIdentifier::DefaultGamepad
-                                          : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};
+        auto const device{control.gamepad
+                              ? FHardwareDeviceIdentifier::DefaultGamepad
+                              : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};
         result.Add(FControlBindingView{
-            .address = {.mapping_name = FName{*to_fstring(control.mapping)},
-                        .hardware_device_id = device.HardwareDeviceIdentifier},
+            .address = {.mapping = *input::parse_mapping(control.mapping)},
             .display_name = FText::FromString(to_fstring(control.label)),
             .display_category = control_binding_group_label(group),
             .display_group = group,
@@ -390,8 +387,8 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
     }
 
     result.Sort([](auto const& left, auto const& right) {
-        if (left.address.profile_id != right.address.profile_id) {
-            return left.address.profile_id < right.address.profile_id;
+        if (left.address.profile_index != right.address.profile_index) {
+            return left.address.profile_index < right.address.profile_index;
         }
 
         if (left.display_group != right.display_group) {
@@ -406,8 +403,8 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
             return static_cast<uint8>(left.device_type) < static_cast<uint8>(right.device_type);
         }
 
-        if (left.address.mapping_name != right.address.mapping_name) {
-            return left.address.mapping_name.LexicalLess(right.address.mapping_name);
+        if (left.address.mapping != right.address.mapping) {
+            return left.address.mapping < right.address.mapping;
         }
 
         return left.address.slot < right.address.slot;
@@ -432,10 +429,7 @@ auto UOptionsDraft::binding_conflicts(FControlBindingAddress const& address, FKe
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
     auto const native{native_control_bindings(bindings)};
     TArray<FControlBindingView> result;
-    for (auto const index :
-         control_binding_conflicts(native,
-                                   native_control_binding_address(address),
-                                   to_string(key.GetFName().ToString().ToLower()))) {
+    for (auto const index : control_binding_conflicts(native, address, native_binding_key(key))) {
         result.Add(bindings[static_cast<int32>(index)]);
     }
 
@@ -453,11 +447,8 @@ auto UOptionsDraft::chord_binding_conflicts(FControlBindingAddress const& addres
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
     auto const native{native_control_bindings(bindings)};
     TArray<FControlBindingView> result;
-    for (auto const index :
-         control_chord_binding_conflicts(native,
-                                         native_control_binding_address(address),
-                                         to_string(activator_key.GetFName().ToString().ToLower()),
-                                         to_string(action_key.GetFName().ToString().ToLower()))) {
+    for (auto const index : control_chord_binding_conflicts(
+             native, address, native_binding_key(activator_key), native_binding_key(action_key))) {
         result.Add(bindings[static_cast<int32>(index)]);
     }
 

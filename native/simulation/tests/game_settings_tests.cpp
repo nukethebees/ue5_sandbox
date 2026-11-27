@@ -110,9 +110,9 @@ TEST(GameSettings, NormalizesRangesAndChecksSuppliedCapabilities) {
 }
 
 TEST(GameSettings, BindingIdentityIgnoresProfileAndDistinguishesSlotsAndDevices) {
-    ControlBindingAddress first{"one", "fire", "keyboard", 1};
+    ControlBindingAddress first{1, FlightMapping::StarfoxFirePrimaryKeyboardMouse, 1};
     auto second{first};
-    second.profile_id = "two";
+    second.profile_index = 2;
     EXPECT_EQ(control_binding_identity(first, 1), control_binding_identity(second, 1));
     second.slot = 2;
     EXPECT_NE(control_binding_identity(first, 1), control_binding_identity(second, 1));
@@ -124,23 +124,30 @@ TEST(GameSettings, BindingIdentityIgnoresProfileAndDistinguishesSlotsAndDevices)
 
 TEST(GameSettings, BindingConflictsRespectHardwareProfileAndChord) {
     std::array<ControlBindingSnapshot, 5> bindings{{
-        {.address = {"one", "fire", "keyboard", 1}, .current_key = "space"},
-        {.address = {"one", "boost", "keyboard", 1}, .current_key = "space"},
-        {.address = {"one", "brake", "keyboard", 1}, .current_key = "space"},
-        {.address = {"two", "boost", "keyboard", 1}, .current_key = "space"},
-        {.address = {"one", "boost", "gamepad", 1}, .current_key = "space"},
+        {.address = {1, FlightMapping::StarfoxFirePrimaryKeyboardMouse, 1},
+         .current_key = PhysicalKey::SpaceBar},
+        {.address = {1, FlightMapping::StarfoxBoostKeyboardMouse, 1},
+         .current_key = PhysicalKey::SpaceBar},
+        {.address = {1, FlightMapping::StarfoxBrakeKeyboardMouse, 1},
+         .current_key = PhysicalKey::SpaceBar},
+        {.address = {2, FlightMapping::StarfoxBoostKeyboardMouse, 1},
+         .current_key = PhysicalKey::SpaceBar},
+        {.address = {1, FlightMapping::StarfoxBoostGamepad, 1},
+         .current_key = PhysicalKey::SpaceBar},
     }};
-    EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, "space"),
+    EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar),
               (std::vector<std::size_t>{1, 2}));
-    bindings[0].chord = ControlBindingAddress{"one", "modifier", "keyboard", 1};
-    EXPECT_TRUE(control_binding_conflicts(bindings, bindings[0].address, "space").empty());
+    bindings[0].chord = ControlBindingAddress{1, FlightMapping::StarfoxSteerKeyboardMouse, 1};
+    EXPECT_TRUE(
+        control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar).empty());
     bindings[2].chord = bindings[0].chord;
-    EXPECT_EQ(control_chord_binding_conflicts(bindings, bindings[0].address, "space", "space"),
+    EXPECT_EQ(control_chord_binding_conflicts(
+                  bindings, bindings[0].address, PhysicalKey::SpaceBar, PhysicalKey::SpaceBar),
               (std::vector<std::size_t>{1, 2}));
     auto reordered{bindings};
     std::swap(reordered.front(), reordered.back());
     EXPECT_FALSE(control_bindings_changed(reordered, bindings));
-    reordered[0].current_key = "other";
+    reordered[0].current_key = PhysicalKey::A;
     EXPECT_TRUE(control_bindings_changed(reordered, bindings));
 }
 

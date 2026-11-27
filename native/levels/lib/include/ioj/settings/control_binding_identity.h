@@ -1,14 +1,14 @@
 #pragma once
 
+#include <ioj/input/flight_mapping.h>
+
 #include <cstdint>
-#include <string>
 
 namespace ioj {
 struct ControlBindingIdentity {
     auto operator==(ControlBindingIdentity const&) const -> bool = default;
 
-    std::string mapping_name;
-    std::string hardware_device_id;
+    FlightMapping mapping{};
     std::uint32_t slot{};
     std::uint32_t device_type{};
 };
