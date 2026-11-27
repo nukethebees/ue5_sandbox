@@ -36,6 +36,7 @@ class SdlInput {
     SDL_Gamepad* gamepad_{};
     host::InputRoute route_{};
     host::Modifiers modifiers_{};
+    bool raw_menu_input_{};
     input::FlightInput flight_;
     std::vector<host::InputEvent> events_;
     Uint32 ui_mouse_buttons_{};
@@ -43,7 +44,7 @@ class SdlInput {
     std::array<bool, SDL_GAMEPAD_BUTTON_COUNT> pad_buttons_{};
     std::array<bool, 7> viewer_buttons_{};
     int speed_index_{2};
-    std::array<double, 4> dpad_repeat_{};
+    std::array<double, 8> direction_repeat_{};
     bool viewer_looking_{};
     float viewer_dx_{};
     float viewer_dy_{};

@@ -201,12 +201,17 @@ void SdlInput::begin_frame() {
     flight_.begin_frame();
 }
 void SdlInput::synchronize(host::InputRoute current, host::MenuStatus menu) {
+    bool const raw{menu.capturing_binding || menu.editing_text};
+    if (raw != raw_menu_input_) {
+        raw_menu_input_ = raw;
+        direction_repeat_ = {};
+    }
     if (route_ != current) {
         viewer_buttons_ = {};
         viewer_looking_ = false;
         viewer_dx_ = 0.f;
         viewer_dy_ = 0.f;
-        dpad_repeat_ = {};
+        direction_repeat_ = {};
         route_ = current;
         refresh_bindings();
     }
@@ -247,7 +252,12 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         return;
     }
     if (route_.context == input::Context::Menu) {
-        events_.emplace_back(host::MenuKey{code, character, down, repeat, modifiers_});
+        if (raw_menu_input_) {
+            events_.emplace_back(host::MenuKey{code, character, down, repeat, modifiers_});
+        } else if (auto command{input::menu_command(
+                       code.key, modifiers_.left_shift() || modifiers_.right_shift())}) {
+            events_.emplace_back(host::MenuButton{*command, down, repeat, modifiers_});
+        }
         return;
     }
     if (repeat || code == PhysicalKey::Unbound) {
@@ -255,7 +265,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
     }
     if (route_.context == input::Context::Gameplay) {
         if (flight_.update(code, down ? 1.f : 0.f, controls_)) {
-            events_.emplace_back(host::PlayerAction::OpenPause);
+            events_.emplace_back(OpenPause);
         }
         return;
     }
@@ -281,7 +291,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         return;
     }
     if (down && flight_.update(code, 1.f, controls_)) {
-        events_.emplace_back(host::PlayerAction::OpenPause);
+        events_.emplace_back(OpenPause);
         return;
     }
     if (!down) {
@@ -322,7 +332,7 @@ void SdlInput::handle(SDL_Event const& event) {
         return;
     }
     if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-        dpad_repeat_ = {};
+        direction_repeat_ = {};
         ui_mouse_buttons_ = 0;
         modifiers_ = {};
         release_gamepad();
@@ -359,21 +369,21 @@ void SdlInput::handle(SDL_Event const& event) {
             break;
         }
         case SDL_EVENT_TEXT_INPUT:
-            if (route_.context == input::Context::Menu) {
+            if (route_.context == input::Context::Menu && SDL_TextInputActive(&window_)) {
                 events_.emplace_back(host::MenuText{event.text.text, modifiers_});
             }
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             auto const& button{event.button};
-            auto const name{mouse_key(button.button)};
-            if (name == PhysicalKey::Unbound) {
+            auto const code{mouse_key(button.button)};
+            if (code == PhysicalKey::Unbound) {
                 break;
             }
             auto const mask{SDL_BUTTON_MASK(button.button)};
             if ((route_.resume_available || route_.movable_viewer) &&
-                flight_.is_pause_button(name) && !(ui_mouse_buttons_ & mask)) {
-                key(name, button.down, false, 0);
+                flight_.is_pause_button(code) && !(ui_mouse_buttons_ & mask)) {
+                key(code, button.down, false, 0);
                 break;
             }
             bool const pointer_visible{
@@ -384,15 +394,17 @@ void SdlInput::handle(SDL_Event const& event) {
                 ui_mouse_buttons_ |= mask;
                 auto const action{button.clicks == 2 ? host::PointerAction::DoubleClick
                                                      : host::PointerAction::Down};
-                events_.emplace_back(host::MenuPointer{{action, name, button.x, button.y, 0.f}, modifiers_});
+                events_.emplace_back(
+                    host::MenuPointer{{action, code, button.x, button.y, 0.f}, modifiers_});
             } else if (!button.down && (ui_mouse_buttons_ & mask)) {
                 ui_mouse_buttons_ &= ~mask;
-                events_.emplace_back(host::MenuPointer{{host::PointerAction::Up, name, button.x, button.y, 0.f}, modifiers_});
+                events_.emplace_back(host::MenuPointer{
+                    {host::PointerAction::Up, code, button.x, button.y, 0.f}, modifiers_});
             }
             bool const hud_click{route_.context == input::Context::BenchmarkViewer &&
                                  !route_.movable_viewer && button.button == SDL_BUTTON_LEFT};
             if (route_.context != input::Context::Menu && !hud_click) {
-                key(name, button.down, false, 0);
+                key(code, button.down, false, 0);
             }
             break;
         }
@@ -404,7 +416,12 @@ void SdlInput::handle(SDL_Event const& event) {
                 viewer_dx_ += event.motion.xrel;
                 viewer_dy_ -= event.motion.yrel;
             } else {
-                events_.emplace_back(host::MenuPointer{{host::PointerAction::Move, PhysicalKey::Unbound, event.motion.x, event.motion.y, 0.f}, modifiers_});
+                events_.emplace_back(host::MenuPointer{{host::PointerAction::Move,
+                                                        PhysicalKey::Unbound,
+                                                        event.motion.x,
+                                                        event.motion.y,
+                                                        0.f},
+                                                       modifiers_});
             }
             break;
         case SDL_EVENT_MOUSE_WHEEL: {
@@ -412,33 +429,35 @@ void SdlInput::handle(SDL_Event const& event) {
                                                                               : event.wheel.y};
             if (route_.context == input::Context::Menu) {
                 events_.emplace_back(host::MenuPointer{{host::PointerAction::Wheel,
-                                  PhysicalKey::Unbound,
-                                  event.wheel.mouse_x,
-                                  event.wheel.mouse_y,
-                                  amount}, modifiers_});
+                                                        PhysicalKey::Unbound,
+                                                        event.wheel.mouse_x,
+                                                        event.wheel.mouse_y,
+                                                        amount},
+                                                       modifiers_});
             } else if (route_.movable_viewer) {
                 speed_index_ = std::clamp(speed_index_ + (amount > 0.f) - (amount < 0.f), 0, 4);
             } else if (route_.context == input::Context::Gameplay && amount != 0.f) {
-                auto const name{amount > 0.f ? PhysicalKey::MouseScrollUp : PhysicalKey::MouseScrollDown};
-                key(name, true, false, 0);
-                key(name, false, false, 0);
+                auto const code{amount > 0.f ? PhysicalKey::MouseScrollUp
+                                             : PhysicalKey::MouseScrollDown};
+                key(code, true, false, 0);
+                key(code, false, false, 0);
             }
             break;
         }
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
-                auto const name{pad_button(event.gbutton.button)};
-                if (name != PhysicalKey::Unbound) {
+                auto const code{pad_button(event.gbutton.button)};
+                if (code != PhysicalKey::Unbound) {
                     auto const button{event.gbutton.button};
                     pad_buttons_[button] = event.gbutton.down;
                     if (button >= SDL_GAMEPAD_BUTTON_DPAD_UP &&
                         button <= SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
-                        dpad_repeat_[button - SDL_GAMEPAD_BUTTON_DPAD_UP] =
+                        direction_repeat_[button - SDL_GAMEPAD_BUTTON_DPAD_UP] =
                             event.gbutton.down && route_.context == input::Context::Menu ? 0.4
                                                                                          : 0.0;
                     }
-                    key(name, event.gbutton.down, false, 0);
+                    key(code, event.gbutton.down, false, 0);
                 }
             }
             break;
@@ -459,13 +478,21 @@ void SdlInput::handle(SDL_Event const& event) {
 void SdlInput::axis_value(std::size_t axis, float value) {
     auto const before{axes_[axis]};
     axes_[axis] = value;
-    if (route_.context == input::Context::Menu) {
+    if (route_.context == input::Context::Menu && raw_menu_input_) {
         events_.emplace_back(host::MenuAxis{axis_keys[axis], value, modifiers_});
     } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
                flight_.update(axis_keys[axis], value, controls_)) {
         events_.emplace_back(host::PlayerAction::OpenPause);
     }
     // Digital aliases are independently rebindable in the Controls menu.
+    if (route_.context == input::Context::Menu && !raw_menu_input_ && axis < 2) {
+        if ((before >= 0.5f) != (value >= 0.5f)) {
+            direction_repeat_[4 + 2 * axis] = value >= 0.5f ? 0.4 : 0.0;
+        }
+        if ((before <= -0.5f) != (value <= -0.5f)) {
+            direction_repeat_[5 + 2 * axis] = value <= -0.5f ? 0.4 : 0.0;
+        }
+    }
     if ((before >= 0.5f) != (value >= 0.5f)) {
         key(positive_keys[axis], value >= 0.5f, false, 0);
     }
@@ -474,7 +501,7 @@ void SdlInput::axis_value(std::size_t axis, float value) {
     }
 }
 void SdlInput::release_gamepad() {
-    dpad_repeat_ = {};
+    direction_repeat_ = {};
     for (std::size_t i{}; i < pad_buttons_.size(); ++i) {
         if (pad_buttons_[i]) {
             key(pad_button(i), false, false, 0);
@@ -490,20 +517,22 @@ void SdlInput::release_gamepad() {
 void SdlInput::finish_frame(double dt) {
     events_.clear();
     if (route_.context == input::Context::Menu && SDL_GetKeyboardFocus() == &window_) {
-        for (std::size_t i{}; i < dpad_repeat_.size(); ++i) {
-            auto& delay{dpad_repeat_[i]};
+        for (std::size_t i{}; i < direction_repeat_.size(); ++i) {
+            auto& delay{direction_repeat_[i]};
             if (delay > 0.0) {
                 delay -= dt;
                 if (delay <= 0.0) {
-                    key(pad_button(SDL_GAMEPAD_BUTTON_DPAD_UP + i), true, true, 0);
+                    static constexpr PhysicalKey directions[]{PhysicalKey::GamepadDPadUp,
+                                                              PhysicalKey::GamepadDPadDown,
+                                                              PhysicalKey::GamepadDPadLeft,
+                                                              PhysicalKey::GamepadDPadRight,
+                                                              PhysicalKey::GamepadLeftStickRight,
+                                                              PhysicalKey::GamepadLeftStickLeft,
+                                                              PhysicalKey::GamepadLeftStickUp,
+                                                              PhysicalKey::GamepadLeftStickDown};
+                    key(directions[i], true, true, 0);
                     delay = 0.1;
                 }
-            }
-        }
-        // Slate applies its own repeat interval to held analog navigation.
-        for (auto axis : {SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY}) {
-            if (std::abs(axes_[axis]) >= 0.5f) {
-                events_.emplace_back(host::MenuAxis{axis_keys[axis], axes_[axis], modifiers_});
             }
         }
     }

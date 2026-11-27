@@ -96,6 +96,13 @@ void request_resume() {
     check(player);
     player->request_resume();
 }
+void select_benchmark_button(bool end_selected) {
+    auto* player{controller()};
+    check(player);
+    if (auto* hud{player->get_benchmark_hud()}) {
+        hud->select_button(end_selected);
+    }
+}
 namespace {
 void present_viewer_motion(ViewerMotion const& motion, double delta_seconds) {
     auto* const player{controller()};
@@ -181,13 +188,6 @@ void ui_text(std::string_view text, Modifiers modifiers) {
     }
 }
 }
-void select_benchmark_button(bool end_selected) {
-    auto* player{controller()};
-    check(player);
-    if (auto* hud{player->get_benchmark_hud()}) {
-        hud->select_button(end_selected);
-    }
-}
 void focus_main_item(input::MainMenuItem item) {
     if (auto* player{controller()}) {
         if (auto* main{player->main_menu()}) {
@@ -201,6 +201,34 @@ void activate_main_item(input::MainMenuItem item) {
             main->activate_item(item);
         }
     }
+}
+void present_menu_button(MenuButton button) {
+    PhysicalKey key{};
+    switch (button.command) {
+        case input::MenuCommand::Up:
+            key = PhysicalKey::Up;
+            break;
+        case input::MenuCommand::Down:
+            key = PhysicalKey::Down;
+            break;
+        case input::MenuCommand::Left:
+            key = PhysicalKey::Left;
+            break;
+        case input::MenuCommand::Right:
+            key = PhysicalKey::Right;
+            break;
+        case input::MenuCommand::Next:
+        case input::MenuCommand::Previous:
+            key = PhysicalKey::Tab;
+            break;
+        case input::MenuCommand::Accept:
+            key = PhysicalKey::Enter;
+            break;
+        case input::MenuCommand::Back:
+            key = PhysicalKey::Escape;
+            break;
+    }
+    ui_key(key, 0, button.down, button.repeat, button.modifiers);
 }
 void present_input(PresentationEvent const& event) {
     std::visit(

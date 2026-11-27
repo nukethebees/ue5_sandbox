@@ -8,4 +8,6 @@ The CMake target `IojPlayer` builds `ioj.exe`. The executable owns the simulatio
 `native-presentation-bridge` to publish level initialisation data and resolved frame views.
 Unreal consumes the contract in `native/presentation/include` and links the presentation
 algorithms in `native/presentation/lib`. Frame columns are borrowed for one synchronous call.
-SDL supplies keyboard, mouse and gamepad events to the executable. Flight input goes directly to the simulation. The executable sends menu input to Slate and viewer motion to the camera. Unreal returns UI requests after its engine tick.
+SDL supplies keyboard, mouse and gamepad events. The player selects the menu, gameplay or benchmark/viewer context and resolves physical inputs into commands. Flight commands go to the simulation. Menu navigation and activation use the same commands for keyboard and controller. The main menu and benchmark HUD send button selections back to the player. Slate presents the controls, hit-tests pointer events and handles text entry. A focused binding prompt can request the physical input.
+
+The Controls file stores bindings by name for compatibility with existing profiles. The player converts these names to typed mappings and keys when loading settings. Pause accepts keyboard keys, mouse buttons and gamepad buttons.

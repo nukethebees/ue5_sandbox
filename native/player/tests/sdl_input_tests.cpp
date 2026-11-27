@@ -16,6 +16,9 @@ namespace ioj::host::tests {
 static_assert(sizeof(Modifiers) == 2);
 struct Presentation {
     InputRoute route;
+    MenuStatus menu;
+    Modifiers modifiers;
+    std::vector<input::MenuCommand> commands;
     std::vector<input::KeyCode> keys;
     std::vector<PointerAction> pointer;
     std::string text;
@@ -26,6 +29,7 @@ Presentation presentation;
 }
 
 namespace ioj::host {
+
 void read_legacy_key_bindings(void*, LegacyBindingSink) {}
 void present_input(PresentationEvent const& event) {
     auto& view{tests::presentation};
@@ -42,6 +46,7 @@ void present_input(PresentationEvent const& event) {
         view.motion = step->motion;
     }
 }
+
 }
 
 namespace ioj::tests {
@@ -63,7 +68,7 @@ class SdlPlayerInput : public ::testing::Test {
     }
     void frame() {
         input_->begin_frame();
-        input_->synchronize(host::tests::presentation.route, {.editing_text = true});
+        input_->synchronize(host::tests::presentation.route, host::tests::presentation.menu);
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             input_->handle(event);
@@ -76,18 +81,24 @@ class SdlPlayerInput : public ::testing::Test {
         for (auto const& event : input_->events()) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 host::tests::presentation.actions.push_back(*action);
+            } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
+                if (button->down) {
+                    host::tests::presentation.commands.push_back(button->command);
+                    host::tests::presentation.modifiers = button->modifiers;
+                }
             } else {
                 host::present_input(std::get<host::PresentationEvent>(event));
             }
         }
     }
-    void press(SDL_Keycode key, SDL_Scancode scancode) {
+    void press(SDL_Keycode key, SDL_Scancode scancode, SDL_Keymod modifiers = SDL_KMOD_NONE) {
         SDL_Event event{};
         event.key.type = SDL_EVENT_KEY_DOWN;
         event.key.windowID = SDL_GetWindowID(window_);
         event.key.scancode = scancode;
         event.key.key = key;
         event.key.down = true;
+        event.key.mod = modifiers;
         ASSERT_TRUE(SDL_PushEvent(&event));
     }
     ControlsSettings settings_{};
@@ -98,14 +109,40 @@ class SdlPlayerInput : public ::testing::Test {
 TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     auto& view{host::tests::presentation};
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    frame();
+    view.menu.editing_text = true;
     SDL_Event text{};
     text.text.type = SDL_EVENT_TEXT_INPUT;
     text.text.windowID = SDL_GetWindowID(window_);
     text.text.text = "abc";
     ASSERT_TRUE(SDL_PushEvent(&text));
     frame();
-    EXPECT_EQ(view.keys, (std::vector<input::KeyCode>{PhysicalKey::Down}));
+    EXPECT_EQ(view.commands, std::vector{input::MenuCommand::Down});
     EXPECT_EQ(view.text, "abc");
+    view.menu.editing_text = false;
+    press(SDLK_TAB,
+          SDL_SCANCODE_TAB,
+          SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
+    frame();
+    EXPECT_EQ(view.commands.back(), input::MenuCommand::Previous);
+    host::Modifiers expected;
+    expected.set_right_shift(true);
+    expected.set_left_control(true);
+    expected.set_right_alt(true);
+    expected.set_left_command(true);
+    expected.set_caps_lock(true);
+    EXPECT_EQ(view.modifiers, expected);
+    press(SDLK_TAB,
+          SDL_SCANCODE_TAB,
+          SDL_KMOD_LSHIFT | SDL_KMOD_RCTRL | SDL_KMOD_LALT | SDL_KMOD_RGUI);
+    frame();
+    EXPECT_EQ(view.commands.back(), input::MenuCommand::Previous);
+    expected = {};
+    expected.set_left_shift(true);
+    expected.set_right_control(true);
+    expected.set_left_alt(true);
+    expected.set_right_command(true);
+    EXPECT_EQ(view.modifiers, expected);
 
     view.route = {input::Context::Gameplay, false};
     press(SDLK_W, SDL_SCANCODE_W);
@@ -135,7 +172,18 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
                            host::PlayerAction::BenchmarkActivate,
                            host::PlayerAction::EndBenchmark}));
     EXPECT_FALSE(view.motion);
-    EXPECT_EQ(view.keys.size(), 1u);
+    EXPECT_TRUE(view.keys.empty());
+
+    view.route = {input::Context::Menu};
+    view.menu.capturing_binding = true;
+    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    frame();
+    EXPECT_EQ(view.keys, std::vector<input::KeyCode>{PhysicalKey::Down});
+    EXPECT_EQ(view.commands.size(), 3u);
+    EXPECT_EQ(input::move_main_selection(input::MainMenuItem::SelectLevel, input::MenuCommand::Up),
+              input::MainMenuItem::Quit);
+    EXPECT_EQ(input::move_main_selection(input::MainMenuItem::Quit, input::MenuCommand::Down),
+              input::MainMenuItem::SelectLevel);
 }
 
 TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {

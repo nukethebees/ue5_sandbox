@@ -371,6 +371,20 @@ auto Application::play(Window& window,
         for (auto const& event : input.events()) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 dispatch(*action);
+            } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
+                auto const focus{host::menu_status().main_focus};
+                using enum input::MenuCommand;
+                if (focus && (button->command == Up || button->command == Down)) {
+                    if (button->down) {
+                        host::focus_main_item(input::move_main_selection(*focus, button->command));
+                    }
+                } else if (focus && button->command == Accept) {
+                    if (button->down && !button->repeat) {
+                        host::activate_main_item(*focus);
+                    }
+                } else {
+                    host::present_menu_button(*button);
+                }
             } else {
                 host::present_input(std::get<host::PresentationEvent>(event));
             }
