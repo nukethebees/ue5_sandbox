@@ -26,7 +26,7 @@ void FSpinnerPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FSpinnerPresentation::begin_play_presentation(vectors3f::ConstView locations,
+void FSpinnerPresentation::begin_play_presentation(presentation::vectors3f::ConstView locations,
                                                    std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::begin_play_presentation);
     if (!actor_config) {
@@ -45,7 +45,7 @@ void FSpinnerPresentation::begin_play_presentation(vectors3f::ConstView location
     validate_array_sizes(static_cast<int32>(locations.num()));
 }
 
-void FSpinnerPresentation::update_visual_data(vectors3f::ConstView locations,
+void FSpinnerPresentation::update_visual_data(presentation::vectors3f::ConstView locations,
                                               std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_visual_data);
     update_ismc(locations, yaws);
@@ -60,7 +60,7 @@ void FSpinnerPresentation::configure_ismc() {
     batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
 
-void FSpinnerPresentation::update_ismc_transforms(vectors3f::ConstView locations,
+void FSpinnerPresentation::update_ismc_transforms(presentation::vectors3f::ConstView locations,
                                                   std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc_transforms);
 
@@ -71,12 +71,12 @@ void FSpinnerPresentation::update_ismc_transforms(vectors3f::ConstView locations
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
             FRotator{0.0, static_cast<double>(yaws[i]), 0.0},
-            FVector{to_unreal(vector_at(locations, i))},
+            FVector{to_unreal(locations[i])},
         };
     }
 }
 
-void FSpinnerPresentation::update_ismc(vectors3f::ConstView locations,
+void FSpinnerPresentation::update_ismc(presentation::vectors3f::ConstView locations,
                                        std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc);
 

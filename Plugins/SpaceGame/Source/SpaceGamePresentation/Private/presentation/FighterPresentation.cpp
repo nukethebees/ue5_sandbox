@@ -25,9 +25,10 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                                   vectors3f::ConstView aim_directions,
-                                                   presentation::TargetView const& target_view) {
+void
+    FFighterPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
+                                                  presentation::vectors3f::ConstView aim_directions,
+                                                  presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
@@ -48,12 +49,12 @@ void FFighterPresentation::begin_play_presentation(presentation::AgentDisplayBat
 }
 
 void FFighterPresentation::update_visual_data(presentation::AgentDisplayBatch const& entities,
-                                              vectors3f::ConstView aim_directions) {
+                                              presentation::vectors3f::ConstView aim_directions) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
     update_ismc(entities, aim_directions);
 }
 
-void FFighterPresentation::commit_visual_data(vectors3f::ConstView locations,
+void FFighterPresentation::commit_visual_data(presentation::vectors3f::ConstView locations,
                                               presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::commit_visual_data);
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
@@ -75,7 +76,7 @@ void FFighterPresentation::configure_ismc() {
 }
 
 void FFighterPresentation::update_ismc(presentation::AgentDisplayBatch const& entities,
-                                       vectors3f::ConstView aim_directions) {
+                                       presentation::vectors3f::ConstView aim_directions) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
     auto const count{static_cast<int32>(entities.num())};
@@ -101,8 +102,8 @@ void FFighterPresentation::update_ismc(presentation::AgentDisplayBatch const& en
             transform_rotations.SetNumUninitialized(chunk.num());
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const position{to_unreal(vector_at(locations, index))};
-                FVector const direction{to_unreal(vector_at(aim_directions, index))};
+                auto const position{to_unreal(locations[index])};
+                FVector const direction{to_unreal(aim_directions[index])};
                 auto const rotation{
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 transform_positions[local_index] = position;
@@ -119,7 +120,7 @@ void FFighterPresentation::update_ismc(presentation::AgentDisplayBatch const& en
         });
 }
 
-void FFighterPresentation::draw_debug_shapes(vectors3f::ConstView locations,
+void FFighterPresentation::draw_debug_shapes(presentation::vectors3f::ConstView locations,
                                              presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
@@ -128,13 +129,12 @@ void FFighterPresentation::draw_debug_shapes(vectors3f::ConstView locations,
     auto const target_locations{target_view.locations};
 
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{to_unreal(vector_at(locations, i))};
+        FVector const ship_location{to_unreal(locations[i])};
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
         if (enable_target_debug_drawing && targets[i].is_valid()) {
-            debug_drawer.draw_line(ship_location,
-                                   FVector{to_unreal(vector_at(target_locations, i))});
+            debug_drawer.draw_line(ship_location, FVector{to_unreal(target_locations[i])});
         }
     }
 }

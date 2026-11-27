@@ -27,7 +27,9 @@ auto make_view(Entities const& entities) -> std::vector<::ioj::presentation::Age
         batches.push_back(
             {entities.entity_types[static_cast<std::size_t>(i)],
              std::span{entities.entity_ids}.subspan(i, 1),
-             entities.positions.const_view(i, 1).resolve(),
+             {entities.positions.xs().subspan(i, 1),
+              entities.positions.ys().subspan(i, 1),
+              entities.positions.zs().subspan(i, 1)},
              {},
              ::ioj::sim::HealthConstView{entities.entity_types[static_cast<std::size_t>(i)],
                                          entities.healths},

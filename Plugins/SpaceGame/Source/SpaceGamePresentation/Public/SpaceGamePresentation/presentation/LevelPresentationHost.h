@@ -21,7 +21,7 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     void initialise(FLevelVisualConfig config,
                     TOptional<FPlayerPresentationResources> player,
                     FGameAudioFacade audio,
-                    sim::collision::world_aabbs::ConstView static_bounds,
+                    presentation::world_aabbs::ConstView static_bounds,
                     sim::EntityTypeRadii const& radii,
                     presentation::LevelFrame const& frame);
     void reset();

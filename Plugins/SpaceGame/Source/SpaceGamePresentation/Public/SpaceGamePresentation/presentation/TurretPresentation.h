@@ -26,7 +26,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
     void begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                 rotators3f::ConstView rotations);
+                                 presentation::rotators3f::ConstView rotations);
     void update_visual_data(presentation::InstanceChanges const& changes);
     void commit_visual_data(presentation::AgentDisplayBatch const& entities,
                             presentation::TargetView const& target_view);

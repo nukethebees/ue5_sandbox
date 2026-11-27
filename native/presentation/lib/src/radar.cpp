@@ -141,7 +141,7 @@ auto collect_radar_instances(std::span<AgentDisplayBatch const> const batches,
             }
             ++candidate_count;
 
-            auto const world_delta{vector_at(batch.locations, index) - player_origin};
+            auto const world_delta{batch.locations[index] - player_origin};
             if (size_squared(world_delta) >= range_squared) {
                 continue;
             }

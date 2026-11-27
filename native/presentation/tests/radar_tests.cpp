@@ -1,3 +1,4 @@
+#include <ioj/column_math.h>
 #include <ioj/presentation/radar.h>
 #include <ioj/vectors3f.h>
 
@@ -28,8 +29,12 @@ struct RadarScene {
         for (std::uint32_t index{}; index < count; ++index) {
             batches.push_back({types[index],
                                std::span{ids}.subspan(index, 1),
-                               locations.const_view(index, 1).resolve(),
-                               velocities.const_view(index, 1).resolve(),
+                               {locations.xs().subspan(index, 1),
+                                locations.ys().subspan(index, 1),
+                                locations.zs().subspan(index, 1)},
+                               {velocities.xs().subspan(index, 1),
+                                velocities.ys().subspan(index, 1),
+                                velocities.zs().subspan(index, 1)},
                                sim::HealthConstView{types[index], healths},
                                std::span{teams}.subspan(index, 1)});
         }

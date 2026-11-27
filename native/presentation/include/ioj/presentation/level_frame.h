@@ -1,14 +1,12 @@
 #pragma once
 
 #include <ioj/presentation/agent_display_batch.h>
+#include <ioj/presentation/column_views.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
-#include <ioj/rotators3f_view.h>
-#include <ioj/sim/collision/world_aabbs_view.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/team_entity_array.h>
-#include <ioj/sim/lasers/laser_hit_details_view.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/frame_event_counts.h>
 #include <ioj/sim/levels/level_state.h>
@@ -62,7 +60,7 @@ struct FrameEvents {
     std::span<sim::player::PlayerEventKind const> player;
     std::span<sim::EntityId const> victims;
     std::span<Vector3f const> death_locations;
-    sim::laser_hit_details::ConstView impacts;
+    laser_hit_details::ConstView impacts;
     InstanceChanges capital_changes;
     InstanceChanges turret_changes;
 };
@@ -89,7 +87,7 @@ struct LevelFrame {
     TargetView turret_targets;
     std::span<float const> spinner_yaws;
     LaserView lasers;
-    sim::collision::world_aabbs::ConstView entity_bounds;
+    world_aabbs::ConstView entity_bounds;
     sim::EntityCounts const& entity_counts;
     std::optional<PlayerFrame> player{};
     FrameEvents events;

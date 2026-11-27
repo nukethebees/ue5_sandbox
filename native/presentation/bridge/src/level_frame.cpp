@@ -12,6 +12,18 @@
 
 namespace ioj::bridge {
 namespace {
+auto vectors(auto const& view) -> presentation::vectors3f::ConstView {
+    return {view.xs(), view.ys(), view.zs()};
+}
+
+auto rotations(auto const& view) -> presentation::rotators3f::ConstView {
+    return {view.pitches(), view.yaws(), view.rolls()};
+}
+
+auto bounds_view(auto const& view) -> presentation::world_aabbs::ConstView {
+    return {vectors(view.view_min_points()), vectors(view.view_max_points())};
+}
+
 auto instance_changes(sim::EntityFrameChanges const& events) -> presentation::InstanceChanges {
     auto const view{events.const_view().resolve()};
     return {view.kinds(), view.indices(), view.locations(), view.rotations(), view.teams()};
@@ -25,7 +37,9 @@ auto frame_events(sim::SimulationFrameEvents const& events) -> presentation::Fra
             events.player,
             deaths.victims(),
             deaths.locations(),
-            impacts,
+            {vectors(impacts.view_locations()),
+             vectors(impacts.view_emission_directions()),
+             impacts.sources()},
             instance_changes(events.capital_changes),
             instance_changes(events.turret_changes)};
 }
@@ -100,7 +114,7 @@ auto level_init(presentation::LevelPresentationSetup const& setup, sim::LevelSim
             level.level_metadata().id.value,
             spatial.grid_spec(),
             spatial.entity_type_radii(),
-            spatial.static_collision_bounds().resolve()};
+            bounds_view(spatial.static_collision_bounds())};
 }
 
 auto level_frame(sim::LevelSim const& level) -> presentation::LevelFrame {
@@ -119,43 +133,41 @@ auto level_frame(sim::LevelSim const& level) -> presentation::LevelFrame {
                    .ticks_remaining = level.run_ticks_remaining()},
         .agents = {{{CapitalShip,
                      capitals.entity_ids(),
-                     capitals.view_locations().resolve(),
+                     vectors(capitals.view_locations()),
                      {},
                      health.const_view<CapitalShip>(),
                      capitals.teams()},
                     {Fighter,
                      fighters.entity_ids(),
-                     fighters.view_locations().resolve(),
-                     fighters.view_velocities().resolve(),
+                     vectors(fighters.view_locations()),
+                     vectors(fighters.view_velocities()),
                      health.const_view<Fighter>(),
                      fighters.teams()},
                     {Turret,
                      turrets.entity_ids(),
-                     turrets.view_locations().resolve(),
+                     vectors(turrets.view_locations()),
                      {},
                      health.const_view<Turret>(),
                      turrets.teams()},
                     {TubeSpinner,
                      spinners.entity_ids(),
-                     spinners.view_locations().resolve(),
+                     vectors(spinners.view_locations()),
                      {},
                      {},
                      {}}}},
-        .capital_rotations = capitals.view_rotations().resolve(),
-        .fighter_aim = fighters.view_aim_directions().resolve(),
-        .fighter_targets = {fighters.target_ids(), fighters.view_target_locations().resolve()},
-        .turret_rotations = turrets.view_rotations().resolve(),
-        .turret_targets = {turrets.target_ids(), turrets.view_target_locations().resolve()},
+        .capital_rotations = rotations(capitals.view_rotations()),
+        .fighter_aim = vectors(fighters.view_aim_directions()),
+        .fighter_targets = {fighters.target_ids(), vectors(fighters.view_target_locations())},
+        .turret_rotations = rotations(turrets.view_rotations()),
+        .turret_targets = {turrets.target_ids(), vectors(turrets.view_target_locations())},
         .spinner_yaws = spinners.yaws(),
-        .lasers = {lasers.view_locations().resolve(),
-                   lasers.view_rotations().resolve(),
+        .lasers = {vectors(lasers.view_locations()),
+                   rotations(lasers.view_rotations()),
                    lasers.active(),
                    lasers.sources(),
                    lasers.initial_lifetimes(),
                    lasers.spawn_times()},
-        .entity_bounds = sim::collision::world_aabbs::Schema::with_columns(
-            bounds,
-            [](auto... columns) { return sim::collision::world_aabbs::ConstView{columns...}; }),
+        .entity_bounds = bounds_view(bounds),
         .entity_counts = view.entity_ledger().count_alive_per_team_and_type(),
         .events = frame_events(view.frame_events())};
     if (auto const* player{view.player()}) {

@@ -234,7 +234,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                 continue;
             }
 
-            auto const position{::ioj::vector_at(batch.locations, index)};
+            auto const position{batch.locations[index]};
             if (size_squared(context.view.camera_origin - position) >
                 maximum_overlay_range_squared) {
                 continue;

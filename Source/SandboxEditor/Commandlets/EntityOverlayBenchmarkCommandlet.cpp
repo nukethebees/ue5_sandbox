@@ -1,13 +1,9 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
 
-#include "ioj/sim/entities/entity_identity_layout.h"
 #include "ioj/sim/entities/entity_type_radii.h"
-#include "ioj/sim/turrets/turret_entity_data.h"
-#include <ioj/column_math.h>
 #include <ioj/presentation/entity_overlay.h>
 #include <ioj/presentation/entity_overlay_health_maximums.h>
 #include <ioj/presentation/entity_overlay_team_colours.h>
-#include <ioj/sim/entities/health_table.h>
 #include <ioj/team_array.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
@@ -19,21 +15,11 @@
 #include "Misc/Paths.h"
 #include "RHIGlobals.h"
 
+#include <array>
+
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 
 namespace {
-auto make_view(::ioj::sim::TurretEntityData const& entities,
-               ::ioj::sim::HealthTable const& health_table)
-    -> std::array<::ioj::presentation::AgentDisplayBatch, 1> {
-    auto const data{entities.const_view()};
-    return {{{::ioj::sim::EntityType::Turret,
-              data.entity_ids(),
-              data.view_locations().resolve(),
-              {},
-              health_table.const_view<::ioj::sim::EntityType::Turret>(),
-              data.teams()}}};
-}
-
 auto make_team_colours() -> ioj::presentation::EntityOverlayTeamColours {
     ioj::TeamArray<ioj::ui::Color4f> colours;
     colours[ioj::Team::White] = {1.f, 1.f, 1.f, 1.f};
@@ -46,8 +32,6 @@ auto make_team_colours() -> ioj::presentation::EntityOverlayTeamColours {
 }
 
 auto write_debug_frames(FString const& output_directory) -> bool {
-    ::ioj::sim::TurretEntityData entities;
-    ::ioj::sim::HealthTable health_table;
     FVector3f const positions[]{
         {1000.0f, -600.0f, 0.0f},
         {1000.0f, -300.0f, 0.0f},
@@ -75,16 +59,24 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entity_type_radii[type] = 200.0f;
     }
     auto const count{UE_ARRAY_COUNT(positions)};
-    entities.add_defaulted(count);
-    for (int32 index{0}; index < count; ++index) {
-        entities.view().entity_ids()[index] =
+    std::array<::ioj::sim::EntityId, count> ids{};
+    std::array<::ioj::Team, count> teams{};
+    std::array<float, count> xs{};
+    std::array<float, count> ys{};
+    std::array<float, count> zs{};
+    for (int32 index{}; index < count; ++index) {
+        ids[index] =
             ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
-        ::ioj::set_vector(entities.view().view_locations(), index, ioj::Vector3f{positions[index]});
-        entities.view().teams()[index] =
-            static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
+        teams[index] = static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
+        xs[index] = positions[index].X;
+        ys[index] = positions[index].Y;
+        zs[index] = positions[index].Z;
     }
-    health_table.initialise_entities<::ioj::sim::EntityType::Turret>(
-        entities.const_view().entity_ids(), health);
+
+    using enum ::ioj::sim::EntityType;
+    std::array<::ioj::presentation::AgentDisplayBatch, 1> const batches{{
+        {Turret, ids, {xs, ys, zs}, {}, ::ioj::sim::HealthConstView{Turret, health}, teams},
+    }};
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));
@@ -100,14 +92,8 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     std::vector<ioj::ui::entity_overlay::Instance> collected;
     auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
     auto& frame{frame_store->next()};
-    static_cast<void>(
-        ioj::presentation::collect_entity_overlay_instances(make_view(entities, health_table),
-                                                            entity_type_radii,
-                                                            make_team_colours(),
-                                                            {100, 100, 100},
-                                                            {},
-                                                            10000.0f,
-                                                            collected));
+    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
+        batches, entity_type_radii, make_team_colours(), {100, 100, 100}, {}, 10000.0f, collected));
     frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const before_path{FPaths::Combine(output_directory, TEXT("camera_plane_before.png"))};
@@ -115,16 +101,12 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         return false;
     }
 
-    ::ioj::set_vector(entities.view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
+    xs.back() = 100.f;
+    ys.back() = 50.f;
+    zs.back() = 50.f;
     auto& moved_frame{frame_store->next()};
-    static_cast<void>(
-        ioj::presentation::collect_entity_overlay_instances(make_view(entities, health_table),
-                                                            entity_type_radii,
-                                                            make_team_colours(),
-                                                            {100, 100, 100},
-                                                            {},
-                                                            10000.0f,
-                                                            collected));
+    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
+        batches, entity_type_radii, make_team_colours(), {100, 100, 100}, {}, 10000.0f, collected));
     moved_frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const after_path{FPaths::Combine(output_directory, TEXT("camera_plane_after.png"))};

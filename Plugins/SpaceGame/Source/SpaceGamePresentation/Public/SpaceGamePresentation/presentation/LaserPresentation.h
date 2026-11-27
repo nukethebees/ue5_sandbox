@@ -38,7 +38,7 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     void fill_chunk(presentation::LaserView const& lasers,
                     FSandboxISMCInstanceChunkWriter& chunk) const;
     void update_ismc(presentation::LaserView const& lasers);
-    void queue_hit_sparks(sim::laser_hit_details::ConstView impacts,
+    void queue_hit_sparks(presentation::laser_hit_details::ConstView impacts,
                           sim::SimTick tick,
                           std::span<sim::FrameEventCounts const> ticks);
 

@@ -111,9 +111,9 @@ void FLaserPresentation::fill_chunk(presentation::LaserView const& lasers,
     auto const chunk_count{chunk.num()};
     auto const locations{lasers.locations};
     auto const rotations{lasers.rotations};
-    auto const pitches{rotations.pitches()};
-    auto const yaws{rotations.yaws()};
-    auto const rolls{rotations.rolls()};
+    auto const pitches{rotations.pitches};
+    auto const yaws{rotations.yaws};
+    auto const rolls{rotations.rolls};
     auto const sources{lasers.sources};
     auto const initial_lifetimes{lasers.initial_lifetimes};
     auto const spawn_times{lasers.spawn_times};
@@ -124,7 +124,7 @@ void FLaserPresentation::fill_chunk(presentation::LaserView const& lasers,
     for (int32 local_index{}; local_index < chunk_count; ++local_index) {
         auto const index{visible_indices_[first_index + local_index]};
         auto const location{
-            FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]}};
+            FVector3f{locations.xs[index], locations.ys[index], locations.zs[index]}};
         auto const rotation{FRotator3f{pitches[index], yaws[index], rolls[index]}.Quaternion()};
         transform_positions[local_index] = location;
         transform_rotations[local_index] = rotation;
@@ -141,7 +141,7 @@ void FLaserPresentation::fill_chunk(presentation::LaserView const& lasers,
                                                             transform_rotations);
 }
 
-void FLaserPresentation::queue_hit_sparks(sim::laser_hit_details::ConstView impacts,
+void FLaserPresentation::queue_hit_sparks(presentation::laser_hit_details::ConstView impacts,
                                           sim::SimTick tick,
                                           std::span<sim::FrameEventCounts const> ticks) {
     if (actor_config->impact_sparks.count <= 0) {
@@ -149,20 +149,20 @@ void FLaserPresentation::queue_hit_sparks(sim::laser_hit_details::ConstView impa
     }
 
     auto const& style{actor_config->impact_sparks};
-    auto const locations{impacts.view_locations()};
-    auto const sources{impacts.sources()};
-    auto const directions{impacts.view_emission_directions()};
+    auto const locations{impacts.locations};
+    auto const sources{impacts.sources};
+    auto const directions{impacts.emission_directions};
 
     std::uint32_t first{};
     for (auto const counts : ticks) {
         for (auto index{first}; index < counts.impacts; ++index) {
-            auto const location{to_unreal(vector_at(locations, index))};
+            auto const location{to_unreal(locations[index])};
             auto const colour{source_colour(sources[index])};
             spark_effects_->queue_burst({
                 .emission =
                     {
                         .location = Vector3f{location},
-                        .direction = vector_at(directions, index),
+                        .direction = directions[index],
                         .colour = {colour.R, colour.G, colour.B},
                         .seed = SpaceGame::LaserPresentation::Private::make_seed(
                             tick, location, static_cast<int32>(index - first)),

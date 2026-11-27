@@ -1,11 +1,10 @@
 #pragma once
 
-#include <ioj/column_math.h>
 #include <ioj/levels/team.h>
+#include <ioj/presentation/column_views.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/health_const_view.h>
-#include <ioj/vectors3f_view.h>
 
 #include <span>
 

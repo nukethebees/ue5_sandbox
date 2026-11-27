@@ -89,7 +89,7 @@ auto collect_entity_overlay_instances(std::span<AgentDisplayBatch const> const b
             auto const display_data{ui::entity_overlay::pack_display_data(
                 entity_overlay_detail::team_colour(entity_type, batch.team(index), team_colours))};
             auto const instance{
-                collector.try_add(vector_at(batch.locations, index),
+                collector.try_add(batch.locations[index],
                                   static_cast<float>(health.value()) * inverse_health,
                                   world_radius,
                                   display_data)};

@@ -30,13 +30,13 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
 
     void clear_runtime_state_presentation();
     void begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                 rotators3f::ConstView rotations);
+                                 presentation::rotators3f::ConstView rotations);
     void update_visual_data(presentation::InstanceChanges const& changes);
     void commit_visual_data();
 
     void configure_ismc();
     void add_initial_visual_instances(presentation::AgentDisplayBatch const& entities,
-                                      rotators3f::ConstView rotations);
+                                      presentation::rotators3f::ConstView rotations);
     void trigger_death_effects(std::span<sim::FrameEventCounts const> ticks,
                                std::span<sim::EntityId const> victims,
                                std::span<Vector3f const> death_locations);

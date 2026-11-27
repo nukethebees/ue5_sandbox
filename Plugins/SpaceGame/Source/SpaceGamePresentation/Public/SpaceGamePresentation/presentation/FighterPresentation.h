@@ -24,17 +24,17 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
   private:
     void clear_runtime_state_presentation();
     void begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                 vectors3f::ConstView aim_directions,
+                                 presentation::vectors3f::ConstView aim_directions,
                                  presentation::TargetView const& target_view);
     void update_visual_data(presentation::AgentDisplayBatch const& entities,
-                            vectors3f::ConstView aim_directions);
-    void commit_visual_data(vectors3f::ConstView locations,
+                            presentation::vectors3f::ConstView aim_directions);
+    void commit_visual_data(presentation::vectors3f::ConstView locations,
                             presentation::TargetView const& target_view);
 
     void configure_ismc();
     void update_ismc(presentation::AgentDisplayBatch const& entities,
-                     vectors3f::ConstView aim_directions);
-    void draw_debug_shapes(vectors3f::ConstView locations,
+                     presentation::vectors3f::ConstView aim_directions);
+    void draw_debug_shapes(presentation::vectors3f::ConstView locations,
                            presentation::TargetView const& target_view);
 
     USandboxISMCComponent* instances{nullptr};

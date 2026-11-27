@@ -54,7 +54,7 @@ void FCapitalPresentation::clear_runtime_state_presentation() {
 }
 
 void FCapitalPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                                   rotators3f::ConstView rotations) {
+                                                   presentation::rotators3f::ConstView rotations) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::begin_play_presentation);
 
     auto* const world{instances->GetWorld()};
@@ -107,7 +107,8 @@ void FCapitalPresentation::configure_ismc() {
 }
 
 void FCapitalPresentation::add_initial_visual_instances(
-    presentation::AgentDisplayBatch const& entities, rotators3f::ConstView rotations) {
+    presentation::AgentDisplayBatch const& entities,
+    presentation::rotators3f::ConstView rotations) {
     auto const n_to_add{static_cast<int32>(entities.num())};
 
     if (n_to_add == 0) {
@@ -131,13 +132,13 @@ void FCapitalPresentation::add_initial_visual_instances(
     auto const locations{entities.locations};
     TArray<FTransform> transforms;
     transforms.Reserve(n_to_add);
-    auto const pitches{rotations.pitches()};
-    auto const yaws{rotations.yaws()};
-    auto const rolls{rotations.rolls()};
+    auto const pitches{rotations.pitches};
+    auto const yaws{rotations.yaws};
+    auto const rolls{rotations.rolls};
     for (int32 index{}; index < n_to_add; ++index) {
         transforms.Emplace(
             FRotator{to_unreal(Rotator3f{pitches[index], yaws[index], rolls[index]})},
-            FVector{to_unreal(vector_at(locations, index))});
+            FVector{to_unreal(locations[index])});
     }
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};

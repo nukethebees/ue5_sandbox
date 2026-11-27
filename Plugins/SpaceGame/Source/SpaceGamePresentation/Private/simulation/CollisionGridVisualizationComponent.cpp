@@ -237,14 +237,14 @@ void UCollisionGridVisualizationComponent::configure(
 }
 
 void UCollisionGridVisualizationComponent::update_entity_bounds(
-    sim::collision::world_aabbs::ConstView const entity_aabbs) {
+    presentation::world_aabbs::ConstView const entity_aabbs) {
     if (!show_collision_bounds_) {
         return;
     }
 
-    auto const entity_count{static_cast<int32>(entity_aabbs.num())};
-    auto const entity_min_points{entity_aabbs.view_min_points()};
-    auto const entity_max_points{entity_aabbs.view_max_points()};
+    auto const entity_count{static_cast<int32>(entity_aabbs.min_points.num())};
+    auto const entity_min_points{entity_aabbs.min_points};
+    auto const entity_max_points{entity_aabbs.max_points};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
@@ -255,10 +255,10 @@ void UCollisionGridVisualizationComponent::update_entity_bounds(
 }
 
 void UCollisionGridVisualizationComponent::set_static_bounds(
-    sim::collision::world_aabbs::ConstView const static_aabbs) {
-    auto const static_count{static_cast<int32>(static_aabbs.num())};
-    auto const static_min_points{static_aabbs.view_min_points()};
-    auto const static_max_points{static_aabbs.view_max_points()};
+    presentation::world_aabbs::ConstView const static_aabbs) {
+    auto const static_count{static_cast<int32>(static_aabbs.min_points.num())};
+    auto const static_min_points{static_aabbs.min_points};
+    auto const static_max_points{static_aabbs.max_points};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
         static_bounds_[i] =

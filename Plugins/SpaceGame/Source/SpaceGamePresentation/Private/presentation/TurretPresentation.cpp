@@ -44,7 +44,7 @@ void FTurretPresentation::clear_runtime_state_presentation() {
 }
 
 void FTurretPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
-                                                  rotators3f::ConstView rotations) {
+                                                  presentation::rotators3f::ConstView rotations) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
@@ -61,12 +61,12 @@ void FTurretPresentation::begin_play_presentation(presentation::AgentDisplayBatc
     auto const count{static_cast<int32>(entities.num())};
     ismc_transforms.Reserve(count);
     auto const locations{entities.locations};
-    auto const pitches{rotations.pitches()};
-    auto const yaws{rotations.yaws()};
-    auto const rolls{rotations.rolls()};
+    auto const pitches{rotations.pitches};
+    auto const yaws{rotations.yaws};
+    auto const rolls{rotations.rolls};
     for (int32 i{}; i < count; ++i) {
         ismc_transforms.Emplace(FRotator{to_unreal(Rotator3f{pitches[i], yaws[i], rolls[i]})},
-                                FVector{to_unreal(vector_at(locations, i))});
+                                FVector{to_unreal(locations[i])});
     }
     add_initial_visual_instances(entities);
     validate_array_sizes(static_cast<int32>(entities.num()));
@@ -192,13 +192,13 @@ void FTurretPresentation::draw_debugging_shapes(presentation::AgentDisplayBatch 
     auto const ids{entities.ids};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{FVector{to_unreal(vector_at(locations, i))}};
+        auto const turret_location{FVector{to_unreal(locations[i])}};
 
         if (draw_target_arrows_enabled) {
             auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
-                auto const target_location{FVector{to_unreal(vector_at(target_locations, i))}};
+                auto const target_location{FVector{to_unreal(target_locations[i])}};
                 drawer.draw_line(turret_location, target_location);
             }
         }
