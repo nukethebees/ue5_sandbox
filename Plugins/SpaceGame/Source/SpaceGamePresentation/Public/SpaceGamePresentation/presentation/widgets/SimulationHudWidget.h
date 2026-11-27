@@ -43,9 +43,6 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     UForceStatusWidget* force_status_widget{nullptr};
 
     [[nodiscard]] auto has_ui_style() const -> bool { return has_ui_style_; }
-    [[nodiscard]] auto entity_overlay_defend_colour() const -> FLinearColor {
-        return entity_overlay_defend_colour_;
-    }
   private:
     void apply_entity_overlay_colours();
 
@@ -54,8 +51,6 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
     FLinearColor entity_overlay_background_colour_{};
     FLinearColor entity_overlay_fill_colour_{};
-    FLinearColor entity_overlay_defend_colour_{};
-    FLinearColor entity_overlay_destroy_colour_{};
     FLinearColor entity_overlay_soft_target_neutral_colour_{};
     FLinearColor entity_overlay_soft_target_in_range_colour_{};
     bool has_ui_style_{};

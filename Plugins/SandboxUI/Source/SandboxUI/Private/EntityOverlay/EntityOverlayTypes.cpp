@@ -10,54 +10,6 @@ void FEntityOverlayCollector::begin(FVector3f const origin,
     output_instances_->Reset();
 }
 
-auto FEntityOverlayCollector::try_add(FVector3f const position,
-                                      float normalized_health,
-                                      float world_radius,
-                                      ioj::ui::entity_overlay::ObjectiveRole const objective_role,
-                                      bool const bypass_range) -> bool {
-    auto display_data{ioj::ui::entity_overlay::pack_display_data(objective_role)};
-    return try_add_impl(position, normalized_health, world_radius, display_data, bypass_range);
-}
-
-auto FEntityOverlayCollector::try_add_colored(
-    FVector3f const position,
-    float normalized_health,
-    float world_radius,
-    FLinearColor const fill_color,
-    ioj::ui::entity_overlay::ObjectiveRole const objective_role,
-    bool const bypass_range) -> bool {
-    return try_add_impl(
-        position,
-        normalized_health,
-        world_radius,
-        ioj::ui::entity_overlay::pack_display_data(
-            objective_role, {fill_color.R, fill_color.G, fill_color.B, fill_color.A}),
-        bypass_range);
-}
-
-auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
-                                           float normalized_health,
-                                           float world_radius,
-                                           uint32 const display_data,
-                                           bool const bypass_range) -> bool {
-    check(output_instances_);
-
-    auto const addition{collector_.try_add({position.X, position.Y, position.Z},
-                                           normalized_health,
-                                           world_radius,
-                                           display_data,
-                                           bypass_range)};
-    if (!addition) {
-        return false;
-    }
-    auto const& instance{addition->instance};
-    auto const added_index{output_instances_->Add(instance)};
-    if (addition->swap_index != ioj::ui::entity_overlay::invalid_index) {
-        output_instances_->Swap(addition->swap_index, added_index);
-    }
-    return true;
-}
-
 auto FEntityOverlayCollector::append(FEntityOverlaySourceView const source) -> int32 {
     check(output_instances_);
     if (!source.is_valid()) {
@@ -68,8 +20,13 @@ auto FEntityOverlayCollector::append(FEntityOverlaySourceView const source) -> i
     auto const count{source.positions.Num()};
     output_instances_->Reserve(previous_count + count);
     for (int32 index{0}; index < count; ++index) {
-        static_cast<void>(try_add(
-            source.positions[index], source.health_values[index], source.world_radii[index]));
+        auto const position{source.positions[index]};
+        if (auto const instance{collector_.try_add({position.X, position.Y, position.Z},
+                                                   source.health_values[index],
+                                                   source.world_radii[index],
+                                                   0)}) {
+            output_instances_->Add(*instance);
+        }
     }
     return output_instances_->Num() - previous_count;
 }

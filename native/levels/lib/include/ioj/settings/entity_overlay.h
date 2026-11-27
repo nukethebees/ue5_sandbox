@@ -29,9 +29,6 @@ struct EntityOverlay {
         maximum_bar_scale,
         inset_pixels,
         maximum_inset_height_ratio,
-        objective_frame_pixels,
-        objective_bar_height_scale,
-        screen_edge_padding_pixels,
         soft_target,
     };
 
@@ -63,15 +60,6 @@ struct EntityOverlay {
         }
         if constexpr (Selected == Field::maximum_inset_height_ratio) {
             return (self.maximum_inset_height_ratio);
-        }
-        if constexpr (Selected == Field::objective_frame_pixels) {
-            return (self.objective_frame_pixels);
-        }
-        if constexpr (Selected == Field::objective_bar_height_scale) {
-            return (self.objective_bar_height_scale);
-        }
-        if constexpr (Selected == Field::screen_edge_padding_pixels) {
-            return (self.screen_edge_padding_pixels);
         }
         if constexpr (Selected == Field::soft_target) {
             return (self.soft_target);
@@ -106,15 +94,6 @@ struct EntityOverlay {
             case Field::maximum_inset_height_ratio:
                 return invoke_field<Field::maximum_inset_height_ratio>(
                     self, std::forward<Visitor>(visitor));
-            case Field::objective_frame_pixels:
-                return invoke_field<Field::objective_frame_pixels>(self,
-                                                                   std::forward<Visitor>(visitor));
-            case Field::objective_bar_height_scale:
-                return invoke_field<Field::objective_bar_height_scale>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::screen_edge_padding_pixels:
-                return invoke_field<Field::screen_edge_padding_pixels>(
-                    self, std::forward<Visitor>(visitor));
             case Field::soft_target:
                 return invoke_field<Field::soft_target>(self, std::forward<Visitor>(visitor));
         }
@@ -130,22 +109,18 @@ struct EntityOverlay {
     float maximum_bar_scale{2.f};
     float inset_pixels{1.f};
     float maximum_inset_height_ratio{0.4f};
-    float objective_frame_pixels{3.f};
-    float objective_bar_height_scale{1.4f};
-    float screen_edge_padding_pixels{12.f};
     SoftTarget soft_target{};
 };
 } // namespace ioj::settings
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::EntityOverlay::Field>() noexcept -> std::size_t {
-    return 12ULL;
+    return 9ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::EntityOverlay::Field, Name>{PackedStrings{
     "enabled\000maximum_range\000bar_size_pixels\000screen_offset_pixels\000minimum_bar_"
-    "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000objective_frame_"
-    "pixels\000objective_bar_height_scale\000screen_edge_padding_pixels\000soft_target",
-    std::array<std::uint8_t, 13>{0, 8, 22, 38, 59, 77, 95, 108, 135, 158, 185, 212, 224}}};
+    "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000soft_target",
+    std::array<std::uint8_t, 10>{0, 8, 22, 38, 59, 77, 95, 108, 135, 147}}};
 } // namespace ioj

@@ -30,9 +30,6 @@
         :maximum-bar-scale 2
         :inset-pixels 1
         :maximum-inset-height-ratio 0.4
-        :objective-frame-pixels 3
-        :objective-bar-height-scale 1.4
-        :screen-edge-padding-pixels 12
         :soft-target (soft-target
           :acquisition-radius-pixels 72
           :retention-radius-pixels 96
@@ -58,10 +55,7 @@
         :combat-cell-radius 0.075
         :tactical-cell-radius 0.045
         :strategic-cell-radius 0.025
-        :glyph-size-scale 1
-        :objective-size-multiplier 1.2
-        :objective-ring-padding-pixels 3
-        :objective-ring-thickness-pixels 1.25))
+        :glyph-size-scale 1))
 
     :starfield (starfield
       :generation (generation

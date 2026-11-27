@@ -4,7 +4,7 @@
 #include <ioj/presentation/agent_display_batch.h>
 #include <ioj/settings/soft_target.h>
 #include <ioj/sim/entities/entity_type_radii.h>
-#include <ioj/ui/entity_overlay.h>
+#include <ioj/ui/types.h>
 
 #include <array>
 #include <optional>
@@ -95,7 +95,6 @@ class SoftTargetState {
 
 auto select_soft_target(std::span<AgentDisplayBatch const> batches,
                         sim::EntityTypeRadii const& entity_type_radii,
-                        std::span<ui::entity_overlay::ObjectiveRole const> objective_roles,
                         SoftTargetContext const& context,
                         settings::SoftTarget const& settings,
                         sim::EntityId current_target) -> SoftTargetResult;

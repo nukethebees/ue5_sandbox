@@ -81,9 +81,6 @@
     (member maximum_bar_scale float :initializer 2.f :finite true)
     (member inset_pixels float :initializer 1.f :finite true)
     (member maximum_inset_height_ratio float :initializer 0.4f :finite true)
-    (member objective_frame_pixels float :initializer 3.f :finite true)
-    (member objective_bar_height_scale float :initializer 1.4f :finite true)
-    (member screen_edge_padding_pixels float :initializer 12.f :finite true)
     (member soft_target ioj::settings::SoftTarget :initializer "")
     (projections (cpp))))
 
@@ -105,9 +102,6 @@
     (member tactical_cell_radius float :initializer 0.045f :finite true)
     (member strategic_cell_radius float :initializer 0.025f :finite true)
     (member glyph_size_scale float :initializer 1.f :finite true)
-    (member objective_size_multiplier float :initializer 1.2f :finite true)
-    (member objective_ring_padding_pixels float :initializer 3.f :finite true)
-    (member objective_ring_thickness_pixels float :initializer 1.25f :finite true)
     (projections (cpp))))
 
 (module presentation_settings

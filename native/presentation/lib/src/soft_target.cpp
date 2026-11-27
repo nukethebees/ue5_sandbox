@@ -187,11 +187,9 @@ auto SoftTargetState::advance(std::span<AgentDisplayBatch const> const batches,
 
 auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> const batches,
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
-                        std::span<ui::entity_overlay::ObjectiveRole const> const objective_roles,
                         SoftTargetContext const& context,
                         settings::SoftTarget const& settings,
                         ::ioj::sim::EntityId const current_target) -> SoftTargetResult {
-    assert(objective_roles.size() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};
     }
@@ -220,29 +218,25 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
     bool has_best_candidate{false};
     bool has_current_candidate{false};
 
-    std::uint32_t output_index{};
     for (auto const& batch : batches) {
         auto const batch_count{static_cast<std::uint32_t>(batch.num())};
         assert(batch.ids.size() == static_cast<std::size_t>(batch_count));
         if (!is_supported_entity_type(batch.type)) {
-            output_index += batch_count;
             continue;
         }
 
         auto const world_radius{std::max(entity_type_radii[batch.type], 0.0f)};
         auto const right_offset{context.camera_right * world_radius};
         auto const up_offset{context.camera_up * world_radius};
-        for (std::uint32_t index{}; index < batch_count; ++index, ++output_index) {
+        for (std::uint32_t index{}; index < batch_count; ++index) {
             if (::ioj::sim::is_dead(batch.health(index)) ||
                 batch.team(index) == context.player_team) {
                 continue;
             }
 
             auto const position{::ioj::vector_at(batch.locations, index)};
-            auto const objective{objective_roles[output_index] !=
-                                 ui::entity_overlay::ObjectiveRole::None};
-            if (!objective && size_squared(context.view.camera_origin - position) >
-                                  maximum_overlay_range_squared) {
+            if (size_squared(context.view.camera_origin - position) >
+                maximum_overlay_range_squared) {
                 continue;
             }
 

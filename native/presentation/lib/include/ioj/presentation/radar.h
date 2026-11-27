@@ -3,7 +3,6 @@
 #include <ioj/presentation/agent_display_batch.h>
 #include <ioj/settings/radar.h>
 #include <ioj/transform3d.h>
-#include <ioj/ui/entity_overlay.h>
 #include <ioj/ui/radar.h>
 #include <ioj/vector.h>
 
@@ -29,9 +28,8 @@ struct RadarCollectionResult {
     std::int32_t visible_count{};
 };
 
-// Objective roles follow the concatenated batch rows. The player marker is emitted last.
+// The player marker is emitted last.
 auto collect_radar_instances(std::span<AgentDisplayBatch const> batches,
-                             std::span<ui::entity_overlay::ObjectiveRole const> objective_roles,
                              RadarContactColours const& contact_colours,
                              Transform3d const& player_transform,
                              sim::EntityId player_id,

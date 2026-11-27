@@ -26,9 +26,6 @@ struct TypeWriter<settings::EntityOverlay> : RecordWriter<settings::EntityOverla
         visit("maximum-bar-scale", &T::maximum_bar_scale);
         visit("inset-pixels", &T::inset_pixels);
         visit("maximum-inset-height-ratio", &T::maximum_inset_height_ratio);
-        visit("objective-frame-pixels", &T::objective_frame_pixels);
-        visit("objective-bar-height-scale", &T::objective_bar_height_scale);
-        visit("screen-edge-padding-pixels", &T::screen_edge_padding_pixels);
         visit("soft-target", &T::soft_target);
     }
 };

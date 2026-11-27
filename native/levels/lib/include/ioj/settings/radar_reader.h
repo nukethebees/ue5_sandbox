@@ -19,7 +19,7 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
             ctx, "radar", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field >= Field::combat_range &&
-                                  field <= Field::objective_ring_thickness_pixels) {
+                                  field <= Field::glyph_size_scale) {
                         read(member, constraints::finite);
                     } else {
                         read(member);
@@ -31,21 +31,17 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 14> field_names{
-        "enabled",
-        "combat-range",
-        "tactical-range",
-        "maximum-range",
-        "combat-display-radius",
-        "grid-opacity",
-        "core-cell-radius",
-        "combat-cell-radius",
-        "tactical-cell-radius",
-        "strategic-cell-radius",
-        "glyph-size-scale",
-        "objective-size-multiplier",
-        "objective-ring-padding-pixels",
-        "objective-ring-thickness-pixels"};
+    static constexpr std::array<std::string_view, 11> field_names{"enabled",
+                                                                  "combat-range",
+                                                                  "tactical-range",
+                                                                  "maximum-range",
+                                                                  "combat-display-radius",
+                                                                  "grid-opacity",
+                                                                  "core-cell-radius",
+                                                                  "combat-cell-radius",
+                                                                  "tactical-cell-radius",
+                                                                  "strategic-cell-radius",
+                                                                  "glyph-size-scale"};
 };
 
 } // namespace ioj::s7

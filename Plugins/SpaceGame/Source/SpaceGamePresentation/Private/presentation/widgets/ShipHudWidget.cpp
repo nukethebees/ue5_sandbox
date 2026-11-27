@@ -210,6 +210,7 @@ void UShipHudWidget::set_common_widget_properties() {
 void UShipHudWidget::apply_ui_style(FGameUiStyle const& style) {
     Super::apply_ui_style(style);
     auto const& hud_style{style.hud()};
+    radar_colour_ = hud_style.radar;
     reticle_normal_colour_ = hud_style.reticle_normal;
     reticle_warning_colour_ = hud_style.reticle_warning;
     reticle_danger_colour_ = hud_style.reticle_danger;
@@ -397,9 +398,8 @@ void UShipHudWidget::apply_radar_colours() {
         return;
     }
 
-    radar_style_.objective_color = entity_overlay_defend_colour();
-    radar_style_.player_color = entity_overlay_defend_colour();
-    radar_style_.structure_color = entity_overlay_defend_colour();
+    radar_style_.player_color = radar_colour_;
+    radar_style_.structure_color = radar_colour_;
     radar_style_.plane_color = FLinearColor::Transparent;
     if (radar_widget_.IsValid()) {
         radar_widget_->set_style(radar_style_);

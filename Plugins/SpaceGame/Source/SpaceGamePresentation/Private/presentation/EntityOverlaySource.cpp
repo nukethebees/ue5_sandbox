@@ -6,13 +6,12 @@
 
 #include <algorithm>
 
-auto select_soft_target(
-    std::span<ioj::presentation::AgentDisplayBatch const> const batches,
-    ioj::sim::EntityTypeRadii const& entity_type_radii,
-    std::span<ioj::ui::entity_overlay::ObjectiveRole const> const objective_roles,
-    FSoftTargetSelectionContext const& context,
-    ioj::settings::SoftTarget const& settings,
-    ioj::sim::EntityId const current_target) -> ioj::presentation::SoftTargetResult {
+auto select_soft_target(std::span<ioj::presentation::AgentDisplayBatch const> const batches,
+                        ioj::sim::EntityTypeRadii const& entity_type_radii,
+                        FSoftTargetSelectionContext const& context,
+                        ioj::settings::SoftTarget const& settings,
+                        ioj::sim::EntityId const current_target)
+    -> ioj::presentation::SoftTargetResult {
     if (!context.view.is_valid()) {
         return {};
     }
@@ -32,5 +31,5 @@ auto select_soft_target(
         std::copy_n(view.view_projection.M[row], 4, native.view.view_projection[row].begin());
     }
     return ioj::presentation::select_soft_target(
-        batches, entity_type_radii, objective_roles, native, settings, current_target);
+        batches, entity_type_radii, native, settings, current_target);
 }

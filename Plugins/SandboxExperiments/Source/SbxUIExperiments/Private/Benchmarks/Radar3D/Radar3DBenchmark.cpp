@@ -23,8 +23,6 @@ auto make_frame(int32 const contact_count) -> FRadarFrame {
         auto const radius{0.18f + 0.68f * FMath::Fmod(index * 0.618034f, 1.0f)};
         auto const angle{fraction * 17.0f + index * 0.37f};
         auto const flags{index % 31 == 0   ? ioj::ui::radar::ContactFlags::Selected
-                         : index % 23 == 0 ? ioj::ui::radar::ContactFlags::DestroyObjective
-                         : index % 19 == 0 ? ioj::ui::radar::ContactFlags::DefendObjective
                                            : ioj::ui::radar::ContactFlags::None};
         frame.instances[index] = {
             .radar_position = ioj::Vector3f{radius * FMath::Cos(angle),

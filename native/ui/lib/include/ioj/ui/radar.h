@@ -20,14 +20,7 @@ enum class Glyph : std::uint8_t {
 enum class ContactFlags : std::uint8_t {
     None = 0,
     Selected = 1 << 0,
-    DefendObjective = 1 << 1,
-    DestroyObjective = 1 << 2,
 };
-
-constexpr auto operator|(ContactFlags const lhs, ContactFlags const rhs) -> ContactFlags {
-    return static_cast<ContactFlags>(static_cast<std::uint8_t>(lhs) |
-                                     static_cast<std::uint8_t>(rhs));
-}
 
 struct Instance {
     Vector3f radar_position{};

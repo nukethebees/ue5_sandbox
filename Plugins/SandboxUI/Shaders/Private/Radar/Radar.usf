@@ -13,7 +13,6 @@ StructuredBuffer<RadarInstance> Instances;
 int2 OutputSize;
 float4 PlaneColor;
 float4 StructureColor;
-float4 ObjectiveColor;
 float4 SelectionColor;
 float4 PlayerColor;
 float GridOpacity;
@@ -27,9 +26,6 @@ float TacticalDisplayRadius;
 float StemOpacity;
 float GlyphIntensity;
 float GlyphSizeScale;
-float ObjectiveSizeMultiplier;
-float ObjectiveRingPaddingPixels;
-float ObjectiveRingThicknessPixels;
 float ContactGlowOpacity;
 float EmphasizedGlowOpacity;
 
@@ -42,8 +38,6 @@ static uint const glyph_missile = 4;
 static uint const glyph_waypoint = 5;
 static uint const glyph_unknown = 6;
 static uint const flag_selected = 1u;
-static uint const flag_defend_objective = 2u;
-static uint const flag_destroy_objective = 4u;
 
 float logical_pixel_scale() {
     return float(min(OutputSize.x, OutputSize.y)) / 640.0;
@@ -355,18 +349,10 @@ GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
     output.flags = (instance.packed_glyph_and_flags >> 8u) & 0xffu;
     output.pixel_scale = logical_pixel_scale();
     output.altitude = instance.radar_position.z;
-    float const objective =
-        (output.flags & (flag_defend_objective | flag_destroy_objective)) != 0u ? 1.0 : 0.0;
     output.size = glyph_base_size(output.glyph) * output.pixel_scale *
-                  clamp(instance.size_scale, 0.85, 1.2) * max(GlyphSizeScale, 0.01) *
-                  lerp(1.0, max(ObjectiveSizeMultiplier, 1.0), objective);
+                  clamp(instance.size_scale, 0.85, 1.2) * max(GlyphSizeScale, 0.01);
     float const emphasized = output.flags == 0u ? 0.0 : 1.0;
-    float decoration_extent = lerp(1.5, 6.0, emphasized) * output.pixel_scale;
-    decoration_extent = max(
-        decoration_extent,
-        objective *
-            (max(ObjectiveRingPaddingPixels, 0.0) + max(ObjectiveRingThicknessPixels, 0.0) + 1.0) *
-            output.pixel_scale);
+    float const decoration_extent = lerp(1.5, 6.0, emphasized) * output.pixel_scale;
     float const extent = output.size + decoration_extent;
     float2 const corner = quad_corner(vertex_id);
     output.local_position = (corner * 2.0 - 1.0) * extent;
@@ -448,34 +434,23 @@ float4 radar_glyph_ps(GlyphOutput input)
     float const sdf = glyph_sdf(glyph_position, input.glyph, input.size) * input.size;
     float const core = sdf_coverage(sdf);
     float const selected = (input.flags & flag_selected) != 0u ? 1.0 : 0.0;
-    float const objective =
-        (input.flags & (flag_defend_objective | flag_destroy_objective)) != 0u ? 1.0 : 0.0;
-    float const emphasized = max(selected, objective);
     float const player = input.glyph == glyph_player ? 1.0 : 0.0;
-    float const glow_radius = lerp(1.0, 2.0, emphasized) * input.pixel_scale;
-    float const glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, emphasized);
+    float const glow_radius = lerp(1.0, 2.0, selected) * input.pixel_scale;
+    float const glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, selected);
     float const glow = (1.0 - smoothstep(0.0, glow_radius, max(sdf, 0.0))) * glow_opacity;
 
-    float const objective_ring_radius =
-        input.size + max(ObjectiveRingPaddingPixels, 0.0) * input.pixel_scale;
-    float const objective_ring_distance =
-        abs(length(input.local_position) - objective_ring_radius) -
-        max(ObjectiveRingThicknessPixels, 0.0) * input.pixel_scale * 0.5;
-    float const objective_outline = objective * sdf_coverage(objective_ring_distance);
     float const selection_distance =
         selection_brackets_sdf(input.local_position, input.size, input.pixel_scale);
     float const selection_brackets = selected * sdf_coverage(selection_distance);
     float const below_opacity = input.altitude < -epsilon ? 0.88 : 1.0;
-    float const alpha = saturate(max(core * input.color.a * below_opacity,
-                                     max(glow, max(objective_outline, selection_brackets))));
+    float const alpha =
+        saturate(max(core * input.color.a * below_opacity, max(glow, selection_brackets)));
 
     float3 core_color = lerp(input.color.rgb, PlayerColor.rgb, player);
     core_color *= GlyphIntensity;
     float3 halo_color = core_color;
-    halo_color = lerp(halo_color, ObjectiveColor.rgb, objective);
     halo_color = lerp(halo_color, SelectionColor.rgb, selected);
     float3 color = lerp(halo_color, core_color, core);
-    color = lerp(color, ObjectiveColor.rgb, objective_outline);
     color = lerp(color, SelectionColor.rgb, selection_brackets);
     clip(alpha - epsilon);
     return float4(color, alpha);

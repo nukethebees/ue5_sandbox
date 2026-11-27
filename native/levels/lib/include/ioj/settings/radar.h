@@ -30,9 +30,6 @@ struct Radar {
         tactical_cell_radius,
         strategic_cell_radius,
         glyph_size_scale,
-        objective_size_multiplier,
-        objective_ring_padding_pixels,
-        objective_ring_thickness_pixels,
     };
 
     template <Field Selected, typename Self>
@@ -73,15 +70,6 @@ struct Radar {
         if constexpr (Selected == Field::glyph_size_scale) {
             return (self.glyph_size_scale);
         }
-        if constexpr (Selected == Field::objective_size_multiplier) {
-            return (self.objective_size_multiplier);
-        }
-        if constexpr (Selected == Field::objective_ring_padding_pixels) {
-            return (self.objective_ring_padding_pixels);
-        }
-        if constexpr (Selected == Field::objective_ring_thickness_pixels) {
-            return (self.objective_ring_thickness_pixels);
-        }
     }
 
     template <Field Selected, typename Self, typename Visitor>
@@ -120,15 +108,6 @@ struct Radar {
                                                                   std::forward<Visitor>(visitor));
             case Field::glyph_size_scale:
                 return invoke_field<Field::glyph_size_scale>(self, std::forward<Visitor>(visitor));
-            case Field::objective_size_multiplier:
-                return invoke_field<Field::objective_size_multiplier>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::objective_ring_padding_pixels:
-                return invoke_field<Field::objective_ring_padding_pixels>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::objective_ring_thickness_pixels:
-                return invoke_field<Field::objective_ring_thickness_pixels>(
-                    self, std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
@@ -145,23 +124,18 @@ struct Radar {
     float tactical_cell_radius{0.045f};
     float strategic_cell_radius{0.025f};
     float glyph_size_scale{1.f};
-    float objective_size_multiplier{1.2f};
-    float objective_ring_padding_pixels{3.f};
-    float objective_ring_thickness_pixels{1.25f};
 };
 } // namespace ioj::settings
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::Radar::Field>() noexcept -> std::size_t {
-    return 14ULL;
+    return 11ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::Radar::Field, Name>{
     PackedStrings{"enabled\000combat_range\000tactical_range\000maximum_range\000combat_display_"
                   "radius\000grid_opacity\000core_cell_radius\000combat_cell_radius\000tactical_"
-                  "cell_radius\000strategic_cell_radius\000glyph_size_scale\000objective_size_"
-                  "multiplier\000objective_ring_padding_pixels\000objective_ring_thickness_pixels",
-                  std::array<std::uint16_t, 15>{
-                      0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181, 207, 237, 269}}};
+                  "cell_radius\000strategic_cell_radius\000glyph_size_scale",
+                  std::array<std::uint8_t, 12>{0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181}}};
 } // namespace ioj

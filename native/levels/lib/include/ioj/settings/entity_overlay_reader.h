@@ -20,7 +20,7 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
             ctx, "entity-overlay", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field >= Field::maximum_range &&
-                                  field <= Field::screen_edge_padding_pixels) {
+                                  field <= Field::maximum_inset_height_ratio) {
                         read(member, constraints::finite);
                     } else {
                         read(member);
@@ -32,18 +32,15 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 12> field_names{"enabled",
-                                                                  "maximum-range",
-                                                                  "bar-size-pixels",
-                                                                  "screen-offset-pixels",
-                                                                  "minimum-bar-scale",
-                                                                  "maximum-bar-scale",
-                                                                  "inset-pixels",
-                                                                  "maximum-inset-height-ratio",
-                                                                  "objective-frame-pixels",
-                                                                  "objective-bar-height-scale",
-                                                                  "screen-edge-padding-pixels",
-                                                                  "soft-target"};
+    static constexpr std::array<std::string_view, 9> field_names{"enabled",
+                                                                 "maximum-range",
+                                                                 "bar-size-pixels",
+                                                                 "screen-offset-pixels",
+                                                                 "minimum-bar-scale",
+                                                                 "maximum-bar-scale",
+                                                                 "inset-pixels",
+                                                                 "maximum-inset-height-ratio",
+                                                                 "soft-target"};
 };
 
 } // namespace ioj::s7

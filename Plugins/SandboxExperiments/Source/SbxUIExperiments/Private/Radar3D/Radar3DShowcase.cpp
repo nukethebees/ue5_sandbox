@@ -53,20 +53,12 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
     };
 
     auto const non_player_count{FMath::Max(contact_count - 1, 0)};
-    for (int32 priority{0}; priority < 3; ++priority) {
+    for (bool const selected_pass : {false, true}) {
         for (int32 index{0}; index < non_player_count; ++index) {
             auto const flag_variant{index % 9};
-            auto const flags{flag_variant == 0   ? ioj::ui::radar::ContactFlags::Selected
-                             : flag_variant == 1 ? ioj::ui::radar::ContactFlags::DefendObjective
-                             : flag_variant == 2 ? ioj::ui::radar::ContactFlags::DestroyObjective
-                             : flag_variant == 3 ? ioj::ui::radar::ContactFlags::Selected |
-                                                       ioj::ui::radar::ContactFlags::DestroyObjective
-                                                 : ioj::ui::radar::ContactFlags::None};
-            auto const selected{(std::to_underlying(flags) & std::to_underlying(ioj::ui::radar::ContactFlags::Selected)) != 0};
-            auto const draw_priority{selected ? 2
-                                     : flags != ioj::ui::radar::ContactFlags::None                  ? 1
-                                                                                          : 0};
-            if (draw_priority != priority) {
+            auto const selected{flag_variant == 0 || flag_variant == 3};
+            auto const flags{selected ? ioj::ui::radar::ContactFlags::Selected : ioj::ui::radar::ContactFlags::None};
+            if (selected != selected_pass) {
                 continue;
             }
             auto const angle{static_cast<float>(index) * 2.399963f};

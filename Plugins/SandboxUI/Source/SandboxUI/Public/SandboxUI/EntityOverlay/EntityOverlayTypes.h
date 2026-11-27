@@ -34,13 +34,8 @@ struct SANDBOXUI_API FEntityOverlayStyle {
     float maximum_bar_scale{2.0f};
     float inset_pixels{1.0f};
     float maximum_inset_height_ratio{0.4f};
-    float objective_bar_height_scale{1.4f};
-    float objective_frame_pixels{3.0f};
-    float screen_edge_padding_pixels{12.0f};
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
-    FLinearColor defend_objective_color{0.85f, 0.60f, 0.08f, 1.0f};
-    FLinearColor destroy_objective_color{0.75f, 0.15f, 0.08f, 1.0f};
 };
 
 struct SANDBOXUI_API FEntityOverlayView {
@@ -66,32 +61,12 @@ class FEntityOverlayCollector {
     SANDBOXUI_API void begin(FVector3f origin,
                              float maximum_range,
                              TArray<ioj::ui::entity_overlay::Instance>& output_instances);
-    [[nodiscard]] SANDBOXUI_API auto try_add(FVector3f position,
-                                             float normalized_health,
-                                             float world_radius,
-                                             ioj::ui::entity_overlay::ObjectiveRole objective_role =
-                                                 ioj::ui::entity_overlay::ObjectiveRole::None,
-                                             bool bypass_range = false) -> bool;
-    [[nodiscard]] SANDBOXUI_API auto
-        try_add_colored(FVector3f position,
-                        float normalized_health,
-                        float world_radius,
-                        FLinearColor fill_color,
-                        ioj::ui::entity_overlay::ObjectiveRole objective_role =
-                            ioj::ui::entity_overlay::ObjectiveRole::None,
-                        bool bypass_range = false) -> bool;
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {
         return collector_.invalid_health_count();
     }
   private:
-    [[nodiscard]] auto try_add_impl(FVector3f position,
-                                    float normalized_health,
-                                    float world_radius,
-                                    uint32 display_data,
-                                    bool bypass_range) -> bool;
-
     ioj::ui::entity_overlay::Collector collector_;
     TArray<ioj::ui::entity_overlay::Instance>* output_instances_{nullptr};
 };

@@ -18,7 +18,6 @@ struct RadarScene {
         teams.push_back(team);
         types.push_back(type);
         healths.push_back(health);
-        roles.push_back(ui::entity_overlay::ObjectiveRole::None);
     }
 
     auto collect(settings::Radar const& settings, Transform3d const& transform = {})
@@ -35,7 +34,7 @@ struct RadarScene {
                                std::span{teams}.subspan(index, 1)});
         }
         return collect_radar_instances(
-            batches, roles, colours, transform, ids[0], Team::Blue, settings, frame);
+            batches, colours, transform, ids[0], Team::Blue, settings, frame);
     }
 
     Vectors3f locations;
@@ -44,17 +43,12 @@ struct RadarScene {
     std::vector<Team> teams;
     std::vector<EntityType> types;
     std::vector<sim::Health> healths;
-    std::vector<ui::entity_overlay::ObjectiveRole> roles;
     RadarContactColours colours;
     RadarFrame frame;
 };
 
 auto glyph(ui::radar::Instance const& instance) -> ui::radar::Glyph {
     return static_cast<ui::radar::Glyph>(instance.packed_glyph_and_flags & 0xffu);
-}
-
-auto flags(ui::radar::Instance const& instance) -> ui::radar::ContactFlags {
-    return static_cast<ui::radar::ContactFlags>((instance.packed_glyph_and_flags >> 8u) & 0xffu);
 }
 
 auto linear_settings() -> settings::Radar {
@@ -85,20 +79,15 @@ TEST(RadarSource, FiltersMapsAndOrdersContacts) {
     scene.add({100.f, 0.f, 0.f}, Team::Red, EntityType::Turret);
     scene.add({25.f, 0.f, 0.f}, Team::Red, EntityType::Fighter, sim::Health{});
     scene.add({101.f, 0.f, 0.f}, Team::Red, EntityType::CapitalShip);
-    scene.roles[2] = ui::entity_overlay::ObjectiveRole::Defend;
-    scene.roles[3] = ui::entity_overlay::ObjectiveRole::Destroy;
-    scene.roles[7] = ui::entity_overlay::ObjectiveRole::Defend;
 
     auto const result{scene.collect(linear_settings())};
     EXPECT_EQ(result.candidate_count, 6);
     ASSERT_EQ(result.visible_count, 5);
     auto const& contacts{scene.frame.instances};
     EXPECT_EQ(glyph(contacts[0]), ui::radar::Glyph::Fighter);
-    EXPECT_EQ(glyph(contacts[1]), ui::radar::Glyph::Unknown);
-    EXPECT_EQ(glyph(contacts[2]), ui::radar::Glyph::CapitalShip);
-    EXPECT_EQ(flags(contacts[2]), ui::radar::ContactFlags::DefendObjective);
-    EXPECT_EQ(glyph(contacts[3]), ui::radar::Glyph::Turret);
-    EXPECT_EQ(flags(contacts[3]), ui::radar::ContactFlags::DestroyObjective);
+    EXPECT_EQ(glyph(contacts[1]), ui::radar::Glyph::CapitalShip);
+    EXPECT_EQ(glyph(contacts[2]), ui::radar::Glyph::Turret);
+    EXPECT_EQ(glyph(contacts[3]), ui::radar::Glyph::Unknown);
     EXPECT_EQ(glyph(contacts.back()), ui::radar::Glyph::Player);
     EXPECT_EQ(contacts.back().radar_position, Vector3f{});
 
@@ -176,8 +165,6 @@ TEST(RadarSource, FixedMaximumRangeExcludesAllOutOfRangeContacts) {
     scene.add({1999.f, 0.f, 0.f}, Team::Red, EntityType::Fighter);
     scene.add({2000.f, 0.f, 0.f}, Team::Red, EntityType::CapitalShip);
     scene.add({1600.f, 0.f, 1200.f}, Team::Red, EntityType::Turret);
-    scene.roles[2] = ui::entity_overlay::ObjectiveRole::Destroy;
-    scene.roles[3] = ui::entity_overlay::ObjectiveRole::Defend;
     ASSERT_EQ(scene.collect(nonlinear_settings()).visible_count, 2);
     EXPECT_EQ(glyph(scene.frame.instances[0]), ui::radar::Glyph::Fighter);
 }

@@ -4,18 +4,10 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <optional>
 #include <type_traits>
 
 namespace ioj::ui::entity_overlay {
-inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
-enum class ObjectiveRole : std::uint32_t {
-    None,
-    Defend,
-    Destroy,
-};
-
 struct Instance {
     Vector3f world_position{};
     float health{};
@@ -31,17 +23,10 @@ static_assert(offsetof(Instance, health) == sizeof(float) * 3);
 static_assert(offsetof(Instance, world_radius) == sizeof(float) * 4);
 static_assert(offsetof(Instance, display_data) == sizeof(float) * 5);
 
-struct Addition {
-    Instance instance{};
-    std::uint32_t swap_index{invalid_index};
-};
-
 [[nodiscard]] auto source_sizes_match(std::size_t position_count,
                                       std::size_t health_count,
                                       std::size_t radius_count) noexcept -> bool;
-[[nodiscard]] auto pack_display_data(ObjectiveRole role) noexcept -> std::uint32_t;
-[[nodiscard]] auto pack_display_data(ObjectiveRole role, Color4f fill_color) noexcept
-    -> std::uint32_t;
+[[nodiscard]] auto pack_display_data(Color4f fill_color) noexcept -> std::uint32_t;
 
 class Collector {
   public:
@@ -49,8 +34,7 @@ class Collector {
     [[nodiscard]] auto try_add(Vector3f position,
                                float normalized_health,
                                float world_radius,
-                               std::uint32_t display_data,
-                               bool bypass_range = false) noexcept -> std::optional<Addition>;
+                               std::uint32_t display_data) noexcept -> std::optional<Instance>;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> std::int32_t {
         return invalid_health_count_;
@@ -58,8 +42,6 @@ class Collector {
   private:
     Vector3f origin_{};
     float maximum_range_squared_{};
-    std::uint32_t first_objective_index_{invalid_index};
-    std::uint32_t accepted_count_{};
     std::int32_t invalid_health_count_{};
 };
 }

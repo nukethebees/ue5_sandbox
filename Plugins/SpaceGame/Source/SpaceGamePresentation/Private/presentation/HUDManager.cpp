@@ -55,9 +55,6 @@ void FHUDManager::initialise(presentation::LevelFrame const& level,
     radar_style_.tactical_cell_radius = radar_settings_.tactical_cell_radius;
     radar_style_.strategic_cell_radius = radar_settings_.strategic_cell_radius;
     radar_style_.glyph_size_scale = radar_settings_.glyph_size_scale;
-    radar_style_.objective_size_multiplier = radar_settings_.objective_size_multiplier;
-    radar_style_.objective_ring_padding_pixels = radar_settings_.objective_ring_padding_pixels;
-    radar_style_.objective_ring_thickness_pixels = radar_settings_.objective_ring_thickness_pixels;
     auto const fighter_radius{radii[sim::EntityType::Fighter]};
     auto const capital_radius{radii[sim::EntityType::CapitalShip]};
     entity_overlay_style_ = {
@@ -69,9 +66,6 @@ void FHUDManager::initialise(presentation::LevelFrame const& level,
         .maximum_bar_scale = overlay.maximum_bar_scale,
         .inset_pixels = overlay.inset_pixels,
         .maximum_inset_height_ratio = overlay.maximum_inset_height_ratio,
-        .objective_bar_height_scale = overlay.objective_bar_height_scale,
-        .objective_frame_pixels = overlay.objective_frame_pixels,
-        .screen_edge_padding_pixels = overlay.screen_edge_padding_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
@@ -91,7 +85,6 @@ void FHUDManager::initialise(presentation::LevelFrame const& level,
         .turret = native_colours(level_config.turrets.team_visual_data)};
     entity_overlay_maximum_health_ = level_config.health_maximums;
     soft_target_selection_settings_ = overlay.soft_target;
-    entity_overlay_objective_roles_.Reset();
 
     for (auto const& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
@@ -145,7 +138,6 @@ void FHUDManager::deactivate() {
     registered_huds.Reset();
     model_.deactivate();
     sample_on_next_frame_ = false;
-    entity_overlay_objective_roles_.Reset();
     soft_target_instances_ = nullptr;
     soft_target_mesh_vertical_radius_ = 0.0f;
     warned_multiple_world_target_views_ = false;
@@ -208,13 +200,7 @@ void FHUDManager::update_entity_overlays(presentation::LevelFrame const& level,
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
     clear_world_soft_targets();
-    if (registered_huds.IsEmpty() ||
-        (!entity_overlay_settings_.enabled && !radar_settings_.enabled)) {
-        return;
-    }
-
-    update_entity_overlay_objective_roles(level);
-    if (!entity_overlay_settings_.enabled) {
+    if (registered_huds.IsEmpty() || !entity_overlay_settings_.enabled) {
         return;
     }
     auto world_target_rendered{false};
@@ -234,12 +220,6 @@ void FHUDManager::update_entity_overlays(presentation::LevelFrame const& level,
                     "multiple local views are not supported by the shared ISM renderer."));
         warned_multiple_world_target_views_ = true;
     }
-}
-
-void FHUDManager::update_entity_overlay_objective_roles(presentation::LevelFrame const& level) {
-    // Generic expressions do not imply a unique defend/destroy presentation role.
-    entity_overlay_objective_roles_.Init(ui::entity_overlay::ObjectiveRole::None,
-                                         presentation::display_entity_count(level.agents));
 }
 
 void FHUDManager::update_entity_overlay(presentation::LevelFrame const& level,
@@ -286,8 +266,6 @@ void FHUDManager::update_entity_overlay(presentation::LevelFrame const& level,
         soft_target =
             select_soft_target(batches,
                                entity_radii,
-                               {entity_overlay_objective_roles_.GetData(),
-                                static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
                                {.view = overlay_view,
                                 .aim_origin = FVector3f{to_unreal(firing_transform.location)},
                                 .aim_direction = FVector3f{to_unreal(firing_transform.forward())},
@@ -336,8 +314,6 @@ void FHUDManager::update_entity_overlay(presentation::LevelFrame const& level,
     auto const result{presentation::collect_entity_overlay_instances(
         batches,
         entity_radii,
-        std::span{entity_overlay_objective_roles_.GetData(),
-                  static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
         entity_overlay_team_colours_,
         entity_overlay_maximum_health_,
         Vector3f{overlay_view.camera_origin},
@@ -495,8 +471,6 @@ void FHUDManager::update_radar(presentation::LevelFrame const& level,
 
     auto const result{presentation::collect_radar_instances(
         level.agents,
-        std::span{entity_overlay_objective_roles_.GetData(),
-                  static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
         radar_contact_colours_,
         player_ship->transform,
         player_ship->id,

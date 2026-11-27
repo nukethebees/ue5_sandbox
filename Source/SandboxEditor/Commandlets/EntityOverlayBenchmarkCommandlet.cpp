@@ -99,24 +99,15 @@ auto write_debug_frames(FString const& output_directory) -> bool {
 
     std::vector<ioj::ui::entity_overlay::Instance> collected;
     auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
-    TArray<ioj::ui::entity_overlay::ObjectiveRole> objective_roles;
-    objective_roles.Init(ioj::ui::entity_overlay::ObjectiveRole::None, count);
-    objective_roles[1] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
-    objective_roles[2] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
-    objective_roles[5] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
-    objective_roles[6] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
-    objective_roles[7] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
-    objective_roles[8] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
-    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
-        make_view(entities, health_table),
-        entity_type_radii,
-        {objective_roles.GetData(), static_cast<std::size_t>(objective_roles.Num())},
-        make_team_colours(),
-        {100, 100, 100},
-        {},
-        10000.0f,
-        collected));
+    static_cast<void>(
+        ioj::presentation::collect_entity_overlay_instances(make_view(entities, health_table),
+                                                            entity_type_radii,
+                                                            make_team_colours(),
+                                                            {100, 100, 100},
+                                                            {},
+                                                            10000.0f,
+                                                            collected));
     frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const before_path{FPaths::Combine(output_directory, TEXT("camera_plane_before.png"))};
@@ -126,15 +117,14 @@ auto write_debug_frames(FString const& output_directory) -> bool {
 
     ::ioj::set_vector(entities.view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
     auto& moved_frame{frame_store->next()};
-    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
-        make_view(entities, health_table),
-        entity_type_radii,
-        {objective_roles.GetData(), static_cast<std::size_t>(objective_roles.Num())},
-        make_team_colours(),
-        {100, 100, 100},
-        {},
-        10000.0f,
-        collected));
+    static_cast<void>(
+        ioj::presentation::collect_entity_overlay_instances(make_view(entities, health_table),
+                                                            entity_type_radii,
+                                                            make_team_colours(),
+                                                            {100, 100, 100},
+                                                            {},
+                                                            10000.0f,
+                                                            collected));
     moved_frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const after_path{FPaths::Combine(output_directory, TEXT("camera_plane_after.png"))};

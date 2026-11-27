@@ -88,8 +88,6 @@ void USimulationHudWidget::apply_ui_style(FGameUiStyle const& style) {
     has_ui_style_ = true;
     entity_overlay_background_colour_ = hud_style.control_background.TintColor.GetSpecifiedColor();
     entity_overlay_fill_colour_ = hud_style.health_nominal;
-    entity_overlay_defend_colour_ = hud_style.objective_defend;
-    entity_overlay_destroy_colour_ = hud_style.objective_destroy;
     entity_overlay_soft_target_neutral_colour_ = palette.text_secondary;
     entity_overlay_soft_target_in_range_colour_ = palette.honey;
 
@@ -118,8 +116,6 @@ void USimulationHudWidget::apply_entity_overlay_colours() {
 
     entity_overlay_style_.background_color = entity_overlay_background_colour_;
     entity_overlay_style_.fill_color = entity_overlay_fill_colour_;
-    entity_overlay_style_.defend_objective_color = entity_overlay_defend_colour_;
-    entity_overlay_style_.destroy_objective_color = entity_overlay_destroy_colour_;
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
     }

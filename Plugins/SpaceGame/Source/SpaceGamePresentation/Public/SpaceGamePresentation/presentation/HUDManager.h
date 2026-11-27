@@ -84,7 +84,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     };
 
     void update_entity_overlays(presentation::LevelFrame const& level, float delta_seconds);
-    void update_entity_overlay_objective_roles(presentation::LevelFrame const& level);
     void update_entity_overlay(presentation::LevelFrame const& level,
                                FRegisteredHud& registration,
                                float delta_seconds,
@@ -123,7 +122,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FEntityOverlayStyle entity_overlay_style_;
     presentation::EntityOverlayTeamColours entity_overlay_team_colours_;
     presentation::EntityOverlayHealthMaximums entity_overlay_maximum_health_;
-    TArray<ui::entity_overlay::ObjectiveRole> entity_overlay_objective_roles_;
     ioj::settings::SoftTarget soft_target_selection_settings_;
     TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
     float soft_target_mesh_vertical_radius_{0.0f};

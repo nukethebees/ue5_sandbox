@@ -256,9 +256,6 @@
 | `:maximum-bar-scale` | `float` | |
 | `:inset-pixels` | `float` | |
 | `:maximum-inset-height-ratio` | `float` | |
-| `:objective-frame-pixels` | `float` | |
-| `:objective-bar-height-scale` | `float` | |
-| `:screen-edge-padding-pixels` | `float` | |
 | `:soft-target` | `SoftTarget` | |
 
 ## `radar`
@@ -276,9 +273,6 @@
 | `:tactical-cell-radius` | `float` | |
 | `:strategic-cell-radius` | `float` | |
 | `:glyph-size-scale` | `float` | |
-| `:objective-size-multiplier` | `float` | |
-| `:objective-ring-padding-pixels` | `float` | |
-| `:objective-ring-thickness-pixels` | `float` | |
 
 ## `generation`
 

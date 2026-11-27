@@ -70,10 +70,8 @@ class EntityOverlaySource : public testing::Test {
 
     auto select_target(sim::EntityId const current_target = {},
                        float const weapon_range = 1000.0f) const -> SoftTargetResult {
-        std::vector<ui::entity_overlay::ObjectiveRole> objective_roles(entities_.num());
         return select_soft_target(make_view(entities_),
                                   radii_,
-                                  objective_roles,
                                   {.view = make_forward_x_view(),
                                    .aim_origin = Vector3f{},
                                    .aim_direction = {1.0f, 0.0f, 0.0f},
@@ -121,12 +119,11 @@ TEST_F(EntityOverlaySource, FiltersEligibilityRangeAndNormalizesHealth) {
     add_entity({.position = {50.f, 0.f, 0.f}, .type = EntityType::PlayerShip});
     add_entity({.position = {60.f, 0.f, 0.f}, .type = EntityType::TubeSpinner});
     add_entity({.position = {101.f, 0.f, 0.f}, .type = EntityType::Turret, .radius = 50.f});
-    std::vector<ui::entity_overlay::ObjectiveRole> roles(entities_.num());
     std::vector<ui::entity_overlay::Instance> output;
     EntityOverlayTeamColours colours;
     colours.turret[Team::Red] = {0.f, 0.f, 1.f, 1.f};
     auto const result{collect_entity_overlay_instances(
-        make_view(entities_), radii_, roles, colours, {5000, 50, 20}, {}, 100.f, output)};
+        make_view(entities_), radii_, colours, {5000, 50, 20}, {}, 100.f, output)};
     ASSERT_EQ(result.candidate_count, 3);
     EXPECT_FLOAT_EQ(output[0].health, 0.5f);
     EXPECT_FLOAT_EQ(output[1].health, 0.5f);
@@ -134,18 +131,15 @@ TEST_F(EntityOverlaySource, FiltersEligibilityRangeAndNormalizesHealth) {
     EXPECT_FLOAT_EQ(output[0].world_radius, 50.f);
     EXPECT_FLOAT_EQ(output[1].world_radius, 100.f);
     EXPECT_FLOAT_EQ(output[2].world_radius, 1000.f);
-    EXPECT_EQ(output[0].display_data,
-              ui::entity_overlay::pack_display_data(ui::entity_overlay::ObjectiveRole::None,
-                                                    {0.f, 0.f, 1.f, 1.f}));
+    EXPECT_EQ(output[0].display_data, ui::entity_overlay::pack_display_data({0.f, 0.f, 1.f, 1.f}));
 }
 
 TEST_F(EntityOverlaySource, ExcludesDeadAndClampsExcessHealth) {
     add_entity({.health = sim::Health{-10}});
     add_entity({.health = sim::Health{40}});
-    std::vector<ui::entity_overlay::ObjectiveRole> roles(entities_.num());
     std::vector<ui::entity_overlay::Instance> output;
     static_cast<void>(collect_entity_overlay_instances(
-        make_view(entities_), radii_, roles, {}, {5000, 50, 20}, {}, 100.f, output));
+        make_view(entities_), radii_, {}, {5000, 50, 20}, {}, 100.f, output));
     ASSERT_EQ(output.size(), 1);
     EXPECT_FLOAT_EQ(output[0].health, 1.f);
 }
@@ -312,23 +306,21 @@ TEST_F(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {
         add_entity({.position = {1000.f, 0.f, 0.f}});
     }
     auto batches{make_view(entities_)};
-    std::array<ui::entity_overlay::ObjectiveRole, 2> roles{};
     SoftTargetContext context{.view = make_forward_x_view(), .maximum_overlay_range = 10000.f};
-    auto const first{select_soft_target(batches, radii_, roles, context, {}, {})};
+    auto const first{select_soft_target(batches, radii_, context, {}, {})};
     std::ranges::reverse(batches);
-    auto const reversed{select_soft_target(batches, radii_, roles, context, {}, {})};
+    auto const reversed{select_soft_target(batches, radii_, context, {}, {})};
     EXPECT_EQ(first.id, entity_id(0));
     EXPECT_EQ(reversed.id, first.id);
 }
 
-TEST_F(EntityOverlaySource, ObjectivesBypassRangeButNotProjectionOrHealth) {
+TEST_F(EntityOverlaySource, RejectsOutOfRangeUnprojectableAndDeadTargets) {
     add_entity({.position = {1000.f, 0.f, 0.f}});
-    std::array<ui::entity_overlay::ObjectiveRole, 1> roles{};
     SoftTargetContext context{.view = make_forward_x_view(), .maximum_overlay_range = 500.f};
     auto const select{
-        [&] { return select_soft_target(make_view(entities_), radii_, roles, context, {}, {}); }};
+        [&] { return select_soft_target(make_view(entities_), radii_, context, {}, {}); }};
     EXPECT_FALSE(select().id.is_valid());
-    roles[0] = ui::entity_overlay::ObjectiveRole::Destroy;
+    context.maximum_overlay_range = 1500.f;
     EXPECT_EQ(select().id, entity_id(0));
     entities_.positions.view().ys()[0] = 2000.f;
     EXPECT_FALSE(select().id.is_valid());

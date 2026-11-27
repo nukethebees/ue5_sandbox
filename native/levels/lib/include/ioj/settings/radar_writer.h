@@ -28,9 +28,6 @@ struct TypeWriter<settings::Radar> : RecordWriter<settings::Radar> {
         visit("tactical-cell-radius", &T::tactical_cell_radius);
         visit("strategic-cell-radius", &T::strategic_cell_radius);
         visit("glyph-size-scale", &T::glyph_size_scale);
-        visit("objective-size-multiplier", &T::objective_size_multiplier);
-        visit("objective-ring-padding-pixels", &T::objective_ring_padding_pixels);
-        visit("objective-ring-thickness-pixels", &T::objective_ring_thickness_pixels);
     }
 };
 

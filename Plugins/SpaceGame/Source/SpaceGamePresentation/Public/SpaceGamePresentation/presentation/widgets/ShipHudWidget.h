@@ -152,7 +152,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     FRadarFrameStoreConstPtr radar_frame_store_;
     FRadarStyle radar_style_;
     TSharedPtr<SRadarWidget> radar_widget_;
-    FLinearColor entity_overlay_defend_colour_{};
+    FLinearColor radar_colour_{};
     FLinearColor reticle_normal_colour_{FLinearColor::Green};
     FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
     FLinearColor reticle_danger_colour_{FLinearColor::Red};

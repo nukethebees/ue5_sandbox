@@ -315,8 +315,7 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     hud.reticle_normal = palette_.success;
     hud.reticle_warning = palette_.warning;
     hud.reticle_danger = palette_.danger;
-    hud.objective_defend = palette_.honey;
-    hud.objective_destroy = palette_.danger;
+    hud.radar = palette_.honey;
     hud.graph_series = palette_.honey;
 
     hud.graph.desired_size = FVector2f{320.0f, 180.0f};
