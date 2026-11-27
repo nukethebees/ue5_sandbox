@@ -182,6 +182,40 @@ auto key_name(SDL_KeyboardEvent const& key) -> std::string {
                      : std::string{};
     }
 }
+auto pad_button(std::size_t button) -> std::string_view {
+    switch (button) {
+        case SDL_GAMEPAD_BUTTON_SOUTH:
+            return "Gamepad_FaceButton_Bottom";
+        case SDL_GAMEPAD_BUTTON_EAST:
+            return "Gamepad_FaceButton_Right";
+        case SDL_GAMEPAD_BUTTON_NORTH:
+            return "Gamepad_FaceButton_Top";
+        case SDL_GAMEPAD_BUTTON_WEST:
+            return "Gamepad_FaceButton_Left";
+        case SDL_GAMEPAD_BUTTON_BACK:
+            return "Gamepad_Special_Left";
+        case SDL_GAMEPAD_BUTTON_START:
+            return "Gamepad_Special_Right";
+        case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+            return "Gamepad_LeftThumbstick";
+        case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+            return "Gamepad_RightThumbstick";
+        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+            return "Gamepad_LeftShoulder";
+        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+            return "Gamepad_RightShoulder";
+        case SDL_GAMEPAD_BUTTON_DPAD_UP:
+            return "Gamepad_DPad_Up";
+        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+            return "Gamepad_DPad_Down";
+        case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+            return "Gamepad_DPad_Left";
+        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+            return "Gamepad_DPad_Right";
+        default:
+            return {};
+    }
+}
 auto mouse_key(Uint8 button) -> std::string_view {
     switch (button) {
         case SDL_BUTTON_LEFT:
@@ -198,12 +232,22 @@ auto mouse_key(Uint8 button) -> std::string_view {
             return {};
     }
 }
+constexpr std::array<std::string_view, SDL_GAMEPAD_AXIS_COUNT> axis_names{
+    "Gamepad_LeftX",
+    "Gamepad_LeftY",
+    "Gamepad_RightX",
+    "Gamepad_RightY",
+    "Gamepad_LeftTriggerAxis",
+    "Gamepad_RightTriggerAxis"};
 constexpr std::array<float, 5> viewer_speeds{5000.f, 15000.f, 50000.f, 150000.f, 500000.f};
 }
 
 SdlInput::SdlInput(SDL_Window& window, ControlsSettings const& controls)
     : window_{window}
     , controls_{controls} {}
+SdlInput::~SdlInput() {
+    SDL_CloseGamepad(gamepad_);
+}
 void SdlInput::begin_frame() {
     flight_.begin_frame();
     synchronize();
@@ -215,6 +259,7 @@ void SdlInput::synchronize() {
         viewer_looking_ = false;
         viewer_dx_ = 0.f;
         viewer_dy_ = 0.f;
+        dpad_repeat_ = {};
         route_ = current;
         flight_.configure(controls_, current.context);
     }
@@ -270,9 +315,28 @@ void SdlInput::key(std::string_view name, bool down, bool repeat, Uint32 charact
     }
 }
 void SdlInput::handle(SDL_Event const& event) {
+    if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
+        if (gamepad_ && event.type == SDL_EVENT_GAMEPAD_REMOVED &&
+            SDL_GetGamepadID(gamepad_) == event.gdevice.which) {
+            release_gamepad();
+            SDL_CloseGamepad(gamepad_);
+            gamepad_ = nullptr;
+        }
+        if (!gamepad_) {
+            int count{};
+            auto* const devices{SDL_GetGamepads(&count)};
+            for (int i{}; i < count && !gamepad_; ++i) {
+                gamepad_ = SDL_OpenGamepad(devices[i]);
+            }
+            SDL_free(devices);
+        }
+        return;
+    }
     if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+        dpad_repeat_ = {};
         ui_mouse_buttons_ = 0;
         modifiers_ = {};
+        release_gamepad();
         flight_.reset();
         viewer_buttons_ = {};
         viewer_looking_ = false;
@@ -370,12 +434,98 @@ void SdlInput::handle(SDL_Event const& event) {
             }
             break;
         }
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
+            if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
+                auto const name{pad_button(event.gbutton.button)};
+                if (!name.empty()) {
+                    auto const button{event.gbutton.button};
+                    pad_buttons_[button] = event.gbutton.down;
+                    if (button >= SDL_GAMEPAD_BUTTON_DPAD_UP &&
+                        button <= SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
+                        dpad_repeat_[button - SDL_GAMEPAD_BUTTON_DPAD_UP] =
+                            event.gbutton.down && route_.context == input::Context::Menu ? 0.4
+                                                                                         : 0.0;
+                    }
+                    key(name, event.gbutton.down, false, 0);
+                }
+            }
+            break;
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+            if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gaxis.which) {
+                auto const axis{event.gaxis.axis};
+                auto value{event.gaxis.value / (event.gaxis.value < 0 ? 32768.f : 32767.f)};
+                if (axis == SDL_GAMEPAD_AXIS_LEFTY || axis == SDL_GAMEPAD_AXIS_RIGHTY) {
+                    value = -value;
+                }
+                axis_value(axis, value);
+            }
+            break;
         default:
             break;
     }
 }
+void SdlInput::axis_value(std::size_t axis, float value) {
+    auto const before{axes_[axis]};
+    axes_[axis] = value;
+    if (route_.context == input::Context::Menu) {
+        host::ui_axis(axis_names[axis], value, modifiers_);
+    } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
+               flight_.update(axis_names[axis], value, controls_)) {
+        host::pause_or_exit_viewer();
+    }
+    // Digital aliases are independently rebindable in the Controls menu.
+    static constexpr std::array<std::string_view, 6> positive{"Gamepad_LeftStick_Right",
+                                                              "Gamepad_LeftStick_Up",
+                                                              "Gamepad_RightStick_Right",
+                                                              "Gamepad_RightStick_Up",
+                                                              "Gamepad_LeftTrigger",
+                                                              "Gamepad_RightTrigger"};
+    static constexpr std::array<std::string_view, 4> negative{"Gamepad_LeftStick_Left",
+                                                              "Gamepad_LeftStick_Down",
+                                                              "Gamepad_RightStick_Left",
+                                                              "Gamepad_RightStick_Down"};
+    if ((before >= 0.5f) != (value >= 0.5f)) {
+        key(positive[axis], value >= 0.5f, false, 0);
+    }
+    if (axis < negative.size() && (before <= -0.5f) != (value <= -0.5f)) {
+        key(negative[axis], value <= -0.5f, false, 0);
+    }
+}
+void SdlInput::release_gamepad() {
+    dpad_repeat_ = {};
+    for (std::size_t i{}; i < pad_buttons_.size(); ++i) {
+        if (pad_buttons_[i]) {
+            key(pad_button(i), false, false, 0);
+            pad_buttons_[i] = false;
+        }
+    }
+    for (std::size_t i{}; i < axes_.size(); ++i) {
+        if (axes_[i] != 0.f) {
+            axis_value(i, 0.f);
+        }
+    }
+}
 void SdlInput::finish_frame(double dt) {
     synchronize();
+    if (route_.context == input::Context::Menu && SDL_GetKeyboardFocus() == &window_) {
+        for (std::size_t i{}; i < dpad_repeat_.size(); ++i) {
+            auto& delay{dpad_repeat_[i]};
+            if (delay > 0.0) {
+                delay -= dt;
+                if (delay <= 0.0) {
+                    key(pad_button(SDL_GAMEPAD_BUTTON_DPAD_UP + i), true, true, 0);
+                    delay = 0.1;
+                }
+            }
+        }
+        // Slate applies its own repeat interval to held analog navigation.
+        for (auto axis : {SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY}) {
+            if (std::abs(axes_[axis]) >= 0.5f) {
+                host::ui_axis(axis_names[axis], axes_[axis], modifiers_);
+            }
+        }
+    }
     if (route_.context == input::Context::Gameplay) {
         host::present_steering(flight_.steering());
     }

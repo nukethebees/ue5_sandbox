@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_init.h>
+#include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
@@ -57,7 +58,7 @@ class SdlPlayerInput : public ::testing::Test {
   protected:
     void SetUp() override {
         SDL_SetMainReady();
-        ASSERT_TRUE(SDL_Init(SDL_INIT_VIDEO)) << SDL_GetError();
+        ASSERT_TRUE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) << SDL_GetError();
         host::tests::presentation = {};
         window_ = SDL_CreateWindow("Input test", 100, 100, 0);
         ASSERT_NE(window_, nullptr) << SDL_GetError();
@@ -158,4 +159,30 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     EXPECT_EQ(view.pointer.size(), 2u);
 }
 
+TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
+    auto& view{host::tests::presentation};
+    view.route = {input::Context::Gameplay, false};
+    SDL_VirtualJoystickDesc device{};
+    SDL_INIT_INTERFACE(&device);
+    device.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+    device.vendor_id = 0xf00d;
+    device.product_id = 0x1234;
+    device.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+    device.naxes = SDL_GAMEPAD_AXIS_COUNT;
+    auto const id{SDL_AttachVirtualJoystick(&device)};
+    ASSERT_NE(id, 0u) << SDL_GetError();
+    frame();
+    auto* const gamepad{SDL_GetGamepadFromID(id)};
+    ASSERT_NE(gamepad, nullptr) << SDL_GetError();
+    auto* const stick{SDL_GetGamepadJoystick(gamepad)};
+    ASSERT_TRUE(SDL_SetJoystickVirtualButton(stick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, true));
+    SDL_UpdateJoysticks();
+    frame();
+    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
+    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
+    ASSERT_TRUE(SDL_DetachVirtualJoystick(id));
+    frame();
+    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
+    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
+}
 }
