@@ -45,6 +45,7 @@ class PhysicalInputBatch {
                           0});
     }
     auto size() const -> std::size_t { return order_.size(); }
+    auto kind(std::size_t index) const -> PhysicalEventKind { return order_[index].kind; }
     void visit(std::size_t index, auto&& handle) const {
         auto const [kind, row]{order_[index]};
         switch (kind) {

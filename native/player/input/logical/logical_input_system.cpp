@@ -327,8 +327,14 @@ auto LogicalInputSystem::map_until_dispatch(InputDispatcher& output,
     auto const count{events.size()};
     auto const initial_size{output.size()};
     while (first < count) {
+        auto const kind{events.kind(first)};
         events.visit(first++, [&](auto const& event) { apply(output, event); });
         if (output.size() != initial_size) {
+            if (kind == PhysicalEventKind::PointerMotion || kind == PhysicalEventKind::Text) {
+                while (first < count && events.kind(first) == kind) {
+                    events.visit(first++, [&](auto const& event) { apply(output, event); });
+                }
+            }
             break;
         }
     }
