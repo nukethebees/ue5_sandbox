@@ -97,7 +97,8 @@ auto FlightInput::update(std::string_view key, float next, ControlsSettings cons
             continue;
         }
 
-        if (binding.action == PointerPitch || binding.action == PointerYaw) {
+        if ((binding.action == PointerPitch || binding.action == PointerYaw) &&
+            (key == "MouseX" || key == "MouseY")) {
             if (steering_) {
                 auto const delta{
                     apply_response(next, Response::TurnPointerDelta, Axis::None, controls)};
@@ -149,10 +150,13 @@ auto FlightInput::update(std::string_view key, float next, ControlsSettings cons
 }
 void FlightInput::update_axes(ControlsSettings const& controls) {
     if (steering_) {
-        auto const scale{std::max(1.0, size(*steering_))};
-        events_.set_pitch_input(static_cast<float>(steering_->y() / scale) *
+        auto direction{*steering_};
+        direction.x() += value(FlightAction::PointerYaw);
+        direction.y() += value(FlightAction::PointerPitch);
+        auto const scale{std::max(1.0, size(direction))};
+        events_.set_pitch_input(static_cast<float>(direction.y() / scale) *
                                 (controls.invert_mouse_pitch ? -1.f : 1.f));
-        events_.set_yaw_input(static_cast<float>(steering_->x() / scale) *
+        events_.set_yaw_input(static_cast<float>(direction.x() / scale) *
                               (controls.invert_mouse_yaw ? -1.f : 1.f));
     } else {
         events_.set_pitch_input(apply_response(
