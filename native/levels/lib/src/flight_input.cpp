@@ -88,6 +88,16 @@ auto FlightInput::value(FlightAction action) const -> float {
     }
     return strongest;
 }
+void FlightInput::restore_axis(std::string_view key, float position, ControlsSettings const& controls) {
+    for (auto& binding : bindings_) {
+        if ((binding.action == FlightAction::Pitch || binding.action == FlightAction::Yaw ||
+             binding.action == FlightAction::Accelerate) &&
+            binding_name_equal(binding.key, key)) {
+            binding.value = position;
+        }
+    }
+    update_axes(controls);
+}
 auto FlightInput::update(std::string_view key, float next, ControlsSettings const& controls)
     -> bool {
     using enum FlightAction;

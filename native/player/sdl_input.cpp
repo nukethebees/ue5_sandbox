@@ -262,6 +262,11 @@ void SdlInput::synchronize() {
         dpad_repeat_ = {};
         route_ = current;
         flight_.configure(controls_, current.context);
+        if (current.context == input::Context::Gameplay) {
+            for (std::size_t axis{}; axis < axes_.size(); ++axis) {
+                flight_.restore_axis(axis_names[axis], axes_[axis], controls_);
+            }
+        }
     }
     bool const focused{SDL_GetKeyboardFocus() == &window_};
     auto const relative{focused &&

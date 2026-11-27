@@ -51,6 +51,7 @@ class FlightInput {
     FlightInput();
 
     void configure(ControlsSettings const& controls, Context context);
+    void restore_axis(std::string_view key, float position, ControlsSettings const& controls);
     // Returns true on the rising edge of the pause action.
     auto update(std::string_view key, float next, ControlsSettings const& controls) -> bool;
     void reset();
