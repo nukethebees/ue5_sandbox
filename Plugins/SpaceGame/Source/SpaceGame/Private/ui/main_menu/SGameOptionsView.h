@@ -20,14 +20,11 @@ struct SGameOptionsViewBuilder;
 
 namespace ioj {
 class SGameButton;
-class UOptionsDraft;
 struct SystemCapabilities;
 
-using FControlsFocusIdentity = std::variant<GameSettingDevice, FlightMapping>;
-
 struct FControlsFocusTarget {
-    FControlsFocusIdentity identity{};
-    TFunction<void()> focus{};
+    MenuTarget identity{GameSettingDevice::KeyboardMouse};
+    TSharedPtr<SGameButton> button;
 };
 
 DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
@@ -36,20 +33,14 @@ class SGameOptionsView final : public SCompoundWidget {
     friend struct ::SlateGenerated::ioj::SGameOptionsViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SGameOptionsView)
-        : _Settings(nullptr)
-        , _Capabilities(nullptr)
+        : _Capabilities(nullptr)
         , _Style(nullptr)
         , _Page(MainMenuItem::SelectLevel)
         , _Audio() {}
-    SLATE_ARGUMENT(UOptionsDraft*, Settings)
     SLATE_ARGUMENT(SystemCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ATTRIBUTE(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
-    SLATE_EVENT(FSimpleDelegate, OnApply)
-    SLATE_EVENT(FSimpleDelegate, OnReset)
-    SLATE_EVENT(FSimpleDelegate, OnConfirmDisplay)
-    SLATE_EVENT(FSimpleDelegate, OnRevertDisplay)
     SLATE_EVENT(FOnOptionsInteractionModalChanged, OnInteractionModalChanged)
     SLATE_END_ARGS()
 
@@ -110,24 +101,18 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     auto setting_float(GameSetting setting) const -> float;
     auto format_range_value(GameSettingDescriptor const& descriptor) const -> FText;
-    void register_controls_focus(FControlsFocusIdentity identity,
-                                 TSharedRef<SGameButton> const& button);
-    void restore_controls_focus(FControlsFocusIdentity const& identity);
+    void register_controls_focus(MenuTarget identity, TSharedRef<SGameButton> const& button);
+    void restore_controls_focus(MenuTarget const& identity);
     void restore_focus();
 
     /* **************************************** */
     // State
     /* **************************************** */
-    TWeakObjectPtr<UOptionsDraft> settings_{};
     SystemCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
     TAttribute<MainMenuItem> page_;
 
-    FSimpleDelegate on_apply_{};
-    FSimpleDelegate on_reset_{};
-    FSimpleDelegate on_confirm_display_{};
-    FSimpleDelegate on_revert_display_{};
     FOnOptionsInteractionModalChanged on_interaction_modal_changed_{};
 
     TSharedPtr<SGameButton> apply_button_{};

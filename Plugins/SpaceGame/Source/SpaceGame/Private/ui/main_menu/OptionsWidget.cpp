@@ -60,16 +60,11 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     }
 
     return SAssignNew(options_view_, SGameOptionsView)
-        .IsEnabled_Lambda([this] { return !player_menu().saving; })
-        .Settings(settings_)
+        .IsEnabled_Lambda([this] { return !menu_presentation().saving; })
         .Capabilities(&system_capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
         .Page_UObject(this, &ThisClass::page)
-        .OnApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_apply))
-        .OnReset(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset))
-        .OnConfirmDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_confirm_display))
-        .OnRevertDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_revert_display))
         .OnInteractionModalChanged(FOnOptionsInteractionModalChanged::CreateUObject(
             this, &ThisClass::handle_interaction_modal_changed));
 }
@@ -101,7 +96,7 @@ void UOptionsWidget::show_page(MainMenuItem page) {
 }
 
 auto UOptionsWidget::page() const -> MainMenuItem {
-    return player_menu().page;
+    return menu_presentation().page;
 }
 void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {
@@ -113,16 +108,6 @@ void UOptionsWidget::handle_apply() {
     if (auto category{settings_category(page())}) {
         if (!settings_->apply(*category)) {
             queue_input_action(host::SettingsSaveResult{false});
-        }
-    }
-}
-
-void UOptionsWidget::handle_reset() {
-    auto const category{settings_category(page())};
-    if (IsValid(settings_) && category.has_value()) {
-        settings_->reset_category(*category);
-        if (*category == GameSettingCategory::Controls && options_view_.IsValid()) {
-            options_view_->refresh_controls();
         }
     }
 }
@@ -149,6 +134,23 @@ void UOptionsWidget::handle_interaction_modal_changed(bool const visible) {
 }
 
 void UOptionsWidget::present(MenuUpdate const& update) {
+    if (update.operation == MenuOperation::Activate &&
+        update.target.kind == MenuTarget::Kind::Control) {
+        switch (update.target.control()) {
+            case MenuControl::Apply:
+            case MenuControl::Save:
+                handle_apply();
+                break;
+            case MenuControl::KeepDisplay:
+                handle_confirm_display();
+                break;
+            case MenuControl::RevertDisplay:
+                handle_revert_display();
+                break;
+            default:
+                break;
+        }
+    }
     if (options_view_) {
         options_view_->present(update);
     }

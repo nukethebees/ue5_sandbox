@@ -15,6 +15,9 @@ class ULevelSelectWidget;
 class USaveGameViewerWidget;
 
 SPACEGAME_API auto keyboard_layout() -> KeyboardLayout const&;
+SPACEGAME_API auto menu_presentation() -> MenuPresentation const&;
+SPACEGAME_API void edit_menu_text(MenuControl control, std::string value);
+void edit_setting(GameSetting setting, GameSettingValue value);
 SPACEGAME_API auto player_menu() -> PlayerMenu&;
 SPACEGAME_API auto player_settings() -> PlayerSettingsView const&;
 SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;

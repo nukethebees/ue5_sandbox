@@ -368,6 +368,26 @@ struct PlayerInputSession {
         auto const& replies{endpoint.exchange()};
         for (auto const [kind, index] : replies.order) {
             switch (kind) {
+                case host::UnrealMessageKind::Setting: {
+                    auto const& change{replies.settings[index]};
+                    if (!menu.saving && menu.prompt == OptionsPrompt::None &&
+                        menu.draft.binding_edit().prompt == BindingPrompt::Closed &&
+                        settings.view().set_setting(menu.draft,
+                                                    change.setting,
+                                                    change.value,
+                                                    window.supported_resolutions())) {
+                        menu.select(change.setting);
+                        present_menu({menu.focus, MenuOperation::RefreshSettings});
+                    }
+                    break;
+                }
+                case host::UnrealMessageKind::EditText: {
+                    auto const& edit{replies.edits[index]};
+                    if (auto update{menu.edit_text(edit.control, edit.value)}) {
+                        present_menu(*update);
+                    }
+                    break;
+                }
                 case host::UnrealMessageKind::Action:
                     dispatch(replies.actions[index]);
                     break;

@@ -51,7 +51,7 @@ void UOptionsDraft::load(ULocalPlayer* player) {
 
 auto UOptionsDraft::apply(GameSettingCategory category) -> bool {
     if (player_menu().saving || !editing_local_player_.IsValid() ||
-        is_awaiting_display_confirmation() || !is_dirty()) {
+        player_menu().prompt == OptionsPrompt::Display || !player_menu().draft.is_dirty()) {
         return false;
     }
 
@@ -96,7 +96,7 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
         report_settings_error(message);
     }
     settings_changed.Broadcast();
-    display_confirmation_changed.Broadcast(is_awaiting_display_confirmation());
+    display_confirmation_changed.Broadcast(player_menu().prompt == OptionsPrompt::Display);
     if (!error.empty() || edit.action != host::PreferenceAction::PreviewDisplay) {
         queue_input_action(
             host::SettingsSaveResult{error.empty() && edit.action == host::PreferenceAction::Save});
@@ -121,31 +121,8 @@ auto UOptionsDraft::apply_settings(GameSettingCategory category, GameSettingsSta
 
     return {};
 }
-void UOptionsDraft::reset_category(GameSettingCategory category) {
-    if (!editing_local_player_.IsValid() || is_awaiting_display_confirmation()) {
-        return;
-    }
-
-    player_menu().draft.reset_category(category);
-    if (category == GameSettingCategory::Video) {
-        if (player_settings().launch_mode != LaunchDisplayMode::Preferences) {
-            player_menu().draft.set_setting(GameSetting::WindowMode,
-                                            player_menu().draft.applied().video.window_mode);
-        } else if (player_menu().draft.pending().video.window_mode == GameWindowMode::Fullscreen) {
-            player_menu().draft.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);
-        }
-
-        if (!is_available(GameSetting::Resolution)) {
-            player_menu().draft.set_setting(GameSetting::Resolution,
-                                            player_menu().draft.applied().video.resolution);
-        }
-    }
-
-    settings_changed.Broadcast();
-}
-
 void UOptionsDraft::confirm_display_changes() {
-    if (player_menu().saving || !is_awaiting_display_confirmation()) {
+    if (player_menu().saving || player_menu().prompt != OptionsPrompt::Display) {
         return;
     }
 
@@ -155,7 +132,7 @@ void UOptionsDraft::confirm_display_changes() {
 }
 
 void UOptionsDraft::revert_display_changes() {
-    if (player_menu().saving || !is_awaiting_display_confirmation()) {
+    if (player_menu().saving || player_menu().prompt != OptionsPrompt::Display) {
         return;
     }
 
@@ -167,82 +144,4 @@ void UOptionsDraft::revert_display_changes() {
                       *this);
 }
 
-auto UOptionsDraft::value(GameSetting const setting) const -> GameSettingValue {
-    return player_menu().draft.value(setting);
-}
-
-void UOptionsDraft::set_setting(GameSetting const setting, GameSettingValue const& value) {
-    if (!editing_local_player_.IsValid() || is_awaiting_display_confirmation() ||
-        !is_available(setting)) {
-        return;
-    }
-
-    auto const& descriptor{game_setting_descriptor(setting)};
-    if (!player_settings().set_setting(
-            player_menu().draft, setting, value, supported_resolutions())) {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Rejected invalid value for game setting %s"),
-               *to_fstring(descriptor.name));
-        return;
-    }
-
-    player_menu().select(setting);
-    settings_changed.Broadcast();
-}
-
-auto UOptionsDraft::descriptors(GameSettingCategory const category) const
-    -> TArray<GameSettingDescriptor const*> {
-    TArray<GameSettingDescriptor const*> result;
-    for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.category == category) {
-            result.Add(&descriptor);
-        }
-    }
-
-    return result;
-}
-
-auto UOptionsDraft::options(GameSetting const setting) const -> TArray<FGameSettingOption> {
-    auto const provider{game_setting_descriptor(setting).options_provider};
-    if (!editing_local_player_.IsValid()) {
-        return {};
-    }
-
-    auto const choices{player_settings().choices(
-        player_menu().draft.pending(), provider, supported_resolutions())};
-    TArray<FGameSettingOption> result;
-    result.Reserve(static_cast<int32>(choices.size()));
-    for (auto const& choice : choices) {
-        auto const* number{std::get_if<float>(&choice.value)};
-        auto label{provider == GameSettingOptionProvider::FrameRateLimits && number && *number > 0.f
-                       ? FText::AsNumber(static_cast<int32>(*number))
-                       : FText::FromString(to_fstring(choice.label))};
-        result.Add({choice.value, MoveTemp(label)});
-    }
-
-    return result;
-}
-
-auto UOptionsDraft::is_available(GameSetting const setting) const -> bool {
-    return editing_local_player_.IsValid() &&
-           player_settings().is_available(player_menu().draft.pending(), setting);
-}
-
-auto UOptionsDraft::is_dirty() const -> bool {
-    return player_menu().draft.is_dirty();
-}
-
-auto UOptionsDraft::is_at_defaults(GameSettingCategory const category) const -> bool {
-    return player_menu().draft.is_at_defaults(category);
-}
-
-auto UOptionsDraft::is_awaiting_display_confirmation() const -> bool {
-    return player_menu().prompt == OptionsPrompt::Display;
-}
-
-auto UOptionsDraft::display_confirmation_seconds_remaining() const -> int32 {
-    return player_menu().display_seconds_remaining();
-}
-
-}
+} // namespace ioj

@@ -39,7 +39,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
         -> FReply override;
   private:
     void handle_apply();
-    void handle_reset();
     void handle_confirm_display();
     void handle_revert_display();
     void handle_display_confirmation_changed(bool visible);

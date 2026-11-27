@@ -1,7 +1,7 @@
 #include "SGameOptionsView.h"
 
+#include "SpaceGame/settings/GameSettingOption.h"
 #include "SpaceGame/settings/GameVideoSettings.h"
-#include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
 #include "SpaceGame/UnrealMessages.h"
@@ -29,6 +29,36 @@
 
 namespace ioj {
 namespace {
+auto setting_descriptors(GameSettingCategory const category)
+    -> TArray<GameSettingDescriptor const*> {
+    TArray<GameSettingDescriptor const*> result;
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (descriptor.category == category) {
+            result.Add(&descriptor);
+        }
+    }
+
+    return result;
+}
+
+auto setting_options(GameSetting const setting) -> TArray<FGameSettingOption> {
+    auto const provider{game_setting_descriptor(setting).options_provider};
+
+    auto const choices{player_settings().choices(
+        menu_presentation().draft.pending(), provider, supported_resolutions())};
+    TArray<FGameSettingOption> result;
+    result.Reserve(static_cast<int32>(choices.size()));
+    for (auto const& choice : choices) {
+        auto const* number{std::get_if<float>(&choice.value)};
+        auto label{provider == GameSettingOptionProvider::FrameRateLimits && number && *number > 0.f
+                       ? FText::AsNumber(static_cast<int32>(*number))
+                       : FText::FromString(to_fstring(choice.label))};
+        result.Add({choice.value, MoveTemp(label)});
+    }
+
+    return result;
+}
+
 auto binding_label(PhysicalKey key) -> FText {
     return FText::FromString(to_fstring(keyboard_layout().label(key)));
 }
@@ -140,16 +170,11 @@ auto large_page_access_text(LargePageAccess const status) -> FText {
 // Lifecycle and state
 /* **************************************** */
 void SGameOptionsView::Construct(FArguments const& args) {
-    settings_ = args._Settings;
     capabilities_ = args._Capabilities;
     style_ = args._Style;
     audio_ = args._Audio;
     page_ = args._Page;
     check(style_ != nullptr);
-    on_apply_ = args._OnApply;
-    on_reset_ = args._OnReset;
-    on_confirm_display_ = args._OnConfirmDisplay;
-    on_revert_display_ = args._OnRevertDisplay;
     on_interaction_modal_changed_ = args._OnInteractionModalChanged;
 
     auto header{build_header()};
@@ -191,27 +216,28 @@ void SGameOptionsView::show_page() {
 }
 
 void SGameOptionsView::refresh() {
-    auto* const settings{settings_.Get()};
-    if (settings == nullptr || style_ == nullptr) {
+    if (style_ == nullptr) {
         return;
     }
 
-    dirty_prompt_->SetVisibility(player_menu().prompt == OptionsPrompt::Dirty
+    dirty_prompt_->SetVisibility(menu_presentation().prompt == OptionsPrompt::Dirty
                                      ? EVisibility::Visible
                                      : EVisibility::Collapsed);
     auto const category{settings_category(page_.Get())};
     if (reset_button_.IsValid()) {
-        reset_button_->SetEnabled(category.has_value() && !settings->is_at_defaults(*category) &&
-                                  !settings->is_awaiting_display_confirmation());
+        reset_button_->SetEnabled(category.has_value() &&
+                                  !menu_presentation().draft.is_at_defaults(*category) &&
+                                  menu_presentation().prompt != OptionsPrompt::Display);
     }
     if (apply_button_.IsValid()) {
-        apply_button_->SetEnabled(settings->is_dirty() &&
-                                  !settings->is_awaiting_display_confirmation());
+        apply_button_->SetEnabled(menu_presentation().draft.is_dirty() &&
+                                  menu_presentation().prompt != OptionsPrompt::Display);
     }
 
-    auto const display_visible{settings->is_awaiting_display_confirmation()};
+    auto const display_visible{menu_presentation().prompt == OptionsPrompt::Display};
     if (display_visible != display_prompt_visible_) {
         display_prompt_visible_ = display_visible;
+        on_interaction_modal_changed_.ExecuteIfBound(display_visible);
         if (display_visible) {
             if (confirm_display_button_.IsValid()) {
                 confirm_display_button_->focus();
@@ -232,7 +258,7 @@ void SGameOptionsView::refresh_controls() {
 }
 
 void SGameOptionsView::focus_content() {
-    present({player_menu().focus, MenuOperation::Focus});
+    present({menu_presentation().focus, MenuOperation::Focus});
 }
 
 /* **************************************** */
@@ -253,6 +279,9 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     }
     refresh();
     if (update.operation == MenuOperation::RefreshSettings) {
+        if (page_.Get() == MainMenuItem::Controls) {
+            request_controls_rebuild();
+        }
         return;
     }
     if (update.target.kind == MenuTarget::Kind::Setting) {
@@ -265,37 +294,30 @@ void SGameOptionsView::present(MenuUpdate const& update) {
         if (activate) {
             request_controls_rebuild(true);
         } else {
-            restore_controls_focus(FControlsFocusIdentity{device});
+            restore_controls_focus(MenuTarget{device});
         }
     } else if (update.target.kind == MenuTarget::Kind::Mapping) {
         auto const mapping{update.target.mapping()};
         if (activate) {
-            auto const rows{player_menu().binding_rows()};
+            auto const rows{menu_presentation().binding_rows()};
             auto const row{std::ranges::find_if(
                 rows, [&](auto const& item) { return item.control.mapping == mapping; })};
             check(row != rows.end());
             open_binding_management(*row);
         } else {
-            restore_controls_focus(FControlsFocusIdentity{mapping});
+            restore_controls_focus(MenuTarget{mapping});
         }
     } else if (update.target.kind == MenuTarget::Kind::Control) {
         auto const control{update.target.control()};
-        auto apply = [activate](auto const& button, auto const& action) {
-            if (activate) {
-                action.ExecuteIfBound();
-            } else {
-                button->focus();
-            }
-        };
         switch (control) {
             case MenuControl::Apply:
-                apply(apply_button_, on_apply_);
+                apply_button_->focus();
                 break;
             case MenuControl::ResetCategory:
-                apply(reset_button_, on_reset_);
+                reset_button_->focus();
                 break;
             case MenuControl::Save:
-                apply(dirty_apply_button_, on_apply_);
+                dirty_apply_button_->focus();
                 break;
             case MenuControl::Discard:
                 dirty_discard_button_->focus();
@@ -304,10 +326,10 @@ void SGameOptionsView::present(MenuUpdate const& update) {
                 dirty_stay_button_->focus();
                 break;
             case MenuControl::KeepDisplay:
-                apply(confirm_display_button_, on_confirm_display_);
+                confirm_display_button_->focus();
                 break;
             case MenuControl::RevertDisplay:
-                apply(revert_display_button_, on_revert_display_);
+                revert_display_button_->focus();
                 break;
             default:
                 break;
@@ -391,9 +413,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
 auto SGameOptionsView::build_category_page(GameSettingCategory const category)
     -> TSharedRef<SWidget> {
     auto content{SNew(SVerticalBox)};
-    auto* const settings{settings_.Get()};
-    auto const descriptors{settings != nullptr ? settings->descriptors(category)
-                                               : TArray<GameSettingDescriptor const*>{}};
+    auto const descriptors{setting_descriptors(category)};
     if (descriptors.IsEmpty()) {
         content->AddSlot().AutoHeight()[SNew(STextBlock)
                                             .Text(NSLOCTEXT("OptionsMenu",
@@ -458,8 +478,7 @@ auto SGameOptionsView::build_controls_page() -> TSharedRef<SWidget> {
 // Control bindings
 /* **************************************** */
 void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
-    auto* const settings{settings_.Get()};
-    if (!controls_content_.IsValid() || settings == nullptr) {
+    if (!controls_content_.IsValid()) {
         return;
     }
 
@@ -485,8 +504,7 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
                                                .Title(title)[rows]];
     };
 
-    auto const add_setting_sections = [this, settings, &add_section](
-                                          GameSettingDevice const device) {
+    auto const add_setting_sections = [this, &add_section](GameSettingDevice const device) {
         FText current_section;
         TSharedPtr<SVerticalBox> rows;
         auto const flush = [&] {
@@ -495,7 +513,7 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
             }
         };
 
-        for (auto const* const descriptor : settings->descriptors(GameSettingCategory::Controls)) {
+        for (auto const* const descriptor : setting_descriptors(GameSettingCategory::Controls)) {
             if (descriptor->device != device) {
                 continue;
             }
@@ -521,9 +539,9 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
              [SAssignNew(keyboard_mouse_button, SGameButton)
                   .Style(&style_->button(EGameButtonStyle::Secondary))
                   .Audio(audio_)
-                  .Selected(player_menu().device == GameSettingDevice::KeyboardMouse)
+                  .Selected(menu_presentation().device == GameSettingDevice::KeyboardMouse)
                   .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseDevice", "Keyboard & Mouse"))
-                  .OnClicked_Lambda([this] {
+                  .OnClicked_Lambda([] {
                       hit_menu_control(GameSettingDevice::KeyboardMouse);
                       return FReply::Handled();
                   })] +
@@ -531,22 +549,22 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
              1.0f)[SAssignNew(controller_button, SGameButton)
                        .Style(&style_->button(EGameButtonStyle::Secondary))
                        .Audio(audio_)
-                       .Selected(player_menu().device == GameSettingDevice::Controller)
+                       .Selected(menu_presentation().device == GameSettingDevice::Controller)
                        .Text(NSLOCTEXT("OptionsMenu", "ControllerDevice", "Controller"))
-                       .OnClicked_Lambda([this] {
+                       .OnClicked_Lambda([] {
                            hit_menu_control(GameSettingDevice::Controller);
                            return FReply::Handled();
                        })]];
     add_section(NSLOCTEXT("OptionsMenu", "InputDeviceSection", "Input Device"), device_rows);
-    register_controls_focus(FControlsFocusIdentity{GameSettingDevice::KeyboardMouse},
+    register_controls_focus(MenuTarget{GameSettingDevice::KeyboardMouse},
                             keyboard_mouse_button.ToSharedRef());
-    register_controls_focus(FControlsFocusIdentity{GameSettingDevice::Controller},
+    register_controls_focus(MenuTarget{GameSettingDevice::Controller},
                             controller_button.ToSharedRef());
 
     add_setting_sections(GameSettingDevice::Shared);
-    add_setting_sections(player_menu().device);
+    add_setting_sections(menu_presentation().device);
 
-    auto const bindings{player_menu().binding_rows()};
+    auto const bindings{menu_presentation().binding_rows()};
     std::optional<BindingGroup> binding_category;
     TSharedPtr<SVerticalBox> binding_rows;
     auto const flush_binding_category = [&] {
@@ -619,7 +637,7 @@ auto SGameOptionsView::handle_deferred_controls_restore(double const current_tim
     if (controls_scroll_box_.IsValid()) {
         controls_scroll_box_->SetScrollOffset(pending_controls_scroll_offset_);
     }
-    auto const& menu{player_menu()};
+    auto const& menu{menu_presentation()};
     if (menu.page == MainMenuItem::Controls && menu.prompt == OptionsPrompt::None &&
         menu.draft.binding_edit().prompt == BindingPrompt::Closed && controls_content_) {
         present({menu.focus, MenuOperation::Focus});
@@ -649,7 +667,7 @@ void SGameOptionsView::open_binding_management(ControlBindingRow const& binding)
 }
 
 void SGameOptionsView::present_binding_prompt() {
-    auto const& edit{player_menu().draft.binding_edit()};
+    auto const& edit{menu_presentation().draft.binding_edit()};
     auto const managing{edit.prompt == BindingPrompt::Manage};
     auto const capturing{edit.prompt == BindingPrompt::Capture ||
                          edit.prompt == BindingPrompt::Unsupported};
@@ -691,21 +709,15 @@ void SGameOptionsView::present_binding_prompt() {
 /* **************************************** */
 auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor)
     -> TSharedRef<SWidget> {
-    auto const weak_settings{settings_};
-    auto available{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
-        auto const* const settings{weak_settings.Get()};
-        return settings != nullptr && settings->is_available(setting);
+    auto available{TAttribute<bool>::CreateLambda([setting = descriptor.id] {
+        return player_settings().is_available(menu_presentation().draft.pending(), setting);
     })};
 
     switch (descriptor.control_kind) {
         case SettingControlKind::Toggle: {
             TSharedPtr<SSettingsToggle> control;
-            auto checked{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
-                auto const* const settings{weak_settings.Get()};
-                if (settings == nullptr) {
-                    return false;
-                }
-                auto const value{settings->value(setting)};
+            auto checked{TAttribute<bool>::CreateLambda([setting = descriptor.id] {
+                auto const value{menu_presentation().draft.value(setting)};
                 auto const* const typed{std::get_if<bool>(&value)};
                 return typed != nullptr && *typed;
             })};
@@ -716,66 +728,51 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
                          .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
                          .Checked(checked)
                          .ControlEnabled(available)
-                         .OnCheckStateChanged_Lambda([weak_settings, setting = descriptor.id](
-                                                         ECheckBoxState const state) {
-                             if (auto* const settings{weak_settings.Get()}) {
-                                 settings->set_setting(
-                                     setting, GameSettingValue{state == ECheckBoxState::Checked});
-                             }
-                         })};
+                         .OnCheckStateChanged_Lambda(
+                             [setting = descriptor.id](ECheckBoxState const state) {
+                                 edit_setting(setting,
+                                              GameSettingValue{state == ECheckBoxState::Checked});
+                             })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
             return row;
         }
         case SettingControlKind::Choice: {
             TSharedPtr<SSettingsChoice> control;
-            auto const options{settings_.IsValid() ? settings_->options(descriptor.id)
-                                                   : TArray<FGameSettingOption>{}};
+            auto const options{setting_options(descriptor.id)};
             TArray<FText> labels;
             labels.Reserve(options.Num());
             for (auto const& option : options) {
                 labels.Add(option.label);
             }
 
-            auto selected{
-                TAttribute<int32>::CreateLambda([weak_settings, setting = descriptor.id, options] {
-                    auto const* const settings{weak_settings.Get()};
-                    if (settings == nullptr) {
-                        return int32{INDEX_NONE};
-                    }
-                    auto const value{settings->value(setting)};
-                    return options.IndexOfByPredicate([&value](FGameSettingOption const& option) {
-                        return option.value == value;
-                    });
-                })};
+            auto selected{TAttribute<int32>::CreateLambda([setting = descriptor.id, options] {
+                auto const value{menu_presentation().draft.value(setting)};
+                return options.IndexOfByPredicate(
+                    [&value](FGameSettingOption const& option) { return option.value == value; });
+            })};
 
-            auto row{
-                SAssignNew(control, SSettingsChoice)
-                    .Style(&style_->settings())
-                    .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
-                    .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
-                    .Options(MoveTemp(labels))
-                    .SelectedIndex(selected)
-                    .ControlEnabled(available)
-                    .OnSelectionChanged_Lambda(
-                        [this, weak_settings, setting = descriptor.id, options](int32 const index) {
-                            if (auto* const settings{weak_settings.Get()};
-                                options.IsValidIndex(index)) {
-                                settings->set_setting(setting, options[index].value);
-                            }
-                        })};
+            auto row{SAssignNew(control, SSettingsChoice)
+                         .Style(&style_->settings())
+                         .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
+                         .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
+                         .Options(MoveTemp(labels))
+                         .SelectedIndex(selected)
+                         .ControlEnabled(available)
+                         .OnSelectionChanged_Lambda(
+                             [setting = descriptor.id, options](int32 const index) {
+                                 if (options.IsValidIndex(index)) {
+                                     edit_setting(setting, options[index].value);
+                                 }
+                             })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
             return row;
         }
         case SettingControlKind::FloatRange: {
             TSharedPtr<SSettingsSlider> control;
-            auto value{TAttribute<float>::CreateLambda([weak_settings, setting = descriptor.id] {
-                auto const* const settings{weak_settings.Get()};
-                if (settings == nullptr) {
-                    return 0.0f;
-                }
-                auto const current{settings->value(setting)};
+            auto value{TAttribute<float>::CreateLambda([setting = descriptor.id] {
+                auto const current{menu_presentation().draft.value(setting)};
                 auto const* const typed{std::get_if<float>(&current)};
                 return typed != nullptr ? *typed : 0.0f;
             })};
@@ -793,12 +790,9 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
                          .Maximum(static_cast<float>(descriptor.maximum))
                          .Step(static_cast<float>(descriptor.step))
                          .ControlEnabled(available)
-                         .OnValueChanged_Lambda(
-                             [weak_settings, setting = descriptor.id](float const next) {
-                                 if (auto* const settings{weak_settings.Get()}) {
-                                     settings->set_setting(setting, GameSettingValue{next});
-                                 }
-                             })};
+                         .OnValueChanged_Lambda([setting = descriptor.id](float const next) {
+                             edit_setting(setting, GameSettingValue{next});
+                         })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
             return row;
@@ -985,11 +979,8 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
                         hit_menu_control(MenuControl::RevertDisplay);
                         return FReply::Handled();
                     })};
-    auto const weak_settings{settings_};
-    auto title{TAttribute<FText>::CreateLambda([weak_settings] {
-        auto const* const settings{weak_settings.Get()};
-        auto const seconds{settings != nullptr ? settings->display_confirmation_seconds_remaining()
-                                               : 0};
+    auto title{TAttribute<FText>::CreateLambda([] {
+        auto const seconds{menu_presentation().display_seconds_remaining()};
         return FText::Format(NSLOCTEXT("OptionsMenu",
                                        "DisplayConfirmation",
                                        "Keep these display settings? Reverting in {0} seconds."),
@@ -1003,7 +994,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                     .Style(&style_->button(EGameButtonStyle::Primary))
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "ChangeBinding", "Change"))
-                    .OnClicked_Lambda([this] {
+                    .OnClicked_Lambda([] {
                         hit_menu_control(BindingChoice::Change);
                         return FReply::Handled();
                     })};
@@ -1011,10 +1002,11 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Style(&style_->button(EGameButtonStyle::Secondary))
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ClearBinding", "Clear"))
-                   .Enabled_Lambda([this] {
-                       return player_menu().draft.binding_action_available(BindingChoice::Clear);
+                   .Enabled_Lambda([] {
+                       return menu_presentation().draft.binding_action_available(
+                           BindingChoice::Clear);
                    })
-                   .OnClicked_Lambda([this] {
+                   .OnClicked_Lambda([] {
                        hit_menu_control(BindingChoice::Clear);
                        return FReply::Handled();
                    })};
@@ -1022,10 +1014,11 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Style(&style_->button(EGameButtonStyle::Secondary))
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
-                   .Enabled_Lambda([this] {
-                       return player_menu().draft.binding_action_available(BindingChoice::Reset);
+                   .Enabled_Lambda([] {
+                       return menu_presentation().draft.binding_action_available(
+                           BindingChoice::Reset);
                    })
-                   .OnClicked_Lambda([this] {
+                   .OnClicked_Lambda([] {
                        hit_menu_control(BindingChoice::Reset);
                        return FReply::Handled();
                    })};
@@ -1033,7 +1026,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                     .Style(&style_->button(EGameButtonStyle::Secondary))
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelBindingManagement", "Cancel"))
-                    .OnClicked_Lambda([this] {
+                    .OnClicked_Lambda([] {
                         hit_menu_control(BindingChoice::Cancel);
                         return FReply::Handled();
                     })};
@@ -1043,7 +1036,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
         }
         auto const& binding{*managed_binding_};
         auto const key_text{
-            binding_label(player_menu().draft.pending().controls.bindings[binding.mapping])};
+            binding_label(menu_presentation().draft.pending().controls.bindings[binding.mapping])};
         return FText::Format(
             NSLOCTEXT("OptionsMenu", "BindingManagementPrompt", "{0}\n\nCurrent binding: {1}"),
             FText::FromString(to_fstring(binding.label)),
@@ -1053,12 +1046,12 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
 }
 
 auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
-    auto title{TAttribute<FText>::CreateLambda([this] {
-        if (player_menu().draft.binding_edit().prompt == BindingPrompt::Unsupported) {
+    auto title{TAttribute<FText>::CreateLambda([] {
+        if (menu_presentation().draft.binding_edit().prompt == BindingPrompt::Unsupported) {
             return NSLOCTEXT(
                 "OptionsMenu", "UnsupportedBinding", "Choose a supported input for this control.");
         }
-        return player_menu().device == GameSettingDevice::Controller
+        return menu_presentation().device == GameSettingDevice::Controller
                  ? NSLOCTEXT("OptionsMenu",
                              "CaptureControllerBindingPrompt",
                              "Press a controller input. Press Back to cancel.")
@@ -1074,7 +1067,7 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                      .Style(&style_->button(EGameButtonStyle::Primary))
                      .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "ReplaceBinding", "Replace"))
-                     .OnClicked_Lambda([this] {
+                     .OnClicked_Lambda([] {
                          hit_menu_control(BindingChoice::Replace);
                          return FReply::Handled();
                      })};
@@ -1082,12 +1075,12 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                     .Style(&style_->button(EGameButtonStyle::Secondary))
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelBinding", "Cancel"))
-                    .OnClicked_Lambda([this] {
+                    .OnClicked_Lambda([] {
                         hit_menu_control(BindingChoice::Cancel);
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
-        auto const& edit{player_menu().draft.binding_edit()};
+        auto const& edit{menu_presentation().draft.binding_edit()};
         auto const captured_input{binding_label(edit.candidate)};
         TArray<FText> conflicting_controls;
         for (auto const& control : flight_controls()) {
@@ -1150,11 +1143,7 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
 // Formatting and focus helpers
 /* **************************************** */
 auto SGameOptionsView::setting_float(GameSetting const setting) const -> float {
-    auto const* const settings{settings_.Get()};
-    if (settings == nullptr) {
-        return 0.0f;
-    }
-    auto const value{settings->value(setting)};
+    auto const value{menu_presentation().draft.value(setting)};
     auto const* const typed{std::get_if<float>(&value)};
     return typed != nullptr ? *typed : 0.0f;
 }
@@ -1176,27 +1165,27 @@ auto SGameOptionsView::format_range_value(GameSettingDescriptor const& descripto
     }
 }
 
-void SGameOptionsView::register_controls_focus(FControlsFocusIdentity const identity,
+void SGameOptionsView::register_controls_focus(MenuTarget const identity,
                                                TSharedRef<SGameButton> const& button) {
     controls_focus_targets_.Add({
         .identity = identity,
-        .focus = [button] { button->focus(); },
+        .button = button,
     });
 }
 
-void SGameOptionsView::restore_controls_focus(FControlsFocusIdentity const& identity) {
+void SGameOptionsView::restore_controls_focus(MenuTarget const& identity) {
     auto* target{
         controls_focus_targets_.FindByPredicate([&identity](FControlsFocusTarget const& candidate) {
             return candidate.identity == identity;
         })};
-    if (target != nullptr && target->focus) {
-        target->focus();
+    if (target != nullptr && target->button) {
+        target->button->focus();
         return;
     }
 }
 
 void SGameOptionsView::restore_focus() {
-    present({player_menu().focus, MenuOperation::Focus});
+    present({menu_presentation().focus, MenuOperation::Focus});
 }
 
 } // namespace ioj

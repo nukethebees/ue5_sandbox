@@ -313,6 +313,33 @@ auto PlayerMenu::activate(MenuTarget target,
         return {};
     }
     focus = target;
+    if (target.kind == MenuTarget::Kind::Control) {
+        using enum MenuControl;
+        switch (target.control()) {
+            case ResetCategory: {
+                auto const category{settings_category(page)};
+                if (category) {
+                    draft.reset_category(*category);
+                    if (*category == GameSettingCategory::Video) {
+                        if (settings.launch_mode != LaunchDisplayMode::Preferences) {
+                            draft.set_setting(GameSetting::WindowMode,
+                                              draft.applied().video.window_mode);
+                        } else if (draft.pending().video.window_mode ==
+                                   GameWindowMode::Fullscreen) {
+                            draft.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);
+                        }
+                        if (!settings.is_available(draft.pending(), GameSetting::Resolution)) {
+                            draft.set_setting(GameSetting::Resolution,
+                                              draft.applied().video.resolution);
+                        }
+                    }
+                }
+                return MenuUpdate{target, MenuOperation::RefreshSettings};
+            }
+            default:
+                break;
+        }
+    }
     if (target == MenuTarget{MenuControl::SimulationOnly}) {
         simulation_only = !simulation_only;
     }

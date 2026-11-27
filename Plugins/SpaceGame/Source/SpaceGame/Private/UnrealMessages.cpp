@@ -57,6 +57,9 @@ FAutoConsoleCommand reset_profile_command{
 auto keyboard_layout() -> KeyboardLayout const& {
     return keyboard;
 }
+auto menu_presentation() -> MenuPresentation const& {
+    return player_menu();
+}
 auto player_menu() -> PlayerMenu& {
     check(attached_menu);
     return *attached_menu;
@@ -120,6 +123,12 @@ void hit_menu_control(MenuTarget target) {
 }
 void request_player_action(host::PlayerAction action) {
     endpoint.player_action(action);
+}
+void edit_menu_text(MenuControl control, std::string value) {
+    endpoint.edit_text({control, std::move(value)});
+}
+void edit_setting(GameSetting setting, GameSettingValue value) {
+    endpoint.edit_setting({setting, std::move(value)});
 }
 void queue_input_action(host::WidgetAction action) {
     pending_actions.push_back(action);
