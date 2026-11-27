@@ -23,6 +23,7 @@ struct FLevelSelectViewRow {
     bool heading{};
     profiles::CompletionIndicatorState indicator_state{
         profiles::CompletionIndicatorState::Incomplete};
+    std::string id;
 };
 
 struct FLevelSelectViewState {
@@ -58,6 +59,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
         return active_category_;
     }
 
+    void present(MenuUpdate const& update) override;
     void refresh() override;
     void present_catalog(presentation::LevelCatalogView const& catalog) override;
     void focus_primary_action() override;

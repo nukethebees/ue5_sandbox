@@ -7,6 +7,8 @@
 
 #include <SandboxUI/slate/SlateSlots.h>
 
+#include <ioj/input/dispatch/player_menu.h>
+#include <Framework/Application/SlateApplication.h>
 #include <InputCoreTypes.h>
 #include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SEditableText.h>
@@ -167,6 +169,56 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
     return FReply::Handled();
 }
 
+void SScriptLevelSelectView::present(MenuUpdate const& update) {
+    auto const activate{update.operation == MenuOperation::Activate};
+    if (auto category{std::get_if<LevelCatalogCategory>(&update.target)}) {
+        if (activate) {
+            on_category_selected_.ExecuteIfBound(*category);
+        }
+        auto const button{*category == LevelCatalogCategory::Playable ? level_category_button_
+                          : *category == LevelCatalogCategory::BattleViewer
+                              ? battle_viewer_category_button_
+                              : benchmark_category_button_};
+        button->focus();
+    } else if (auto row{std::get_if<MenuRow>(&update.target)}) {
+        auto const index{level_ids_.Find(row->id)};
+        if (index != INDEX_NONE) {
+            if (activate) {
+                on_level_selected_.ExecuteIfBound(index);
+            }
+            focus_level(index);
+        }
+    } else if (auto control{std::get_if<MenuControl>(&update.target)}) {
+        auto& slate{FSlateApplication::Get()};
+        switch (*control) {
+            case MenuControl::BattleSpeed:
+                slate.SetKeyboardFocus(battle_speed_input_);
+                break;
+            case MenuControl::BattleDuration:
+                slate.SetKeyboardFocus(battle_duration_input_);
+                break;
+            case MenuControl::SimulationOnly:
+                if (activate) {
+                    auto const state{battle_simulation_only_ ? ECheckBoxState::Unchecked
+                                                             : ECheckBoxState::Checked};
+                    simulation_only_->SetIsChecked(state);
+                    handle_simulation_only_changed(state);
+                }
+                slate.SetKeyboardFocus(simulation_only_);
+                break;
+            case MenuControl::Launch:
+                if (activate) {
+                    on_launch_.ExecuteIfBound();
+                } else {
+                    launch_button_->focus();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
     auto const playable_level_button{
         SAssignNew(level_category_button_, SGameButton)
@@ -301,7 +353,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
         SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 10.0f, 0.0f, 0.0f})
             [SNew(SHorizontalBox) +
              SHorizontalBox::Slot().AutoWidth()
-                 [SNew(SCheckBox)
+                 [SAssignNew(simulation_only_, SCheckBox)
                       .OnCheckStateChanged(this,
                                            &SScriptLevelSelectView::handle_simulation_only_changed)
                           [SNew(STextBlock)
@@ -448,6 +500,7 @@ void SScriptLevelSelectView::update_launch_availability() {
 void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state) {
     catalog_rows_->ClearChildren();
     level_buttons_.Reset();
+    level_ids_.Reset();
 
     for (auto const& row : state.rows) {
         if (row.heading) {
@@ -478,6 +531,7 @@ void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state)
                  .Selected(button_index == state.selected_button_index)
                  .OnClicked(this, &SScriptLevelSelectView::handle_level_selected, button_index)];
         level_buttons_.Add(button);
+        level_ids_.Add(row.id);
     }
 }
 

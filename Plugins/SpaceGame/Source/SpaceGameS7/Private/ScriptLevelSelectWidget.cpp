@@ -181,6 +181,12 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
+void UScriptLevelSelectWidget::present(MenuUpdate const& update) {
+    if (view_) {
+        view_->present(update);
+    }
+}
+
 void UScriptLevelSelectWidget::refresh_levels() {
     active_category_ = LevelCatalogCategory::Playable;
     entries_.Reset();
@@ -290,7 +296,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         }
 
         view_state_.rows.Add(
-            FLevelSelectViewRow{FText::FromString(entry.display_title), false, indicator_state});
+            FLevelSelectViewRow{FText::FromString(entry.display_title), false, indicator_state, entry ? entry.id.value : to_string(entry.path)});
         level_entry_indices_.Add(entry_index);
         ++visible_entry_count;
     };

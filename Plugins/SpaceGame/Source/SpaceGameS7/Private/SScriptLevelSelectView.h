@@ -40,6 +40,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
 
     void Construct(FArguments const& args);
     void replace_catalog(FLevelSelectViewState const& state);
+    void present(MenuUpdate const& update);
     void update_state(FLevelSelectViewState const& state);
     void focus_selected_level();
 
@@ -89,6 +90,8 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<STextBlock> battle_speed_error_{};
     TSharedPtr<SEditableText> battle_duration_input_{};
     TSharedPtr<STextBlock> battle_duration_error_{};
+    TArray<std::string> level_ids_;
+    TSharedPtr<SCheckBox> simulation_only_;
     TSharedPtr<SGameButton> launch_button_{};
     TSharedPtr<SGameButton> level_category_button_{};
     TSharedPtr<SGameButton> battle_viewer_category_button_{};

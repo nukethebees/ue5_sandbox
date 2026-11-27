@@ -7,6 +7,7 @@
 #include "LevelSelectWidget.generated.h"
 
 namespace ioj {
+struct MenuUpdate;
 UCLASS()
 class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
     GENERATED_BODY()
@@ -16,6 +17,7 @@ class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
     void prepare_for_open(FName preferred_level_id) noexcept;
     virtual void refresh() {}
     virtual void present_catalog(presentation::LevelCatalogView const&) {}
+    virtual void present(MenuUpdate const&) {}
     virtual void focus_primary_action() {}
   protected:
     [[nodiscard]] auto get_preferred_level_id() const noexcept -> FName {
