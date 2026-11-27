@@ -77,48 +77,56 @@ struct Modifiers : detail::ModifiersBase {
     constexpr void set_left_shift(bool const value) noexcept {
         insert<decltype(left_shift_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto right_shift() const noexcept -> bool {
         return extract<decltype(right_shift_layout)>();
     }
     constexpr void set_right_shift(bool const value) noexcept {
         insert<decltype(right_shift_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto left_control() const noexcept -> bool {
         return extract<decltype(left_control_layout)>();
     }
     constexpr void set_left_control(bool const value) noexcept {
         insert<decltype(left_control_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto right_control() const noexcept -> bool {
         return extract<decltype(right_control_layout)>();
     }
     constexpr void set_right_control(bool const value) noexcept {
         insert<decltype(right_control_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto left_alt() const noexcept -> bool {
         return extract<decltype(left_alt_layout)>();
     }
     constexpr void set_left_alt(bool const value) noexcept {
         insert<decltype(left_alt_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto right_alt() const noexcept -> bool {
         return extract<decltype(right_alt_layout)>();
     }
     constexpr void set_right_alt(bool const value) noexcept {
         insert<decltype(right_alt_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto left_command() const noexcept -> bool {
         return extract<decltype(left_command_layout)>();
     }
     constexpr void set_left_command(bool const value) noexcept {
         insert<decltype(left_command_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto right_command() const noexcept -> bool {
         return extract<decltype(right_command_layout)>();
     }
     constexpr void set_right_command(bool const value) noexcept {
         insert<decltype(right_command_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto caps_lock() const noexcept -> bool {
         return extract<decltype(caps_lock_layout)>();
     }

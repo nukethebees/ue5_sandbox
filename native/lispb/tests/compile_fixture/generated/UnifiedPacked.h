@@ -42,6 +42,7 @@ struct EntityIndex : detail::EntityIndexBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -83,6 +84,7 @@ struct SignedOffset : detail::SignedOffsetBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -145,6 +147,7 @@ struct EntityId : detail::EntityIdBase {
     [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -152,6 +155,7 @@ struct EntityId : detail::EntityIdBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto entity_type() const noexcept -> std::uint8_t {
         return extract<decltype(entity_type_layout)>();
     }
@@ -195,6 +199,7 @@ struct WideEntityId : detail::WideEntityIdBase {
     [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -202,6 +207,7 @@ struct WideEntityId : detail::WideEntityIdBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto entity_type() const noexcept -> std::uint8_t {
         return extract<decltype(entity_type_layout)>();
     }
@@ -253,12 +259,14 @@ struct NestedId : detail::NestedIdBase {
         -> bool {
         return static_cast<storage_type>(value) <= target_index_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto prefix() const noexcept -> std::uint8_t {
         return extract<decltype(prefix_layout)>();
     }
     constexpr void set_prefix(std::uint8_t const value) noexcept {
         insert<decltype(prefix_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto target() const noexcept -> WideEntityId {
         return WideEntityId::from_raw(
             static_cast<WideEntityId::storage_type>(extract<decltype(target_layout)>()));
@@ -267,6 +275,7 @@ struct NestedId : detail::NestedIdBase {
         assert((value.is_valid()));
         insert<decltype(target_layout)>(static_cast<storage_type>(value.raw_value()));
     }
+
     [[nodiscard]] constexpr auto target_index() const noexcept -> std::uint32_t {
         return extract<decltype(target_index_layout)>();
     }
@@ -274,6 +283,7 @@ struct NestedId : detail::NestedIdBase {
         assert((is_valid_target_index(value)));
         insert<decltype(target_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto target_entity_type() const noexcept -> std::uint8_t {
         return extract<decltype(target_entity_type_layout)>();
     }
@@ -357,6 +367,7 @@ struct EmbeddedPaddedInvalid : detail::EmbeddedPaddedInvalidBase {
         assert((value.is_valid()));
         insert<decltype(nested_layout)>(static_cast<storage_type>(value.raw_value()));
     }
+
     [[nodiscard]] constexpr auto nested_data() const noexcept -> std::uint8_t {
         return extract<decltype(nested_data_layout)>();
     }
@@ -419,6 +430,7 @@ struct Target : detail::TargetBase {
             ioj::packed_pack<decltype(instruction_offset_layout)>(instruction_offset_value))};
         return result;
     }
+
     [[nodiscard]] constexpr auto entity_index() const noexcept -> std::uint32_t {
         return extract<decltype(entity_index_layout)>();
     }
@@ -426,12 +438,14 @@ struct Target : detail::TargetBase {
         assert((is_valid_entity_index(value)));
         insert<decltype(entity_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto location_index() const noexcept -> std::uint32_t {
         return extract<decltype(location_index_layout)>();
     }
     constexpr void set_location_index(std::uint32_t const value) noexcept {
         insert<decltype(location_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto instruction_offset() const noexcept -> std::uint32_t {
         return extract<decltype(instruction_offset_layout)>();
     }
@@ -551,9 +565,11 @@ struct Instruction : detail::InstructionBase {
                 return false;
         }
     }
+
     [[nodiscard]] constexpr auto opcode() const noexcept -> Opcode {
         return extract<decltype(opcode_layout)>();
     }
+
     [[nodiscard]] constexpr auto payload_kill_entity_target() const noexcept -> EntityId {
         assert((opcode() == Opcode::KillEntity));
         return EntityId::from_raw(static_cast<EntityId::storage_type>(
@@ -565,6 +581,7 @@ struct Instruction : detail::InstructionBase {
         insert<decltype(payload_kill_entity_target_layout)>(
             static_cast<storage_type>(value.raw_value()));
     }
+
     [[nodiscard]] constexpr auto payload_kill_entity_target_index() const noexcept
         -> std::uint32_t {
         assert((opcode() == Opcode::KillEntity));
@@ -575,6 +592,7 @@ struct Instruction : detail::InstructionBase {
         assert((is_valid_payload_kill_entity_target_index(value)));
         insert<decltype(payload_kill_entity_target_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_kill_entity_target_entity_type() const noexcept
         -> std::uint8_t {
         assert((opcode() == Opcode::KillEntity));
@@ -584,6 +602,7 @@ struct Instruction : detail::InstructionBase {
         assert((opcode() == Opcode::KillEntity));
         insert<decltype(payload_kill_entity_target_entity_type_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_move_to_destination() const noexcept -> std::uint32_t {
         assert((opcode() == Opcode::MoveTo));
         return extract<decltype(payload_move_to_destination_layout)>();
@@ -592,6 +611,7 @@ struct Instruction : detail::InstructionBase {
         assert((opcode() == Opcode::MoveTo));
         insert<decltype(payload_move_to_destination_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_jump_destination() const noexcept -> std::uint32_t {
         assert((opcode() == Opcode::Jump));
         return extract<decltype(payload_jump_destination_layout)>();
@@ -733,12 +753,15 @@ struct IndependentUnions : detail::IndependentUnionsBase {
                 return false;
         }
     }
+
     [[nodiscard]] constexpr auto opcode_a() const noexcept -> Opcode {
         return extract<decltype(opcode_a_layout)>();
     }
+
     [[nodiscard]] constexpr auto opcode_b() const noexcept -> Opcode {
         return extract<decltype(opcode_b_layout)>();
     }
+
     [[nodiscard]] constexpr auto payload_a_kill_entity() const noexcept -> std::uint8_t {
         assert((opcode_a() == Opcode::KillEntity));
         return extract<decltype(payload_a_kill_entity_layout)>();
@@ -747,6 +770,7 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         assert((opcode_a() == Opcode::KillEntity));
         insert<decltype(payload_a_kill_entity_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_a_move_to() const noexcept -> std::uint8_t {
         assert((opcode_a() == Opcode::MoveTo));
         return extract<decltype(payload_a_move_to_layout)>();
@@ -755,6 +779,7 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         assert((opcode_a() == Opcode::MoveTo));
         insert<decltype(payload_a_move_to_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_b_kill_entity() const noexcept -> std::uint8_t {
         assert((opcode_b() == Opcode::KillEntity));
         return extract<decltype(payload_b_kill_entity_layout)>();
@@ -763,6 +788,7 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         assert((opcode_b() == Opcode::KillEntity));
         insert<decltype(payload_b_kill_entity_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_b_move_to() const noexcept -> std::uint8_t {
         assert((opcode_b() == Opcode::MoveTo));
         return extract<decltype(payload_b_move_to_layout)>();
@@ -814,6 +840,7 @@ struct CheckedPayload : detail::CheckedPayloadBase {
         auto result{from_raw(move_to_value)};
         return result;
     }
+
     [[nodiscard]] constexpr auto kill_entity() const noexcept -> std::uint8_t {
         return extract<decltype(kill_entity_layout)>();
     }
@@ -821,6 +848,7 @@ struct CheckedPayload : detail::CheckedPayloadBase {
         assert((is_valid_kill_entity(value)));
         insert<decltype(kill_entity_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto move_to() const noexcept -> std::uint8_t {
         return extract<decltype(move_to_layout)>();
     }
@@ -916,9 +944,11 @@ struct TaggedProjected : detail::TaggedProjectedBase {
                 return false;
         }
     }
+
     [[nodiscard]] constexpr auto opcode() const noexcept -> Opcode {
         return extract<decltype(opcode_layout)>();
     }
+
     [[nodiscard]] constexpr auto payload() const noexcept -> CheckedPayload {
         return CheckedPayload::from_raw(
             static_cast<CheckedPayload::storage_type>(extract<decltype(payload_layout)>()));
@@ -933,6 +963,7 @@ struct TaggedProjected : detail::TaggedProjectedBase {
                 ioj::packed_extract<decltype(opcode_layout)>(updated) == Opcode::MoveTo));
         value_ = updated;
     }
+
     [[nodiscard]] constexpr auto unrelated() const noexcept -> std::uint8_t {
         return extract<decltype(unrelated_layout)>();
     }
@@ -940,6 +971,7 @@ struct TaggedProjected : detail::TaggedProjectedBase {
         assert((is_valid_unrelated(value)));
         insert<decltype(unrelated_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_kill_entity() const noexcept -> std::uint8_t {
         assert((opcode() == Opcode::KillEntity));
         return extract<decltype(payload_kill_entity_layout)>();
@@ -949,6 +981,7 @@ struct TaggedProjected : detail::TaggedProjectedBase {
         assert((is_valid_payload_kill_entity(value)));
         insert<decltype(payload_kill_entity_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload_move_to() const noexcept -> std::uint8_t {
         assert((opcode() == Opcode::MoveTo));
         return extract<decltype(payload_move_to_layout)>();
@@ -1016,18 +1049,21 @@ struct Samples : detail::SamplesBase {
     constexpr void set_samples_0_value(std::uint8_t const value) noexcept {
         insert<decltype(samples_0_value_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto samples_1_value() const noexcept -> std::uint8_t {
         return extract<decltype(samples_1_value_layout)>();
     }
     constexpr void set_samples_1_value(std::uint8_t const value) noexcept {
         insert<decltype(samples_1_value_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto samples_2_value() const noexcept -> std::uint8_t {
         return extract<decltype(samples_2_value_layout)>();
     }
     constexpr void set_samples_2_value(std::uint8_t const value) noexcept {
         insert<decltype(samples_2_value_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto samples_3_value() const noexcept -> std::uint8_t {
         return extract<decltype(samples_3_value_layout)>();
     }
@@ -1094,6 +1130,7 @@ struct Optionals : detail::OptionalsBase {
                (is_valid_sentinel_encoded(extract<decltype(sentinel_encoded_layout)>()) &&
                 is_valid_present_encoded_domain(extract<decltype(present_encoded_layout)>()));
     }
+
     [[nodiscard]] constexpr auto sentinel_encoded() const noexcept -> std::uint8_t {
         return extract<decltype(sentinel_encoded_layout)>();
     }
@@ -1101,6 +1138,7 @@ struct Optionals : detail::OptionalsBase {
         assert((is_valid_sentinel_encoded(value)));
         insert<decltype(sentinel_encoded_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto present_encoded() const noexcept -> std::uint16_t {
         return extract<decltype(present_encoded_layout)>();
     }

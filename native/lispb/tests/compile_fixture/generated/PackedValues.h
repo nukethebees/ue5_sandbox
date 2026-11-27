@@ -42,6 +42,7 @@ struct GrowthFactor : detail::GrowthFactorBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -119,6 +120,7 @@ struct UnitFraction : detail::UnitFractionBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -196,6 +198,7 @@ struct WideRange : detail::WideRangeBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -276,6 +279,7 @@ struct BinaryVelocity : detail::BinaryVelocityBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -365,6 +369,7 @@ struct RangeFields : detail::RangeFieldsBase {
     constexpr void set_prefix(std::uint8_t const value) noexcept {
         insert<decltype(prefix_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto growth_raw() const noexcept -> std::uint8_t {
         return extract<decltype(growth_raw_layout)>();
     }
@@ -409,6 +414,7 @@ struct RangeFields : detail::RangeFieldsBase {
         assert((success));
         set_growth_raw(raw);
     }
+
     [[nodiscard]] constexpr auto signed_range_raw() const noexcept -> std::uint8_t {
         return extract<decltype(signed_range_raw_layout)>();
     }
@@ -495,6 +501,7 @@ struct Defaults : detail::DefaultsBase {
         return ioj::packed_extract<decltype(delta_layout)>(
                    ioj::packed_pack<decltype(delta_layout)>(value)) == value;
     }
+
     [[nodiscard]] constexpr auto low() const noexcept -> std::uint8_t {
         return extract<decltype(low_layout)>();
     }
@@ -502,6 +509,7 @@ struct Defaults : detail::DefaultsBase {
         assert((is_valid_low(value)));
         insert<decltype(low_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto delta() const noexcept -> std::int8_t {
         return extract<decltype(delta_layout)>();
     }
@@ -553,6 +561,7 @@ struct DefaultsMsb : detail::DefaultsMsbBase {
         return ioj::packed_extract<decltype(delta_layout)>(
                    ioj::packed_pack<decltype(delta_layout)>(value)) == value;
     }
+
     [[nodiscard]] constexpr auto low() const noexcept -> std::uint8_t {
         return extract<decltype(low_layout)>();
     }
@@ -560,6 +569,7 @@ struct DefaultsMsb : detail::DefaultsMsbBase {
         assert((is_valid_low(value)));
         insert<decltype(low_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto delta() const noexcept -> std::int8_t {
         return extract<decltype(delta_layout)>();
     }
@@ -616,6 +626,7 @@ struct PartialDefaults : detail::PartialDefaultsBase {
     [[nodiscard]] static constexpr auto is_valid_last(std::uint8_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= last_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto first() const noexcept -> std::uint8_t {
         return extract<decltype(first_layout)>();
     }
@@ -623,6 +634,7 @@ struct PartialDefaults : detail::PartialDefaultsBase {
         assert((is_valid_first(value)));
         insert<decltype(first_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto gap() const noexcept -> std::uint8_t {
         return extract<decltype(gap_layout)>();
     }
@@ -630,6 +642,7 @@ struct PartialDefaults : detail::PartialDefaultsBase {
         assert((is_valid_gap(value)));
         insert<decltype(gap_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto last() const noexcept -> std::uint8_t {
         return extract<decltype(last_layout)>();
     }
@@ -667,6 +680,7 @@ struct PackedSingle : detail::PackedSingleBase {
     [[nodiscard]] static constexpr auto is_valid_value(std::uint8_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> std::uint8_t {
         return extract<decltype(value_layout)>();
     }
@@ -719,6 +733,7 @@ struct FighterState : detail::FighterStateBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
+
     [[nodiscard]] constexpr auto entity_index() const noexcept -> std::uint32_t {
         return extract<decltype(entity_index_layout)>();
     }
@@ -726,6 +741,7 @@ struct FighterState : detail::FighterStateBase {
         assert((is_valid_entity_index(value)));
         insert<decltype(entity_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> PackedState {
         return extract<decltype(state_layout)>();
     }
@@ -777,6 +793,7 @@ struct PackedByte : detail::PackedByteBase {
     [[nodiscard]] static constexpr auto is_valid_high(std::uint8_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= high_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto low() const noexcept -> std::uint8_t {
         return extract<decltype(low_layout)>();
     }
@@ -784,10 +801,12 @@ struct PackedByte : detail::PackedByteBase {
         assert((is_valid_low(value)));
         insert<decltype(low_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto flag() const noexcept -> bool {
         return extract<decltype(flag_layout)>();
     }
     constexpr void set_flag(bool const value) noexcept { insert<decltype(flag_layout)>(value); }
+
     [[nodiscard]] constexpr auto high() const noexcept -> std::uint8_t {
         return extract<decltype(high_layout)>();
     }
@@ -837,6 +856,7 @@ struct NetworkHeader : detail::NetworkHeaderBase {
         -> bool {
         return static_cast<storage_type>(value) <= version_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto version() const noexcept -> std::uint8_t {
         return extract<decltype(version_layout)>();
     }
@@ -844,12 +864,14 @@ struct NetworkHeader : detail::NetworkHeaderBase {
         assert((is_valid_version(value)));
         insert<decltype(version_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> std::uint8_t {
         return extract<decltype(kind_layout)>();
     }
     constexpr void set_kind(std::uint8_t const value) noexcept {
         insert<decltype(kind_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto length() const noexcept -> std::uint16_t {
         return extract<decltype(length_layout)>();
     }
@@ -918,6 +940,7 @@ struct SignedDelta : detail::SignedDeltaBase {
         return ioj::packed_extract<decltype(delta_layout)>(
                    ioj::packed_pack<decltype(delta_layout)>(value)) == value;
     }
+
     [[nodiscard]] constexpr auto delta() const noexcept -> std::int32_t {
         return extract<decltype(delta_layout)>();
     }
@@ -995,6 +1018,7 @@ struct SignedTemperature : detail::SignedTemperatureBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_temperature(extract<decltype(temperature_layout)>());
     }
+
     [[nodiscard]] constexpr auto temperature() const noexcept -> std::int8_t {
         return extract<decltype(temperature_layout)>();
     }
@@ -1047,6 +1071,7 @@ struct PackedTinyState : detail::PackedTinyStateBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> TinyState {
         return extract<decltype(state_layout)>();
     }
@@ -1054,6 +1079,7 @@ struct PackedTinyState : detail::PackedTinyStateBase {
         assert((is_valid_state(value)));
         insert<decltype(state_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto payload() const noexcept -> std::uint8_t {
         return extract<decltype(payload_layout)>();
     }
@@ -1095,6 +1121,7 @@ struct PackedOpaqueState : detail::PackedOpaqueStateBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state_domain(extract<decltype(state_layout)>());
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> OpaqueState {
         return extract<decltype(state_layout)>();
     }
@@ -1157,6 +1184,7 @@ struct CheckedValue : detail::CheckedValueBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
+
     [[nodiscard]] constexpr auto serial() const noexcept -> std::uint32_t {
         return extract<decltype(serial_layout)>();
     }
@@ -1164,6 +1192,7 @@ struct CheckedValue : detail::CheckedValueBase {
         assert((is_valid_serial(value)));
         insert<decltype(serial_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> DomainState {
         return extract<decltype(state_layout)>();
     }
@@ -1213,6 +1242,7 @@ struct Vitals : detail::VitalsBase {
         return Base::is_valid() &&
                is_valid_health_encoded(extract<decltype(health_encoded_layout)>());
     }
+
     [[nodiscard]] constexpr auto health_encoded() const noexcept -> std::uint8_t {
         return extract<decltype(health_encoded_layout)>();
     }
@@ -1220,6 +1250,7 @@ struct Vitals : detail::VitalsBase {
         assert((is_valid_health_encoded(value)));
         insert<decltype(health_encoded_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> std::uint8_t {
         return extract<decltype(state_layout)>();
     }
@@ -1282,6 +1313,7 @@ struct Motion : detail::MotionBase {
     [[nodiscard]] static constexpr auto is_valid_state(std::uint16_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= state_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto velocity_raw() const noexcept -> std::int16_t {
         return extract<decltype(velocity_raw_layout)>();
     }
@@ -1327,6 +1359,7 @@ struct Motion : detail::MotionBase {
         assert((success));
         set_velocity_raw(raw);
     }
+
     [[nodiscard]] constexpr auto fraction_raw() const noexcept -> std::uint8_t {
         return extract<decltype(fraction_raw_layout)>();
     }
@@ -1367,6 +1400,7 @@ struct Motion : detail::MotionBase {
         assert((success));
         set_fraction_raw(raw);
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> std::uint16_t {
         return extract<decltype(state_layout)>();
     }
@@ -1417,6 +1451,7 @@ struct PackedMiniFloat : detail::PackedMiniFloatBase {
     [[nodiscard]] static constexpr auto is_valid_state(std::uint8_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= state_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto component_encoded() const noexcept -> std::uint16_t {
         return extract<decltype(component_encoded_layout)>();
     }
@@ -1424,6 +1459,7 @@ struct PackedMiniFloat : detail::PackedMiniFloatBase {
         assert((is_valid_component_encoded(value)));
         insert<decltype(component_encoded_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> std::uint8_t {
         return extract<decltype(state_layout)>();
     }

@@ -112,6 +112,7 @@ struct ActionHandle : detail::ActionHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> Action {
         return extract<decltype(kind_layout)>();
     }

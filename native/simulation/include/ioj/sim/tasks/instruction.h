@@ -155,9 +155,11 @@ struct Instruction : detail::InstructionBase {
                 return false;
         }
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> InstructionKind {
         return extract<decltype(kind_layout)>();
     }
+
     [[nodiscard]] constexpr auto data_kill() const noexcept -> EntityId {
         assert((kind() == InstructionKind::Kill));
         return EntityId::from_raw(
@@ -168,6 +170,7 @@ struct Instruction : detail::InstructionBase {
         assert((value.is_valid()));
         insert<decltype(data_kill_layout)>(static_cast<storage_type>(value.raw_value()));
     }
+
     [[nodiscard]] constexpr auto data_jump() const noexcept -> InstructionHandle {
         assert((kind() == InstructionKind::Jump));
         return InstructionHandle::from_raw(
@@ -178,6 +181,7 @@ struct Instruction : detail::InstructionBase {
         assert((value.is_valid()));
         insert<decltype(data_jump_layout)>(static_cast<storage_type>(value.raw_value()));
     }
+
     [[nodiscard]] constexpr auto data_kill_index() const noexcept -> std::uint32_t {
         assert((kind() == InstructionKind::Kill));
         return extract<decltype(data_kill_index_layout)>();
@@ -187,6 +191,7 @@ struct Instruction : detail::InstructionBase {
         assert((is_valid_data_kill_index(value)));
         insert<decltype(data_kill_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto data_kill_entity_type() const noexcept -> EntityType {
         assert((kind() == InstructionKind::Kill));
         return extract<decltype(data_kill_entity_type_layout)>();
@@ -196,6 +201,7 @@ struct Instruction : detail::InstructionBase {
         assert((is_valid_data_kill_entity_type(value)));
         insert<decltype(data_kill_entity_type_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto data_move_to_location_index() const noexcept -> std::uint32_t {
         assert((kind() == InstructionKind::MoveTo));
         return extract<decltype(data_move_to_location_index_layout)>();
@@ -204,6 +210,7 @@ struct Instruction : detail::InstructionBase {
         assert((kind() == InstructionKind::MoveTo));
         insert<decltype(data_move_to_location_index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto data_jump_index() const noexcept -> std::uint32_t {
         assert((kind() == InstructionKind::Jump));
         return extract<decltype(data_jump_index_layout)>();

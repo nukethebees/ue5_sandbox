@@ -56,6 +56,7 @@ struct EntityId : detail::EntityIdBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_entity_type(extract<decltype(entity_type_layout)>());
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -63,6 +64,7 @@ struct EntityId : detail::EntityIdBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto entity_type() const noexcept -> EntityType {
         return extract<decltype(entity_type_layout)>();
     }

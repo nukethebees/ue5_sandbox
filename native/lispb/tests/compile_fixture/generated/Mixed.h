@@ -143,6 +143,7 @@ struct MethodCount : detail::MethodCountBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }

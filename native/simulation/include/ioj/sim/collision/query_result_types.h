@@ -37,6 +37,7 @@ struct TraceHit : detail::TraceHitBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -75,6 +76,7 @@ struct LineQueryResult : detail::LineQueryResultBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }

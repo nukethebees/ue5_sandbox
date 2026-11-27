@@ -45,6 +45,7 @@ struct RegisteredInt : detail::RegisteredIntBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -90,6 +91,7 @@ struct StandardInt : detail::StandardIntBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -133,6 +135,7 @@ struct DamageCode : detail::DamageCodeBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -178,6 +181,7 @@ struct DamageReason : detail::DamageReasonBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -220,6 +224,7 @@ struct Health : detail::HealthBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }

@@ -50,6 +50,7 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> LeafDataIndex {
         return extract<decltype(index_layout)>();
     }
@@ -57,6 +58,7 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> ExprKind {
         return extract<decltype(kind_layout)>();
     }

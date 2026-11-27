@@ -58,24 +58,28 @@ struct FunctionFlags : detail::FunctionFlagsBase {
     constexpr void set_is_constexpr(bool const value) noexcept {
         insert<decltype(is_constexpr_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto is_inline() const noexcept -> bool {
         return extract<decltype(is_inline_layout)>();
     }
     constexpr void set_is_inline(bool const value) noexcept {
         insert<decltype(is_inline_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto is_nodiscard() const noexcept -> bool {
         return extract<decltype(is_nodiscard_layout)>();
     }
     constexpr void set_is_nodiscard(bool const value) noexcept {
         insert<decltype(is_nodiscard_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto define_in_header() const noexcept -> bool {
         return extract<decltype(define_in_header_layout)>();
     }
     constexpr void set_define_in_header(bool const value) noexcept {
         insert<decltype(define_in_header_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto is_noreturn() const noexcept -> bool {
         return extract<decltype(is_noreturn_layout)>();
     }

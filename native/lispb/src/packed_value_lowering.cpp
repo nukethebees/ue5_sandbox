@@ -281,7 +281,7 @@ class PackedEmitter : public CppIRBuilder {
                 target.push_back(lines(1));
             }
             target.push_back(node);
-            first = false;
+            first = node.kind() == NodeKind::new_lines;
         }
     }
     auto text(std::string_view value) -> StringId { return store_text(value); }
@@ -910,6 +910,9 @@ class PackedEmitter : public CppIRBuilder {
         }
         for (std::size_t index{}; index < count; ++index) {
             if (addressable(layout_.placements[index])) {
+                if (!functions_.empty()) {
+                    functions_.push_back(lines(2));
+                }
                 accessor(static_cast<std::uint32_t>(index));
             }
         }

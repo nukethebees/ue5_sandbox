@@ -54,6 +54,7 @@ struct ExprHandle : detail::ExprHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -61,6 +62,7 @@ struct ExprHandle : detail::ExprHandleBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> ExprKind {
         return extract<decltype(kind_layout)>();
     }

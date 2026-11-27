@@ -49,6 +49,7 @@ struct EventHandle : detail::EventHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -56,6 +57,7 @@ struct EventHandle : detail::EventHandleBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto kind() const noexcept -> EventKind {
         return extract<decltype(kind_layout)>();
     }

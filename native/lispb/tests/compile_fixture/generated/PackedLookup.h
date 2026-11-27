@@ -36,6 +36,7 @@ struct LookupByte : detail::LookupByteBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -71,6 +72,7 @@ struct CustomByte : detail::CustomByteBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -129,6 +131,7 @@ struct CountedValue : detail::CountedValueBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
+
     [[nodiscard]] constexpr auto state() const noexcept -> CountedState {
         return extract<decltype(state_layout)>();
     }
@@ -173,6 +176,7 @@ struct PackedLookup : detail::PackedLookupBase {
     constexpr void set_packed_insert(std::uint8_t const value) noexcept {
         insert<decltype(packed_insert_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto packed_extract() const noexcept -> std::uint8_t {
         return extract<decltype(packed_extract_layout)>();
     }

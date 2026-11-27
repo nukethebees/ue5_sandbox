@@ -179,14 +179,17 @@ struct KeyedBits : detail::KeyedBitsBase {
         return extract<decltype(move_layout)>();
     }
     constexpr void set_move(bool const value) noexcept { insert<decltype(move_layout)>(value); }
+
     [[nodiscard]] constexpr auto kill() const noexcept -> bool {
         return extract<decltype(kill_layout)>();
     }
     constexpr void set_kill(bool const value) noexcept { insert<decltype(kill_layout)>(value); }
+
     [[nodiscard]] constexpr auto pair_0() const noexcept -> bool {
         return extract<decltype(pair_0_layout)>();
     }
     constexpr void set_pair_0(bool const value) noexcept { insert<decltype(pair_0_layout)>(value); }
+
     [[nodiscard]] constexpr auto pair_1() const noexcept -> bool {
         return extract<decltype(pair_1_layout)>();
     }
@@ -211,6 +214,7 @@ struct KeyedBits : detail::KeyedBitsBase {
             static_assert(false, "Unsupported enum accessor key");
         }
     }
+
     template <auto Key>
     constexpr void set(this auto& self, auto&& value) {
         if constexpr (std::same_as<decltype(Key), groups::Action>) {
@@ -234,6 +238,7 @@ struct KeyedBits : detail::KeyedBitsBase {
             static_assert(false, "Unsupported enum accessor key");
         }
     }
+
     constexpr decltype(auto) get(this auto const& self, groups::Action key) {
         switch (key) {
             case groups::Action::Move:
@@ -245,6 +250,7 @@ struct KeyedBits : detail::KeyedBitsBase {
                 std::unreachable();
         }
     }
+
     constexpr void set(this auto& self, groups::Action key, bool value) {
         switch (key) {
             case groups::Action::Move:
@@ -258,6 +264,7 @@ struct KeyedBits : detail::KeyedBitsBase {
                 std::unreachable();
         }
     }
+
     constexpr decltype(auto) get(this auto const& self, groups::Sparse key) {
         switch (key) {
             case groups::Sparse::Positive:
@@ -267,6 +274,7 @@ struct KeyedBits : detail::KeyedBitsBase {
                 std::unreachable();
         }
     }
+
     constexpr void set(this auto& self, groups::Sparse key, std::array<bool, 2> value) {
         switch (key) {
             case groups::Sparse::Positive:

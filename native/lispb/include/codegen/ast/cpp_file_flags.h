@@ -47,12 +47,14 @@ struct CppFileFlags : detail::CppFileFlagsBase {
     constexpr void set_pragma_once(bool const value) noexcept {
         insert<decltype(pragma_once_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto clang_format_off() const noexcept -> bool {
         return extract<decltype(clang_format_off_layout)>();
     }
     constexpr void set_clang_format_off(bool const value) noexcept {
         insert<decltype(clang_format_off_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto format_generated() const noexcept -> bool {
         return extract<decltype(format_generated_layout)>();
     }

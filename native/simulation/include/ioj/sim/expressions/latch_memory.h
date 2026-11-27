@@ -50,6 +50,7 @@ struct LatchMemory : detail::LatchMemoryBase {
         return Base::is_valid() && (is_valid_pending(extract<decltype(pending_layout)>()) &&
                                     is_valid_cached(extract<decltype(cached_layout)>()));
     }
+
     [[nodiscard]] constexpr auto pending() const noexcept -> LatchState {
         return extract<decltype(pending_layout)>();
     }
@@ -57,6 +58,7 @@ struct LatchMemory : detail::LatchMemoryBase {
         assert((is_valid_pending(value)));
         insert<decltype(pending_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto cached() const noexcept -> LatchState {
         return extract<decltype(cached_layout)>();
     }

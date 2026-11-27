@@ -38,6 +38,7 @@ struct EntityFrameIndex : detail::EntityFrameIndexBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -76,6 +77,7 @@ struct QuantisedHealth : detail::QuantisedHealthBase {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
@@ -142,6 +144,7 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_team(extract<decltype(team_layout)>());
     }
+
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
@@ -149,6 +152,7 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto team() const noexcept -> Team {
         return extract<decltype(team_layout)>();
     }
@@ -156,6 +160,7 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
         assert((is_valid_team(value)));
         insert<decltype(team_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto health_state() const noexcept -> std::uint8_t {
         return extract<decltype(health_state_layout)>();
     }

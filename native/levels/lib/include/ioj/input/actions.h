@@ -313,144 +313,169 @@ struct DigitalActions : detail::DigitalActionsBase {
         return extract<decltype(pause_layout)>();
     }
     constexpr void set_pause(bool const value) noexcept { insert<decltype(pause_layout)>(value); }
+
     [[nodiscard]] constexpr auto boost() const noexcept -> bool {
         return extract<decltype(boost_layout)>();
     }
     constexpr void set_boost(bool const value) noexcept { insert<decltype(boost_layout)>(value); }
+
     [[nodiscard]] constexpr auto brake() const noexcept -> bool {
         return extract<decltype(brake_layout)>();
     }
     constexpr void set_brake(bool const value) noexcept { insert<decltype(brake_layout)>(value); }
+
     [[nodiscard]] constexpr auto emergency_brake() const noexcept -> bool {
         return extract<decltype(emergency_brake_layout)>();
     }
     constexpr void set_emergency_brake(bool const value) noexcept {
         insert<decltype(emergency_brake_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto fire() const noexcept -> bool {
         return extract<decltype(fire_layout)>();
     }
     constexpr void set_fire(bool const value) noexcept { insert<decltype(fire_layout)>(value); }
+
     [[nodiscard]] constexpr auto hold_to_steer() const noexcept -> bool {
         return extract<decltype(hold_to_steer_layout)>();
     }
     constexpr void set_hold_to_steer(bool const value) noexcept {
         insert<decltype(hold_to_steer_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_right() const noexcept -> bool {
         return extract<decltype(observer_right_layout)>();
     }
     constexpr void set_observer_right(bool const value) noexcept {
         insert<decltype(observer_right_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_left() const noexcept -> bool {
         return extract<decltype(observer_left_layout)>();
     }
     constexpr void set_observer_left(bool const value) noexcept {
         insert<decltype(observer_left_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_forward() const noexcept -> bool {
         return extract<decltype(observer_forward_layout)>();
     }
     constexpr void set_observer_forward(bool const value) noexcept {
         insert<decltype(observer_forward_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_backward() const noexcept -> bool {
         return extract<decltype(observer_backward_layout)>();
     }
     constexpr void set_observer_backward(bool const value) noexcept {
         insert<decltype(observer_backward_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_up() const noexcept -> bool {
         return extract<decltype(observer_up_layout)>();
     }
     constexpr void set_observer_up(bool const value) noexcept {
         insert<decltype(observer_up_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_down() const noexcept -> bool {
         return extract<decltype(observer_down_layout)>();
     }
     constexpr void set_observer_down(bool const value) noexcept {
         insert<decltype(observer_down_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_fast() const noexcept -> bool {
         return extract<decltype(observer_fast_layout)>();
     }
     constexpr void set_observer_fast(bool const value) noexcept {
         insert<decltype(observer_fast_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto observer_toggle_look() const noexcept -> bool {
         return extract<decltype(observer_toggle_look_layout)>();
     }
     constexpr void set_observer_toggle_look(bool const value) noexcept {
         insert<decltype(observer_toggle_look_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_up() const noexcept -> bool {
         return extract<decltype(menu_up_layout)>();
     }
     constexpr void set_menu_up(bool const value) noexcept {
         insert<decltype(menu_up_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_down() const noexcept -> bool {
         return extract<decltype(menu_down_layout)>();
     }
     constexpr void set_menu_down(bool const value) noexcept {
         insert<decltype(menu_down_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_left() const noexcept -> bool {
         return extract<decltype(menu_left_layout)>();
     }
     constexpr void set_menu_left(bool const value) noexcept {
         insert<decltype(menu_left_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_right() const noexcept -> bool {
         return extract<decltype(menu_right_layout)>();
     }
     constexpr void set_menu_right(bool const value) noexcept {
         insert<decltype(menu_right_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_next() const noexcept -> bool {
         return extract<decltype(menu_next_layout)>();
     }
     constexpr void set_menu_next(bool const value) noexcept {
         insert<decltype(menu_next_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_previous() const noexcept -> bool {
         return extract<decltype(menu_previous_layout)>();
     }
     constexpr void set_menu_previous(bool const value) noexcept {
         insert<decltype(menu_previous_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_accept() const noexcept -> bool {
         return extract<decltype(menu_accept_layout)>();
     }
     constexpr void set_menu_accept(bool const value) noexcept {
         insert<decltype(menu_accept_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto menu_back() const noexcept -> bool {
         return extract<decltype(menu_back_layout)>();
     }
     constexpr void set_menu_back(bool const value) noexcept {
         insert<decltype(menu_back_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto benchmark_next() const noexcept -> bool {
         return extract<decltype(benchmark_next_layout)>();
     }
     constexpr void set_benchmark_next(bool const value) noexcept {
         insert<decltype(benchmark_next_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto benchmark_activate() const noexcept -> bool {
         return extract<decltype(benchmark_activate_layout)>();
     }
     constexpr void set_benchmark_activate(bool const value) noexcept {
         insert<decltype(benchmark_activate_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto benchmark_toggle() const noexcept -> bool {
         return extract<decltype(benchmark_toggle_layout)>();
     }
     constexpr void set_benchmark_toggle(bool const value) noexcept {
         insert<decltype(benchmark_toggle_layout)>(value);
     }
+
     [[nodiscard]] constexpr auto benchmark_end() const noexcept -> bool {
         return extract<decltype(benchmark_end_layout)>();
     }

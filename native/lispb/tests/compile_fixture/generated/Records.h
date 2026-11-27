@@ -52,6 +52,7 @@ struct ReaderHealth : detail::ReaderHealthBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
+
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();
     }
