@@ -12,9 +12,6 @@ class UTextBlock;
 namespace ioj {
 class UMenuButtonWidget;
 
-DECLARE_MULTICAST_DELEGATE(FPauseReturnToLevelSelectRequested);
-DECLARE_MULTICAST_DELEGATE(FPauseQuitRequested);
-
 UCLASS()
 class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     GENERATED_BODY()
@@ -26,8 +23,6 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void prepare_for_open();
     void present(host::PauseCommand command);
 
-    FPauseReturnToLevelSelectRequested return_to_level_select_requested;
-    FPauseQuitRequested quit_requested;
   protected:
     /* **************************************** */
     // Widget lifecycle

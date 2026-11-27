@@ -87,8 +87,59 @@ auto MenuPresentation::binding_rows() const -> std::vector<ControlBindingRow> {
     return rows;
 }
 
+auto PlayerMenu::pause_blocked() const -> bool {
+    return prompt != OptionsPrompt::None || draft.binding_edit().prompt != BindingPrompt::Closed ||
+           saving;
+}
+auto PlayerMenu::pause_item() const -> host::PauseMenuItem {
+    return page == MainMenuItem::Controls ? host::PauseMenuItem::Controls
+                                          : host::PauseMenuItem::Audio;
+}
+auto PlayerMenu::select_pause_item(host::PauseMenuItem item) -> bool {
+    if (screen != MenuScreen::Pause || pause_blocked() || item == pause_item() ||
+        (pause_sidebar && item == pause_selection)) {
+        return false;
+    }
+    pause_selection = item;
+    pause_sidebar = true;
+    return true;
+}
+auto PlayerMenu::navigate_pause(MenuCommand command, bool repeat)
+    -> std::optional<host::PauseMenuItem> {
+    if (pause_blocked()) {
+        return {};
+    }
+    using enum MenuCommand;
+    switch (command) {
+        case Back:
+            if (!repeat) {
+                return host::PauseMenuItem::Resume;
+            }
+            break;
+        case Accept:
+            if (!repeat) {
+                return pause_selection;
+            }
+            break;
+        case Right:
+            return pause_item();
+        case Left:
+            break;
+        default:
+            do {
+                pause_selection = command == Up || command == Previous
+                                    ? cycle_previous(pause_selection)
+                                    : cycle_next(pause_selection);
+            } while (pause_selection == pause_item());
+            break;
+    }
+    return {};
+}
 void PlayerMenu::open(MenuScreen next, bool content) {
     screen = next;
+    pending_pause.reset();
+    pause_sidebar = next == MenuScreen::Pause;
+    pause_selection = host::PauseMenuItem::Resume;
     page = next == MenuScreen::Pause ? MainMenuItem::Audio : MainMenuItem::SelectLevel;
     focus =
         next == MenuScreen::Completion ? MenuTarget{MenuControl::ReturnToLevels} : MenuTarget{page};

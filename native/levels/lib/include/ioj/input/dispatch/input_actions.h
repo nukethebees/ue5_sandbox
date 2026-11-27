@@ -122,11 +122,10 @@ inline constexpr MinMax<host::PauseMenuItem> enum_range<host::PauseMenuItem>{
 namespace ioj::host {
 using PauseCommandKindUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 2.
 enum class PauseCommandKind : PauseCommandKindUnderlying {
     Open,
     Select,
-    CheckLeave,
     ShowPage,
     Finish,
 };
@@ -142,15 +141,11 @@ inline constexpr MinMax<host::PauseCommandKind> enum_range<host::PauseCommandKin
 namespace ioj::host {
 using PauseWidgetEventKindUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 2.
 enum class PauseWidgetEventKind : PauseWidgetEventKindUnderlying {
     Select,
     Activate,
     ContentFocused,
-    ModalOpened,
-    ModalClosed,
-    LeaveAccepted,
-    LeaveCancelled,
 };
 
 } // namespace ioj::host
@@ -158,7 +153,7 @@ enum class PauseWidgetEventKind : PauseWidgetEventKindUnderlying {
 namespace ioj {
 template <>
 inline constexpr MinMax<host::PauseWidgetEventKind> enum_range<host::PauseWidgetEventKind>{
-    host::PauseWidgetEventKind::Select, host::PauseWidgetEventKind::LeaveCancelled};
+    host::PauseWidgetEventKind::Select, host::PauseWidgetEventKind::ContentFocused};
 
 template <>
 struct EnumTraits<host::PlayerAction> {
@@ -192,7 +187,6 @@ template <>
 struct EnumTraits<host::PauseCommandKind> {
     static constexpr std::array values{host::PauseCommandKind::Open,
                                        host::PauseCommandKind::Select,
-                                       host::PauseCommandKind::CheckLeave,
                                        host::PauseCommandKind::ShowPage,
                                        host::PauseCommandKind::Finish};
 };
@@ -201,11 +195,7 @@ template <>
 struct EnumTraits<host::PauseWidgetEventKind> {
     static constexpr std::array values{host::PauseWidgetEventKind::Select,
                                        host::PauseWidgetEventKind::Activate,
-                                       host::PauseWidgetEventKind::ContentFocused,
-                                       host::PauseWidgetEventKind::ModalOpened,
-                                       host::PauseWidgetEventKind::ModalClosed,
-                                       host::PauseWidgetEventKind::LeaveAccepted,
-                                       host::PauseWidgetEventKind::LeaveCancelled};
+                                       host::PauseWidgetEventKind::ContentFocused};
 };
 
 } // namespace ioj

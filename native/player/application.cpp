@@ -257,93 +257,83 @@ struct PlayerInputSession {
     }
 
     auto routing() const -> InputRoute {
+        if (menu.screen == MenuScreen::Pause) {
+            return {InputContext::Menu, !menu.pause_blocked()};
+        }
         auto const* level{storage.get()};
-        auto route{level && !level->presentation_setup
-                       ? level->pause_menu.route(InputRoute{level->input_context()})
-                       : InputRoute{}};
-        if (menu.prompt != OptionsPrompt::None ||
-            menu.draft.binding_edit().prompt != BindingPrompt::Closed || menu.saving) {
-            route.resume_available = false;
-        }
-        return route;
-    }
-    void update_pause_simulation(LoadedLevel& level) {
-        auto const request{level.pause_menu.simulation_request(level.simulation.state())};
-        if (request) {
-            level.set_simulation_mode(*request);
-        }
-    }
-    void present_pause(LoadedLevel& level, PauseMenu::Command command) {
-        update_pause_simulation(level);
-        if (!command) {
-            return;
-        }
-        if (command->kind == host::PauseCommandKind::CheckLeave) {
-            if (menu.leave_ready()) {
-                present_pause(level,
-                              level.pause_menu.widget_event(
-                                  {host::PauseWidgetEventKind::LeaveAccepted, command->item}));
-            } else {
-                host::present_menu({menu.focus, MenuOperation::Focus});
-            }
-            return;
-        }
-        if (command->kind == host::PauseCommandKind::Open) {
-            menu.open(MenuScreen::Pause);
-        } else if (command->kind == host::PauseCommandKind::ShowPage) {
-            menu.select_page(command->item == host::PauseMenuItem::Audio ? MainMenuItem::Audio
-                                                                         : MainMenuItem::Controls);
-            menu.select(menu.primary_target(settings.view()));
-        } else if (command->kind == host::PauseCommandKind::Finish) {
-            menu.open(MenuScreen::Closed);
-        }
-        if (!host::present_pause(*command)) {
-            pause_presentation =
-                std::unexpected{"Could not present the native pause menu. See the game log."};
-        }
+        return {level ? level->input_context() : InputContext::Menu};
     }
     void dispatch(host::PlayerAction action) {
-        auto* const level{storage.get()};
-        if (!level || level->presentation_setup || end_benchmark) {
+        auto* level{storage.get()};
+        if (!level || level->presentation_setup) {
             return;
         }
-        auto& simulation{level->simulation};
         using enum host::PlayerAction;
-        if (action == BenchmarkActivate) {
-            action = level->end_selected ? EndBenchmark : ToggleBenchmark;
-        }
         switch (action) {
             case OpenPause:
+                if (menu.screen != MenuScreen::Closed ||
+                    level->simulation.state() == sim::LevelState::Stopped) {
+                    return;
+                }
+                menu.open(MenuScreen::Pause);
+                level->update_pause(true);
+                endpoint.present_pause({host::PauseCommandKind::Open, host::PauseMenuItem::Resume});
+                break;
             case RequestResume:
-                present_pause(*level, level->pause_menu.handle(action, simulation.state()));
+                if (menu.screen == MenuScreen::Pause && !menu.pause_blocked()) {
+                    choose_pause(host::PauseMenuItem::Resume);
+                }
                 break;
             case BenchmarkNext:
                 level->end_selected = !level->end_selected;
                 endpoint.select_benchmark(level->end_selected);
                 break;
+            case BenchmarkActivate:
+                dispatch(level->end_selected ? EndBenchmark : ToggleBenchmark);
+                break;
             case ToggleBenchmark:
-                if (simulation.state() == sim::LevelState::Running) {
-                    level->set_simulation_mode(levels::LaunchMode::Paused);
-                } else if (simulation.state() == sim::LevelState::Paused) {
-                    level->set_simulation_mode(levels::LaunchMode::Running);
-                }
+                level->set_simulation_mode(level->simulation.state() == sim::LevelState::Running
+                                               ? levels::LaunchMode::Paused
+                                               : levels::LaunchMode::Running);
                 break;
             case EndBenchmark:
-                end_benchmark = true;
+                return_requested = true;
                 break;
-            case BenchmarkActivate:
+        }
+    }
+    void choose_pause(host::PauseMenuItem item) {
+        if (item != menu.pause_item() && !menu.leave_ready()) {
+            menu.pending_pause = item;
+            present_menu({menu.focus, MenuOperation::Focus});
+            return;
+        }
+        using enum host::PauseMenuItem;
+        switch (item) {
+            case Resume:
+                menu.open(MenuScreen::Closed);
+                storage.get()->update_pause(false);
+                endpoint.present_pause({host::PauseCommandKind::Finish, item});
+                break;
+            case Controls:
+            case Audio:
+                menu.select_page(item == Audio ? MainMenuItem::Audio : MainMenuItem::Controls);
+                menu.pause_sidebar = false;
+                menu.select(menu.primary_target(settings.view()));
+                endpoint.present_pause({host::PauseCommandKind::ShowPage, item});
+                break;
+            case LevelSelect:
+                return_requested = true;
+                break;
+            case Quit:
+                quit_requested = true;
                 break;
         }
     }
     void finish_leave(bool accepted) {
-        if (auto* level{storage.get()};
-            menu.screen == MenuScreen::Pause && level && level->pause_menu.pending) {
-            auto const kind{accepted ? host::PauseWidgetEventKind::LeaveAccepted
-                                     : host::PauseWidgetEventKind::LeaveCancelled};
-            present_pause(*level,
-                          level->pause_menu.widget_event({kind, *level->pause_menu.pending}));
+        if (auto item{std::exchange(menu.pending_pause, {})}; item && accepted) {
+            choose_pause(*item);
         } else if (auto update{menu.finish_main_leave(accepted)}) {
-            host::present_menu(*update);
+            present_menu(*update);
         }
     }
 
@@ -368,6 +358,37 @@ struct PlayerInputSession {
         auto const& replies{endpoint.exchange()};
         for (auto const [kind, index] : replies.order) {
             switch (kind) {
+                case host::UnrealMessageKind::PauseInteraction: {
+                    auto const event{replies.pause_events[index]};
+                    if (menu.screen != MenuScreen::Pause) {
+                        break;
+                    }
+                    switch (event.kind) {
+                        case host::PauseWidgetEventKind::Activate:
+                            if (!menu.pause_blocked()) {
+                                choose_pause(event.item);
+                            }
+                            break;
+                        case host::PauseWidgetEventKind::Select:
+                            if (menu.select_pause_item(event.item)) {
+                                endpoint.present_pause(
+                                    {host::PauseCommandKind::Select, event.item});
+                            }
+                            break;
+                        case host::PauseWidgetEventKind::ContentFocused:
+                            if (!menu.pause_blocked()) {
+                                menu.pause_sidebar = false;
+                            }
+                            break;
+                    }
+                    break;
+                }
+                case host::UnrealMessageKind::PausePresented:
+                    if (!replies.pause_results[index]) {
+                        pause_presentation = std::unexpected{
+                            "Could not present the native pause menu. See the game log."};
+                    }
+                    break;
                 case host::UnrealMessageKind::Setting: {
                     auto const& change{replies.settings[index]};
                     if (!menu.saving && menu.prompt == OptionsPrompt::None &&
@@ -409,11 +430,7 @@ struct PlayerInputSession {
                 break;
             }
             for (auto const& action : actions) {
-                if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
-                    if (auto* level{storage.get()}) {
-                        present_pause(*level, level->pause_menu.widget_event(*event));
-                    }
-                } else if (auto const* result{std::get_if<host::SettingsSaveResult>(&action)}) {
+                if (auto const* result{std::get_if<host::SettingsSaveResult>(&action)}) {
                     finish_leave(result->succeeded);
                 } else {
                     dispatch(std::get<host::PlayerAction>(action));
@@ -431,16 +448,19 @@ struct PlayerInputSession {
         if (!button.down) {
             return;
         }
-        auto* level{storage.get()};
         if (menu.draft.binding_edit().prompt != BindingPrompt::Closed) {
             menu.draft.navigate_binding(button.command, button.repeat);
             host::present_menu({menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
-        } else if (level &&
-                   (level->pause_menu.view == PauseMenuView::Sidebar ||
-                    (level->pause_menu.view == PauseMenuView::Options &&
-                     button.command == MenuCommand::Back)) &&
-                   !level->pause_menu.options_modal && menu.prompt == OptionsPrompt::None) {
-            present_pause(*level, level->pause_menu.navigate(button.command, button.repeat));
+        } else if (menu.screen == MenuScreen::Pause &&
+                   (menu.pause_sidebar || button.command == MenuCommand::Back) &&
+                   !menu.pause_blocked()) {
+            auto const before{menu.pause_selection};
+            if (auto item{menu.navigate_pause(button.command, button.repeat)}) {
+                choose_pause(*item);
+            } else if (before != menu.pause_selection) {
+                endpoint.present_pause({host::PauseCommandKind::Select, menu.pause_selection});
+            }
+
         } else {
             navigate_menu(button);
         }
@@ -497,7 +517,8 @@ struct PlayerInputSession {
     PlayerMenu& menu;
     InputSystem input;
     ApplicationResult pause_presentation{};
-    bool end_benchmark{};
+    bool return_requested{};
+    bool quit_requested{};
 };
 }
 
@@ -562,7 +583,8 @@ auto Application::play(Window& window,
         if (!play_input.pause_presentation) {
             return play_input.pause_presentation;
         }
-        if (window_events.close_requested || IojPlayer_ExitRequested()) {
+        if (window_events.close_requested || play_input.quit_requested ||
+            IojPlayer_ExitRequested()) {
             break;
         }
 
@@ -591,13 +613,13 @@ auto Application::play(Window& window,
 
         play_input.process_widget_actions();
         auto const messages{host::take_messages()};
-        if (play_input.end_benchmark) {
+        if (play_input.return_requested) {
             auto const id{storage.get()->simulation.level_metadata().id};
             unload_level(storage, sim::RunEndReason::WorldEnd, false);
             menu_.selected_level = id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             host::open_menu(id.value, {});
-            play_input.end_benchmark = false;
+            play_input.return_requested = false;
             continue;
         }
         if (process_preferences(window, messages.preference_edits)) {
@@ -687,7 +709,7 @@ auto Application::play(Window& window,
                 level->set_simulation_mode(*messages.requested_simulation_mode);
             }
             advance_level(level->simulation, level->elapsed_seconds());
-            play_input.update_pause_simulation(*level);
+            level->update_pause(menu_.screen == MenuScreen::Pause);
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
             }

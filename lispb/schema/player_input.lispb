@@ -50,12 +50,6 @@
     (value FlightTurn)
     (value ObserverLookDelta)
     (projections (cpp)))
-  (enum PauseMenuView @native_uint8 :native-api true
-    (value Closed)
-    (value Sidebar)
-    (value Options)
-    (value Leaving)
-    (projections (cpp)))
   (enum MenuInputMode @native_uint8 :native-api true :helpers (traits)
     (value Navigation)
     (value BindingCapture)
@@ -374,7 +368,6 @@
   (enum PauseCommandKind @native_uint8 :native-api true :helpers (traits)
     (value Open)
     (value Select)
-    (value CheckLeave)
     (value ShowPage)
     (value Finish)
     (projections (cpp)))
@@ -382,10 +375,6 @@
     (value Select)
     (value Activate)
     (value ContentFocused)
-    (value ModalOpened)
-    (value ModalClosed)
-    (value LeaveAccepted)
-    (value LeaveCancelled)
     (projections (cpp))))
 
 (module physical_event_kind

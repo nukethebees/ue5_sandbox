@@ -1,6 +1,5 @@
 #pragma once
 
-#include "player/pause_menu.h"
 #include <ioj/input/dispatch/events.h>
 #include <ioj/memory/bump_resource.h>
 #include <ioj/presentation/level_init.h>
@@ -17,14 +16,16 @@ struct LoadedLevel {
 
     auto input_context() const -> InputContext;
     void set_simulation_mode(levels::LaunchMode mode);
+    void update_pause(bool menu_open);
     auto elapsed_seconds() -> double;
 
     std::chrono::steady_clock::time_point previous_frame{std::chrono::steady_clock::now()};
     bool end_selected{};
-    PauseMenu pause_menu;
     levels::ControlContext control_context;
     sim::LevelSim simulation;
     std::optional<presentation::LevelPresentationSetup> presentation_setup;
+  private:
+    bool resume_when_paused{};
 };
 
 class LevelStorage {

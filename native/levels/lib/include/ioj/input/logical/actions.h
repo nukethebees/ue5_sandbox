@@ -86,20 +86,6 @@ template <>
 inline constexpr MinMax<Axis2DAction> enum_range<Axis2DAction>{Axis2DAction::FlightTurn,
                                                                Axis2DAction::ObserverLookDelta};
 
-using PauseMenuViewUnderlying = std::uint8_t;
-
-// Logical bit width: 2.
-enum class PauseMenuView : PauseMenuViewUnderlying {
-    Closed,
-    Sidebar,
-    Options,
-    Leaving,
-};
-
-template <>
-inline constexpr MinMax<PauseMenuView> enum_range<PauseMenuView>{PauseMenuView::Closed,
-                                                                 PauseMenuView::Leaving};
-
 using MenuInputModeUnderlying = std::uint8_t;
 
 // Logical bit width: 2.

@@ -46,6 +46,15 @@ void LoadedLevel::set_simulation_mode(levels::LaunchMode mode) {
         previous_frame = std::chrono::steady_clock::now();
     }
 }
+void LoadedLevel::update_pause(bool menu_open) {
+    if (menu_open && !resume_when_paused) {
+        set_simulation_mode(levels::LaunchMode::Paused);
+        resume_when_paused = true;
+    } else if (resume_when_paused && !menu_open && simulation.state() == sim::LevelState::Paused) {
+        set_simulation_mode(levels::LaunchMode::Running);
+        resume_when_paused = false;
+    }
+}
 auto LoadedLevel::elapsed_seconds() -> double {
     auto const now{std::chrono::steady_clock::now()};
     return std::min(std::chrono::duration<double>{now - std::exchange(previous_frame, now)}.count(),

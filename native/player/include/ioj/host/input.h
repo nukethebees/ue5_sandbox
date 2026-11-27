@@ -12,7 +12,7 @@ namespace ioj::host {
 struct SettingsSaveResult {
     bool succeeded;
 };
-using WidgetAction = std::variant<PlayerAction, PauseWidgetEvent, SettingsSaveResult>;
+using WidgetAction = std::variant<PlayerAction, SettingsSaveResult>;
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_INPUT_API __declspec(dllexport)
 #else

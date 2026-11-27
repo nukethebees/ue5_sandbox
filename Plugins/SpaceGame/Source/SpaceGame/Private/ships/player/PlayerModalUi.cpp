@@ -90,11 +90,6 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner) -> bool {
         return false;
     }
 
-    pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
-    pause_menu_->return_to_level_select_requested.AddUObject(
-        &owner, &ASpaceGamePlayerController::return_to_level_select);
-    pause_menu_->quit_requested.RemoveAll(&owner);
-    pause_menu_->quit_requested.AddUObject(&owner, &ASpaceGamePlayerController::quit_game);
     pause_menu_->closed.RemoveAll(&owner);
     pause_menu_->closed.AddUObject(&owner, &ASpaceGamePlayerController::on_pause_menu_deactivated);
     return true;
@@ -119,8 +114,6 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
 void FPlayerModalUi::detach_callbacks(ASpaceGamePlayerController& owner) {
     if (IsValid(pause_menu_)) {
         pause_menu_->closed.RemoveAll(&owner);
-        pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
-        pause_menu_->quit_requested.RemoveAll(&owner);
     }
 
     if (IsValid(completion_menu_)) {
@@ -150,8 +143,6 @@ void FPlayerModalUi::clear_menus(ASpaceGamePlayerController& owner) {
 void FPlayerModalUi::close_pause(ASpaceGamePlayerController& owner) {
     if (IsValid(pause_menu_)) {
         pause_menu_->closed.RemoveAll(&owner);
-        pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
-        pause_menu_->quit_requested.RemoveAll(&owner);
     }
 
     pause_menu_ = nullptr;

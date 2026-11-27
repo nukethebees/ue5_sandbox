@@ -1,48 +1,44 @@
-#include "player/input/input_system.h"
-#include "player/pause_menu.h"
+#include "player/loaded_level.h"
+#include <ioj/input/dispatch/player_menu.h>
 
 #include <gtest/gtest.h>
 
 namespace ioj::tests {
 TEST(PauseMenu, ImmediateResumeWaitsOnlyForTheQueuedSimulationPause) {
-    PauseMenu menu;
-    using enum host::PlayerAction;
+    LevelStorage storage;
+    sim::LevelSimInitData data{};
+    data.collision.grid_spec = {{4, 4, 4}, {{1000.f, 1000.f, 1000.f}}};
+    for (auto type : EnumTraits<sim::EntityType>::values) {
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+    }
+    storage.load(std::move(data), {});
+    auto& level{*storage.get()};
     using enum sim::LevelState;
-    EXPECT_TRUE(menu.handle(OpenPause, Running));
-    EXPECT_EQ(menu.simulation_request(Running), levels::LaunchMode::Paused);
-    EXPECT_FALSE(menu.simulation_request(Running));
-    EXPECT_TRUE(menu.handle(RequestResume, Running));
-    EXPECT_TRUE(menu.widget_event(
-        {host::PauseWidgetEventKind::LeaveAccepted, host::PauseMenuItem::Resume}));
-    EXPECT_EQ(menu.route({InputContext::Observer}).context, InputContext::Observer);
-    EXPECT_FALSE(menu.simulation_request(Running));
-    EXPECT_EQ(menu.simulation_request(Paused), levels::LaunchMode::Running);
-    EXPECT_FALSE(menu.simulation_request(Running));
+    level.set_simulation_mode(levels::LaunchMode::Running);
+    level.update_pause(true);
+    level.update_pause(false);
+    EXPECT_EQ(level.simulation.state(), Running);
+    level.simulation.advance(level.simulation.clock().tick_period());
+    ASSERT_EQ(level.simulation.state(), Paused);
+    level.update_pause(false);
+    EXPECT_EQ(level.simulation.state(), Running);
 }
-
 TEST(PauseMenu, PausedLaunchPointerSelectionAndOptionsLeaveConfirmation) {
-    PauseMenu menu;
-    using enum host::PauseWidgetEventKind;
+    PlayerMenu menu;
     using enum host::PauseMenuItem;
-    EXPECT_TRUE(menu.handle(host::PlayerAction::OpenPause, sim::LevelState::Paused));
-    EXPECT_FALSE(menu.simulation_request(sim::LevelState::Paused));
-    EXPECT_TRUE(menu.widget_event({Select, Controls}));
-    EXPECT_TRUE(menu.widget_event({Activate, Controls}));
-    EXPECT_TRUE(menu.widget_event({LeaveAccepted, Controls}));
-    EXPECT_EQ(menu.view, PauseMenuView::Options);
-    EXPECT_EQ(menu.page, Controls);
-    EXPECT_TRUE(menu.widget_event({Select, Quit}));
-    EXPECT_TRUE(menu.widget_event({Activate, Quit}));
-    EXPECT_FALSE(menu.widget_event({ModalOpened}));
-    EXPECT_FALSE(menu.route({}).resume_available);
-    menu.widget_event({ModalClosed});
-    menu.widget_event({LeaveCancelled, Quit});
-    EXPECT_EQ(menu.view, PauseMenuView::Sidebar);
-    EXPECT_FALSE(menu.pending);
-    EXPECT_FALSE(menu.widget_event({LeaveAccepted, Quit}));
-    EXPECT_TRUE(menu.widget_event({Activate, Quit}));
-    EXPECT_TRUE(menu.widget_event({LeaveAccepted, Quit}));
-    EXPECT_EQ(menu.view, PauseMenuView::Leaving);
+    menu.open(MenuScreen::Pause);
+    EXPECT_TRUE(menu.select_pause_item(Controls));
+    EXPECT_EQ(menu.navigate_pause(MenuCommand::Accept, false), Controls);
+    menu.select_page(MainMenuItem::Controls);
+    menu.pause_sidebar = false;
+    EXPECT_TRUE(menu.draft.set_setting(GameSetting::MasterVolume, 0.4f));
+    EXPECT_TRUE(menu.select_pause_item(Quit));
+    EXPECT_FALSE(menu.leave_ready());
+    EXPECT_TRUE(menu.pause_blocked());
+    EXPECT_FALSE(menu.select_pause_item(Resume));
+    menu.set_prompt(OptionsPrompt::None);
+    EXPECT_EQ(menu.pause_selection, Quit);
+    menu.draft.cancel();
+    EXPECT_TRUE(menu.leave_ready());
 }
-
 }

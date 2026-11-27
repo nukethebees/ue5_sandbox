@@ -97,7 +97,7 @@ auto UPauseMenuWidget::button_for(host::PauseMenuItem item) const -> UMenuButton
 }
 
 void UPauseMenuWidget::send_event(host::PauseWidgetEvent event) {
-    queue_input_action(event);
+    report_pause_interaction(event);
 }
 
 void UPauseMenuWidget::present(host::PauseCommand command) {
@@ -107,33 +107,21 @@ void UPauseMenuWidget::present(host::PauseCommand command) {
         case host::PauseCommandKind::Select:
             button_for(command.item)->focus_target()->SetKeyboardFocus();
             break;
-        case CheckLeave:
-            checkNoEntry();
-            break;
         case ShowPage:
             options_widget->show_page(command.item == host::PauseMenuItem::Audio
                                           ? MainMenuItem::Audio
                                           : MainMenuItem::Controls);
-            options_widget->present({player_menu().focus, MenuOperation::Focus});
+            options_widget->present({menu_presentation().focus, MenuOperation::Focus});
             set_navigation_enabled(!options_modal_visible_);
             break;
         case Finish:
-            if (command.item == host::PauseMenuItem::Resume) {
-                close();
-            } else if (command.item == host::PauseMenuItem::LevelSelect) {
-                return_to_level_select_requested.Broadcast();
-            } else {
-                check(command.item == host::PauseMenuItem::Quit);
-                quit_requested.Broadcast();
-            }
+            close();
             break;
     }
 }
 
 void UPauseMenuWidget::handle_options_modal_state_changed(bool const visible) {
     options_modal_visible_ = visible;
-    send_event({visible ? host::PauseWidgetEventKind::ModalOpened
-                        : host::PauseWidgetEventKind::ModalClosed});
     set_navigation_enabled(!visible);
 }
 

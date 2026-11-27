@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/input/dispatch/input_actions.h>
 #include <ioj/input/logical/flight_controls.h>
 #include <ioj/input/physical/physical_key.h>
 #include <ioj/levels/launch_options.h>
@@ -150,6 +151,10 @@ struct MenuPresentation {
 };
 
 struct PlayerMenu : MenuPresentation {
+    auto pause_blocked() const -> bool;
+    auto pause_item() const -> host::PauseMenuItem;
+    auto select_pause_item(host::PauseMenuItem item) -> bool;
+    auto navigate_pause(MenuCommand command, bool repeat) -> std::optional<host::PauseMenuItem>;
     void open(MenuScreen screen, bool focus_content = false);
     void select_page(MainMenuItem item);
     auto leave_ready() -> bool;
@@ -190,5 +195,8 @@ struct PlayerMenu : MenuPresentation {
     bool show_reset_profile{};
     std::optional<MainMenuItem> pending_page;
     std::string profile_name;
+    bool pause_sidebar{};
+    host::PauseMenuItem pause_selection{host::PauseMenuItem::Resume};
+    std::optional<host::PauseMenuItem> pending_pause;
 };
 }

@@ -1,5 +1,4 @@
 #include "player/input/input_system.h"
-#include "player/pause_menu.h"
 #include "UnrealEndpoint.h"
 #include <ioj/input/dispatch/player_menu.h>
 
@@ -45,7 +44,6 @@ namespace ioj::tests {
 class SdlPlayerInput : public ::testing::Test {
   protected:
     PlayerMenu menu_;
-    PauseMenu pause_menu_;
     host::NativeEndpoint endpoint_;
     host::UnrealEndpoint unreal_;
     std::optional<MenuTarget> pointer_hit_;
@@ -70,28 +68,27 @@ class SdlPlayerInput : public ::testing::Test {
         auto const& physical{input_->events()};
         std::size_t cursor{};
         do {
-            auto const route{pause_menu_.route(view.route)};
+            auto const route{menu_.screen == MenuScreen::Pause
+                                 ? InputRoute{InputContext::Menu, !menu_.pause_blocked()}
+                                 : view.route};
             input_->synchronize(route, view.mode);
             cursor = input_->map_events(physical, cursor);
             for (auto const& command : input_->commands()) {
                 switch (command.kind) {
                     case InputCommand::Kind::Action:
                         view.actions.push_back(command.action);
-                        if (auto update{
-                                pause_menu_.handle(command.action, sim::LevelState::Running)}) {
-                            pause_commands_.push_back(*update);
-                            if (update->kind == host::PauseCommandKind::CheckLeave) {
-                                pause_menu_.widget_event(
-                                    {host::PauseWidgetEventKind::LeaveAccepted, update->item});
-                            }
+                        if (command.action == host::PlayerAction::OpenPause) {
+                            menu_.open(MenuScreen::Pause);
+                            pause_commands_.push_back({host::PauseCommandKind::Open});
+                        } else if (command.action == host::PlayerAction::RequestResume) {
+                            menu_.open(MenuScreen::Closed);
                         }
                         break;
                     case InputCommand::Kind::Navigation:
-                        if (command.button.down && pause_menu_.view == PauseMenuView::Sidebar) {
-                            if (auto update{pause_menu_.navigate(command.button.command,
-                                                                 command.button.repeat)}) {
-                                pause_commands_.push_back(*update);
-                            }
+                        if (command.button.down && menu_.screen == MenuScreen::Pause) {
+                            menu_.navigate_pause(command.button.command, command.button.repeat);
+                            pause_commands_.push_back(
+                                {host::PauseCommandKind::Select, menu_.pause_selection});
                         } else if (command.button.down) {
                             view.commands.push_back(command.button.command);
                             view.modifiers = command.button.modifiers;
@@ -354,7 +351,7 @@ TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
     frame();
     EXPECT_EQ(view.actions, std::vector{host::PlayerAction::OpenPause});
     EXPECT_TRUE(view.commands.empty());
-    EXPECT_EQ(pause_menu_.selected, host::PauseMenuItem::Controls);
+    EXPECT_EQ(menu_.pause_selection, host::PauseMenuItem::Controls);
     EXPECT_EQ(pause_commands_,
               (std::vector<host::PauseCommand>{
                   {host::PauseCommandKind::Open, host::PauseMenuItem::Resume},

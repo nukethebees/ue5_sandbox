@@ -130,6 +130,9 @@ void edit_menu_text(MenuControl control, std::string value) {
 void edit_setting(GameSetting setting, GameSettingValue value) {
     endpoint.edit_setting({setting, std::move(value)});
 }
+void report_pause_interaction(host::PauseWidgetEvent event) {
+    endpoint.pause_interaction(event);
+}
 void queue_input_action(host::WidgetAction action) {
     pending_actions.push_back(action);
 }
@@ -154,6 +157,9 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             case Pointer:
                 host::present_input(messages.pointers[index]);
+                break;
+            case Pause:
+                pause_presented(host::present_pause(messages.pause_commands[index]));
                 break;
             case Keyboard:
                 keyboard = *messages.keyboards[index];
