@@ -1,9 +1,6 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SandboxGameShared/ui/widgets/ValueWidget.h>
-#include <SpaceGame/input/CanonicalShipControls.h>
-#include <SpaceGame/input/ControlBindingMetadata.h>
-#include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -48,11 +45,6 @@
 #include <FileHelpers.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
-#include <InputAction.h>
-#include <InputCoreTypes.h>
-#include <InputMappingContext.h>
-#include <InputModifiers.h>
-#include <InputTriggers.h>
 #include <Kismet2/BlueprintEditorUtils.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
@@ -86,10 +78,6 @@ constexpr TCHAR root_layout_object_path[]{
 constexpr TCHAR save_game_viewer_object_path[]{
     TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer.WBP_SaveGameViewer")};
 constexpr TCHAR save_game_viewer_package_name[]{TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer")};
-constexpr TCHAR back_action_package_name[]{TEXT("/SpaceGame/Input/UI/IA_menu_back")};
-constexpr TCHAR back_action_object_path[]{TEXT("/SpaceGame/Input/UI/IA_menu_back.IA_menu_back")};
-constexpr TCHAR menu_mapping_package_name[]{TEXT("/SpaceGame/Input/UI/IMC_menu")};
-constexpr TCHAR menu_mapping_object_path[]{TEXT("/SpaceGame/Input/UI/IMC_menu.IMC_menu")};
 constexpr TCHAR battle_viewer_widget_object_path[]{
     TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud.WBP_BattleViewerHud")};
 constexpr TCHAR battle_viewer_widget_package_name[]{
@@ -97,9 +85,6 @@ constexpr TCHAR battle_viewer_widget_package_name[]{
 constexpr TCHAR benchmark_widget_object_path[]{
     TEXT("/SpaceGame/UI/InGame/WBP_BenchmarkHud.WBP_BenchmarkHud")};
 constexpr TCHAR benchmark_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_BenchmarkHud")};
-constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")};
-constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
-constexpr TCHAR ship_input_package_path[]{TEXT("/SpaceGame/Input/SpaceShip/")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
 auto constexpr& runtime_config_package_name{ioj::s7_level_config::canonical_package_name};
 auto constexpr& runtime_config_asset_name{ioj::s7_level_config::canonical_asset_name};
@@ -336,144 +321,6 @@ auto generate_main_menu_widget() -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-template <typename T>
-auto load_or_create_asset(TCHAR const* const object_path,
-                          TCHAR const* const package_name,
-                          FName const asset_name) -> T* {
-    auto* asset{LoadObject<T>(nullptr, object_path)};
-    if (!IsValid(asset)) {
-        auto* const package{CreatePackage(package_name)};
-        asset = NewObject<T>(package, asset_name, RF_Public | RF_Standalone);
-        if (IsValid(asset)) {
-            FAssetRegistryModule::AssetCreated(asset);
-        }
-    }
-
-    return asset;
-}
-
-auto generate_menu_input_assets() -> bool {
-    auto* const back_action{load_or_create_asset<UInputAction>(
-        back_action_object_path, back_action_package_name, TEXT("IA_menu_back"))};
-    auto* const menu_mapping{load_or_create_asset<UInputMappingContext>(
-        menu_mapping_object_path, menu_mapping_package_name, TEXT("IMC_menu"))};
-    if (!IsValid(back_action) || !IsValid(menu_mapping)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load or create menu input assets"));
-        return false;
-    }
-
-    back_action->Modify();
-    back_action->ValueType = EInputActionValueType::Boolean;
-    menu_mapping->Modify();
-    menu_mapping->UnmapAll();
-    menu_mapping->MapKey(back_action, EKeys::Escape);
-    menu_mapping->MapKey(back_action, EKeys::Gamepad_FaceButton_Right);
-
-    return save_asset(*back_action) && save_asset(*menu_mapping);
-}
-
-auto create_input_action(TCHAR const* const package_path,
-                         TCHAR const* const asset_name,
-                         EInputActionValueType const value_type) -> UInputAction* {
-    auto const package_name{FString::Printf(TEXT("%s%s"), package_path, asset_name)};
-    auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, asset_name)};
-    auto* const action{
-        load_or_create_asset<UInputAction>(*object_path, *package_name, FName{asset_name})};
-    if (IsValid(action)) {
-        action->Modify();
-        action->ValueType = value_type;
-        action->Triggers.Reset();
-        action->Modifiers.Reset();
-    }
-
-    return action;
-}
-
-void add_negate_modifier(FEnhancedActionKeyMapping& mapping, UInputMappingContext& outer) {
-    mapping.Modifiers.Add(NewObject<UInputModifierNegate>(&outer));
-}
-
-void add_swizzle_modifier(FEnhancedActionKeyMapping& mapping, UInputMappingContext& outer) {
-    mapping.Modifiers.Add(NewObject<UInputModifierSwizzleAxis>(&outer));
-}
-
-auto generate_control_context_input_assets(ioj::FObserverControlInputs& observer,
-                                           ioj::FBenchmarkControlInputs& benchmark) -> bool {
-    observer.move = create_input_action(
-        observer_input_package_path, TEXT("IA_ObserverMove"), EInputActionValueType::Axis2D);
-    observer.vertical_move = create_input_action(observer_input_package_path,
-                                                 TEXT("IA_ObserverVerticalMove"),
-                                                 EInputActionValueType::Axis1D);
-    observer.look = create_input_action(
-        observer_input_package_path, TEXT("IA_ObserverLook"), EInputActionValueType::Axis2D);
-    observer.engage_look = create_input_action(
-        observer_input_package_path, TEXT("IA_ObserverEngageLook"), EInputActionValueType::Boolean);
-    observer.adjust_speed = create_input_action(
-        observer_input_package_path, TEXT("IA_ObserverAdjustSpeed"), EInputActionValueType::Axis1D);
-    observer.boost = create_input_action(
-        observer_input_package_path, TEXT("IA_ObserverBoost"), EInputActionValueType::Boolean);
-
-    auto const observer_mapping_package{
-        FString::Printf(TEXT("%s%s"), observer_input_package_path, TEXT("IMC_Observer"))};
-    auto const observer_mapping_object{
-        FString::Printf(TEXT("%s.%s"), *observer_mapping_package, TEXT("IMC_Observer"))};
-    observer.mapping_context = load_or_create_asset<UInputMappingContext>(
-        *observer_mapping_object, *observer_mapping_package, TEXT("IMC_Observer"));
-
-    benchmark.exit = create_input_action(
-        benchmark_input_package_path, TEXT("IA_ExitBenchmark"), EInputActionValueType::Boolean);
-    auto const benchmark_mapping_package{
-        FString::Printf(TEXT("%s%s"), benchmark_input_package_path, TEXT("IMC_Benchmark"))};
-    auto const benchmark_mapping_object{
-        FString::Printf(TEXT("%s.%s"), *benchmark_mapping_package, TEXT("IMC_Benchmark"))};
-    benchmark.mapping_context = load_or_create_asset<UInputMappingContext>(
-        *benchmark_mapping_object, *benchmark_mapping_package, TEXT("IMC_Benchmark"));
-
-    if (!observer.is_valid() || !benchmark.is_valid()) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load or create control-context input assets"));
-        return false;
-    }
-
-    observer.mapping_context->Modify();
-    observer.mapping_context->UnmapAll();
-    observer.mapping_context->MapKey(observer.move, EKeys::D);
-    auto& move_left{observer.mapping_context->MapKey(observer.move, EKeys::A)};
-    add_negate_modifier(move_left, *observer.mapping_context);
-    auto& move_forward{observer.mapping_context->MapKey(observer.move, EKeys::W)};
-    add_swizzle_modifier(move_forward, *observer.mapping_context);
-    auto& move_backward{observer.mapping_context->MapKey(observer.move, EKeys::S)};
-    add_swizzle_modifier(move_backward, *observer.mapping_context);
-    add_negate_modifier(move_backward, *observer.mapping_context);
-    observer.mapping_context->MapKey(observer.vertical_move, EKeys::E);
-    auto& move_down{observer.mapping_context->MapKey(observer.vertical_move, EKeys::Q)};
-    add_negate_modifier(move_down, *observer.mapping_context);
-    observer.mapping_context->MapKey(observer.look, EKeys::Mouse2D);
-    observer.mapping_context->MapKey(observer.engage_look, EKeys::RightMouseButton);
-    observer.mapping_context->MapKey(observer.adjust_speed, EKeys::MouseWheelAxis);
-    observer.mapping_context->MapKey(observer.boost, EKeys::LeftShift);
-
-    benchmark.mapping_context->Modify();
-    benchmark.mapping_context->UnmapAll();
-    benchmark.mapping_context->MapKey(benchmark.exit, EKeys::Escape);
-
-    TArray<UObject*> const assets{observer.move,
-                                  observer.vertical_move,
-                                  observer.look,
-                                  observer.engage_look,
-                                  observer.adjust_speed,
-                                  observer.boost,
-                                  observer.mapping_context,
-                                  benchmark.exit,
-                                  benchmark.mapping_context};
-    for (auto* const asset : assets) {
-        if (!save_asset(*asset)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 auto generate_battle_viewer_widget() -> UClass* {
     auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
@@ -574,306 +421,6 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-struct FGeneratedShipInputActions {
-    ioj::FSpaceShipControllerInputs ship{};
-    UInputMappingContext* general{nullptr};
-    UInputAction* pause{nullptr};
-
-    auto is_valid() const -> bool {
-        if (!IsValid(general) || !IsValid(pause) || !IsValid(ship.starfox)) {
-            return false;
-        }
-
-        for (auto* const action : {ship.pitch,
-                                   ship.yaw,
-                                   ship.hold_mouse_steering,
-                                   ship.mouse_x,
-                                   ship.mouse_y,
-                                   ship.accelerate,
-                                   ship.brake,
-                                   ship.boost,
-                                   ship.emergency_brake,
-                                   ship.fire_primary}) {
-            if (!IsValid(action)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-};
-
-auto scope_name(ioj::EShipControlScope const scope) -> TCHAR const* {
-    switch (scope) {
-        case ioj::EShipControlScope::General:
-            return TEXT("General");
-        case ioj::EShipControlScope::Starfox:
-            return TEXT("Starfox");
-    }
-
-    return TEXT("Unknown");
-}
-
-auto create_ship_mapping_context(ioj::EShipControlScope const scope) -> UInputMappingContext* {
-    auto const& definition{ioj::canonical_ship_control_context(scope)};
-    auto const package_name{
-        FString::Printf(TEXT("%s%s"), definition.package_path, definition.asset_name)};
-    auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, definition.asset_name)};
-    auto* const context{load_or_create_asset<UInputMappingContext>(
-        *object_path, *package_name, FName{definition.asset_name})};
-    if (!IsValid(context)) {
-        return nullptr;
-    }
-
-    context->Modify();
-    context->UnmapAll();
-    if (auto* const overrides{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
-                                                          TEXT("MappingProfileOverrides"))}) {
-        overrides->ClearValue_InContainer(context);
-    }
-
-    return context;
-}
-
-template <typename TObject>
-auto mapping_subobject(UObject& outer, FString const& name) -> TObject* {
-    if (auto* const existing{FindObject<TObject>(&outer, *name)}) {
-        return existing;
-    }
-
-    return NewObject<TObject>(&outer, FName{name});
-}
-
-void add_ship_mapping(UInputMappingContext& context,
-                      ioj::EShipControlScope const scope,
-                      UInputAction& action,
-                      FKey const key,
-                      TCHAR const* const semantic,
-                      TCHAR const* const role,
-                      bool const negative,
-                      int32 const display_order) {
-    auto mapping_name{FString::Printf(TEXT("%s.%s"), scope_name(scope), semantic)};
-    if (role != nullptr && role[0] != TCHAR{}) {
-        mapping_name += FString::Printf(TEXT(".%s"), role);
-    }
-
-    mapping_name += key.IsGamepadKey() ? TEXT(".Gamepad") : TEXT(".KeyboardMouse");
-    auto object_suffix{mapping_name.Replace(TEXT("."), TEXT("_"))};
-
-    auto& mapping{context.MapKey(&action, key)};
-    if (negative) {
-        mapping.Modifiers.Add(mapping_subobject<UInputModifierNegate>(
-            context, FString::Printf(TEXT("Negate_%s"), *object_suffix)));
-    }
-
-    if (action.ValueType == EInputActionValueType::Axis1D &&
-        (key == EKeys::MouseX || key == EKeys::MouseY ||
-         (key.IsGamepadKey() && key != EKeys::Gamepad_LeftTriggerAxis))) {
-        auto* response{mapping_subobject<ioj::USpaceGameInputModifier>(
-            context, FString::Printf(TEXT("Response_%s"), *object_suffix))};
-        if (key == EKeys::MouseX || key == EKeys::MouseY) {
-            response->response = ioj::ESpaceGameInputResponse::TurnPointerDelta;
-            response->axis = ioj::ESpaceGameInputAxis::None;
-        } else {
-            response->response = ioj::ESpaceGameInputResponse::GamepadTurn;
-            response->axis =
-                FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ? ioj::ESpaceGameInputAxis::Pitch
-                : FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ? ioj::ESpaceGameInputAxis::Yaw
-                                                               : ioj::ESpaceGameInputAxis::None;
-        }
-
-        mapping.Modifiers.Add(response);
-    }
-
-    auto* const behavior_property{FindFProperty<FEnumProperty>(
-        FEnhancedActionKeyMapping::StaticStruct(), TEXT("SettingBehavior"))};
-    auto* const settings_property{FindFProperty<FObjectProperty>(
-        FEnhancedActionKeyMapping::StaticStruct(), TEXT("PlayerMappableKeySettings"))};
-    check(behavior_property && settings_property);
-    behavior_property->GetUnderlyingProperty()->SetIntPropertyValue(
-        behavior_property->ContainerPtrToValuePtr<void>(&mapping),
-        static_cast<int64>(EPlayerMappableKeySettingBehaviors::OverrideSettings));
-
-    auto* const settings{mapping_subobject<UPlayerMappableKeySettings>(
-        context, FString::Printf(TEXT("Settings_%s"), *object_suffix))};
-    settings->Name = FName{mapping_name};
-    auto const display_name{
-        role != nullptr && role[0] != TCHAR{} ? FString::Printf(TEXT("%s %s"), semantic, role)
-        : FCString::Strcmp(semantic, TEXT("Steer")) == 0 ? FString{TEXT("Hold to steer")}
-                                                         : FString{semantic}};
-    settings->DisplayName = FText::ChangeKey(
-        FTextKey{TEXT("ShipControls")}, FTextKey{mapping_name}, FText::FromString(display_name));
-    auto const group{
-        FCString::Strcmp(semantic, TEXT("FirePrimary")) == 0 ? ioj::EControlBindingGroup::Combat
-        : scope == ioj::EShipControlScope::General           ? ioj::EControlBindingGroup::Utility
-                                                             : ioj::EControlBindingGroup::Flight};
-    settings->DisplayCategory = ioj::control_binding_group_label(group);
-    auto* const metadata{mapping_subobject<ioj::UControlBindingMetadata>(
-        *settings, FString::Printf(TEXT("Metadata_%s"), *object_suffix))};
-    metadata->group = group;
-    metadata->display_order = display_order;
-    settings->Metadata = metadata;
-    settings_property->SetObjectPropertyValue_InContainer(&mapping, settings);
-}
-
-auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
-    FGeneratedShipInputActions result{};
-    auto& ship{result.ship};
-    auto make_axis = [](TCHAR const* name) {
-        return create_input_action(ship_input_package_path, name, EInputActionValueType::Axis1D);
-    };
-    auto make_button = [](TCHAR const* name) {
-        return create_input_action(ship_input_package_path, name, EInputActionValueType::Boolean);
-    };
-    ship.pitch = make_axis(TEXT("IA_Ship_Pitch"));
-    ship.yaw = make_axis(TEXT("IA_Ship_Yaw"));
-    ship.mouse_x = make_axis(TEXT("IA_Ship_MouseX"));
-    ship.mouse_y = make_axis(TEXT("IA_Ship_MouseY"));
-    ship.hold_mouse_steering = make_button(TEXT("IA_Ship_HoldMouseSteering"));
-    ship.accelerate = make_axis(TEXT("IA_Ship_Accelerate"));
-    ship.brake = make_button(TEXT("IA_Ship_Brake"));
-    ship.boost = make_button(TEXT("IA_Ship_Boost"));
-    ship.emergency_brake = make_button(TEXT("IA_Ship_EmergencyBrake"));
-    ship.fire_primary = make_button(TEXT("IA_Ship_FirePrimary"));
-    result.pause = make_button(TEXT("IA_pause"));
-    result.general = create_ship_mapping_context(ioj::EShipControlScope::General);
-    ship.starfox = create_ship_mapping_context(ioj::EShipControlScope::Starfox);
-    if (!result.is_valid()) {
-        UE_LOG(LogTemp, Error, TEXT("Could not create canonical ship input assets"));
-        return {};
-    }
-
-    using Scope = ioj::EShipControlScope;
-    auto add = [](UInputMappingContext& context,
-                  Scope const scope,
-                  UInputAction* const action,
-                  FKey const key,
-                  TCHAR const* const semantic,
-                  TCHAR const* const role = TEXT(""),
-                  bool const negative = false,
-                  int32 const order = 10) {
-        add_ship_mapping(context, scope, *action, key, semantic, role, negative, order);
-    };
-
-    auto& general{*result.general};
-    add(general, Scope::General, result.pause, EKeys::Escape, TEXT("Pause"));
-    add(general, Scope::General, result.pause, EKeys::Gamepad_Special_Right, TEXT("Pause"));
-
-    auto add_mouse = [&](UInputMappingContext& context, Scope const scope) {
-        add(context,
-            scope,
-            ship.hold_mouse_steering,
-            EKeys::RightMouseButton,
-            TEXT("Steer"),
-            TEXT(""),
-            false,
-            30);
-        add(context, scope, ship.mouse_y, EKeys::MouseY, TEXT("Pitch"), TEXT(""), true, 10);
-        add(context, scope, ship.mouse_x, EKeys::MouseX, TEXT("Yaw"), TEXT(""), false, 20);
-        add(context,
-            scope,
-            ship.fire_primary,
-            EKeys::LeftMouseButton,
-            TEXT("FirePrimary"),
-            TEXT(""),
-            false,
-            100);
-    };
-    auto add_keyboard_propulsion = [&](UInputMappingContext& context, Scope const scope) {
-        add(context, scope, ship.accelerate, EKeys::W, TEXT("Accelerate"), TEXT(""), false, 40);
-        add(context, scope, ship.brake, EKeys::S, TEXT("Brake"), TEXT(""), false, 50);
-        add(context, scope, ship.boost, EKeys::LeftShift, TEXT("Boost"), TEXT(""), false, 60);
-        add(context,
-            scope,
-            ship.emergency_brake,
-            EKeys::X,
-            TEXT("EmergencyBrake"),
-            TEXT(""),
-            false,
-            70);
-    };
-    auto add_controller_propulsion =
-        [&](UInputMappingContext& context, Scope const scope, FKey const emergency_key) {
-            add(context,
-                scope,
-                ship.accelerate,
-                EKeys::Gamepad_LeftTriggerAxis,
-                TEXT("Accelerate"),
-                TEXT(""),
-                false,
-                40);
-            add(context,
-                scope,
-                ship.brake,
-                EKeys::Gamepad_LeftShoulder,
-                TEXT("Brake"),
-                TEXT(""),
-                false,
-                50);
-            add(context,
-                scope,
-                ship.boost,
-                EKeys::Gamepad_RightShoulder,
-                TEXT("Boost"),
-                TEXT(""),
-                false,
-                60);
-            add(context,
-                scope,
-                ship.emergency_brake,
-                emergency_key,
-                TEXT("EmergencyBrake"),
-                TEXT(""),
-                false,
-                70);
-            add(context,
-                scope,
-                ship.fire_primary,
-                EKeys::Gamepad_RightTriggerAxis,
-                TEXT("FirePrimary"),
-                TEXT(""),
-                false,
-                100);
-        };
-
-    auto& starfox{*ship.starfox};
-    add_mouse(starfox, Scope::Starfox);
-    add_keyboard_propulsion(starfox, Scope::Starfox);
-    add(starfox,
-        Scope::Starfox,
-        ship.pitch,
-        EKeys::Gamepad_LeftY,
-        TEXT("Pitch"),
-        TEXT(""),
-        false,
-        10);
-    add(starfox, Scope::Starfox, ship.yaw, EKeys::Gamepad_LeftX, TEXT("Yaw"), TEXT(""), false, 20);
-    add_controller_propulsion(starfox, Scope::Starfox, EKeys::Gamepad_FaceButton_Left);
-
-    for (auto* const action : {result.pause,
-                               ship.pitch,
-                               ship.yaw,
-                               ship.hold_mouse_steering,
-                               ship.mouse_x,
-                               ship.mouse_y,
-                               ship.accelerate,
-                               ship.brake,
-                               ship.boost,
-                               ship.emergency_brake,
-                               ship.fire_primary}) {
-        if (!save_asset(*action)) {
-            return {};
-        }
-    }
-
-    for (auto* const context : {result.general, ship.starfox}) {
-        if (!save_asset(*context)) {
-            return {};
-        }
-    }
-
-    return result;
-}
 auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
@@ -936,56 +483,6 @@ auto generate_save_game_viewer_widget() -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto configure_control_context_inputs(UBlueprint& blueprint,
-                                      ioj::FObserverControlInputs const& observer,
-                                      ioj::FBenchmarkControlInputs const& benchmark) -> bool {
-    auto* const controller{
-        Cast<ioj::ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
-    auto* const observer_property{
-        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("observer_input"))};
-    auto* const benchmark_property{
-        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("benchmark_input"))};
-    if (!IsValid(controller) || !observer_property || !benchmark_property) {
-        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller context inputs"));
-        return false;
-    }
-
-    controller->Modify();
-    observer_property->CopyCompleteValue(
-        observer_property->ContainerPtrToValuePtr<void>(controller), &observer);
-    benchmark_property->CopyCompleteValue(
-        benchmark_property->ContainerPtrToValuePtr<void>(controller), &benchmark);
-    FPropertyChangedEvent property_changed{observer_property, EPropertyChangeType::ValueSet};
-    controller->PostEditChangeProperty(property_changed);
-    FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
-    return true;
-}
-
-auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions const& actions)
-    -> bool {
-    auto* const controller{
-        Cast<ioj::ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
-    auto* const input_property{
-        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("input"))};
-    auto* const global_input_property{
-        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("global_input"))};
-    if (!IsValid(controller) || !input_property || !global_input_property || !actions.is_valid()) {
-        UE_LOG(LogTemp, Error, TEXT("Could not configure canonical player controller input"));
-        return false;
-    }
-
-    ioj::FGlobalControlInputs const global{
-        .mapping_context = actions.general,
-        .toggle_menu = actions.pause,
-    };
-    controller->Modify();
-    input_property->CopyCompleteValue(input_property->ContainerPtrToValuePtr<void>(controller),
-                                      &actions.ship);
-    global_input_property->CopyCompleteValue(
-        global_input_property->ContainerPtrToValuePtr<void>(controller), &global);
-    FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
-    return true;
-}
 auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
     if (blueprint.ParentClass != ioj::ASpaceGamePlayerController::StaticClass()) {
         return false;
@@ -1030,9 +527,7 @@ auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
 
     return true;
 }
-auto load_or_create_player_controller(ioj::FObserverControlInputs const& observer,
-                                      ioj::FBenchmarkControlInputs const& benchmark,
-                                      FGeneratedShipInputActions const& actions) -> UBlueprint* {
+auto load_or_create_player_controller() -> UBlueprint* {
     auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
     if (!IsValid(blueprint)) {
         auto* const package{CreatePackage(player_controller_package_name)};
@@ -1083,47 +578,6 @@ auto load_or_create_player_controller(ioj::FObserverControlInputs const& observe
     }
 
     if (!controller_blueprint_is_input_free(*blueprint)) {
-        return nullptr;
-    }
-
-    if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, actions)) {
-        return nullptr;
-    }
-
-    FKismetEditorUtilities::CompileBlueprint(blueprint);
-    if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
-        UE_LOG(LogTemp,
-               Error,
-               TEXT("BP_SpaceGamePlayerController failed to compile after input configuration"));
-        return nullptr;
-    }
-
-    if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, actions)) {
-        return nullptr;
-    }
-    CastChecked<UBlueprintGeneratedClass>(blueprint->GeneratedClass)
-        ->UpdateCustomPropertyListForPostConstruction();
-    auto* const compiled_controller{
-        Cast<ioj::ASpaceGamePlayerController>(blueprint->GeneratedClass->GetDefaultObject())};
-    auto const* const compiled_observer_property{
-        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("observer_input"))};
-    auto const* const compiled_benchmark_property{
-        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("benchmark_input"))};
-    auto const* const compiled_observer{
-        IsValid(compiled_controller) && compiled_observer_property
-            ? compiled_observer_property->ContainerPtrToValuePtr<ioj::FObserverControlInputs>(
-                  compiled_controller)
-            : nullptr};
-    auto const* const compiled_benchmark{
-        IsValid(compiled_controller) && compiled_benchmark_property
-            ? compiled_benchmark_property->ContainerPtrToValuePtr<ioj::FBenchmarkControlInputs>(
-                  compiled_controller)
-            : nullptr};
-    if (!compiled_observer || !compiled_observer->is_valid() || !compiled_benchmark ||
-        !compiled_benchmark->is_valid()) {
-        UE_LOG(LogTemp, Error, TEXT("Player controller context inputs did not compile"));
         return nullptr;
     }
 
@@ -1183,11 +637,8 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> ioj::USpa
     return save_asset(*config) ? config : nullptr;
 }
 
-auto generate_runtime_map(ioj::FObserverControlInputs const& observer,
-                          ioj::FBenchmarkControlInputs const& benchmark,
-                          FGeneratedShipInputActions const& actions) -> bool {
-    auto* const controller_blueprint{
-        load_or_create_player_controller(observer, benchmark, actions)};
+auto generate_runtime_map() -> bool {
+    auto* const controller_blueprint{load_or_create_player_controller()};
     auto* const controller_class{
         IsValid(controller_blueprint) ? controller_blueprint->GeneratedClass.Get() : nullptr};
     if (!IsValid(controller_class) || !configure_runtime_game_mode(*controller_class)) {
@@ -1261,14 +712,6 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 }
 
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
-    ioj::FObserverControlInputs observer_input;
-    ioj::FBenchmarkControlInputs benchmark_input;
-    auto const context_input_generated{
-        generate_menu_input_assets() &&
-        generate_control_context_input_assets(observer_input, benchmark_input)};
-    auto const ship_input_actions{context_input_generated ? generate_gameplay_input_assets()
-                                                          : FGeneratedShipInputActions{}};
-    auto const input_generated{ship_input_actions.is_valid()};
     auto* const button_class{generate_menu_button_widget()};
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
@@ -1292,9 +735,6 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
                                               *completion_class,
                                               *battle_viewer_class,
                                               *benchmark_class)};
-    auto const map_generated{
-        input_generated &&
-        generate_runtime_map(observer_input, benchmark_input, ship_input_actions) &&
-        generate_main_menu_map()};
-    return input_generated && ui_generated && map_generated ? 0 : 1;
+    auto const map_generated{generate_runtime_map() && generate_main_menu_map()};
+    return ui_generated && map_generated ? 0 : 1;
 }
