@@ -4,10 +4,90 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/collision/cell_coords_compact_view.h"
+#include "ioj/sim/collision/cell_coord.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj::sim::collision {
+namespace cell_coords {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<std::int32_t, std::int32_t, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.xs(), source.ys(), source.zs());
+    }
+    auto xs(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto ys(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto zs(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    using equivalent_type = ioj::sim::collision::CellCoord;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{columns.xs()[index], columns.ys()[index], columns.zs()[index]};
+    }
+    using writable_equivalent = equivalent_type;
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.x(), value.y(), value.z());
+    }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
+    static constexpr std::size_t zs_column{2ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace cell_coords
 
 /* **************************************** */
 // Owner

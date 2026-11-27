@@ -4,10 +4,122 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotators3f.h"
+#include "ioj/sim/entities/entity_id.h"
+#include "ioj/sim/lasers/laser_source.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
-#include "laser_spawn_requests_compact_view.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj::sim::lasers {
+namespace laser_spawn_requests {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<rotators3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      std::int32_t,
+                                      float,
+                                      float,
+                                      EntityId,
+                                      LaserSource>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        auto const& base_velocities_view{source.view_base_velocities()};
+        return func(locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    rotations_view.pitches(),
+                    rotations_view.yaws(),
+                    rotations_view.rolls(),
+                    base_velocities_view.xs(),
+                    base_velocities_view.ys(),
+                    base_velocities_view.zs(),
+                    source.damages(),
+                    source.speeds(),
+                    source.max_distances(),
+                    source.instigator_ids(),
+                    source.sources());
+    }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_rotations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_base_velocities(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto damages(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto speeds(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto max_distances(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto instigator_ids(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto sources(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t locations_xs_column{0ULL};
+    static constexpr std::size_t locations_ys_column{1ULL};
+    static constexpr std::size_t locations_zs_column{2ULL};
+    static constexpr std::size_t rotations_pitches_column{3ULL};
+    static constexpr std::size_t rotations_yaws_column{4ULL};
+    static constexpr std::size_t rotations_rolls_column{5ULL};
+    static constexpr std::size_t base_velocities_xs_column{6ULL};
+    static constexpr std::size_t base_velocities_ys_column{7ULL};
+    static constexpr std::size_t base_velocities_zs_column{8ULL};
+    static constexpr std::size_t damages_column{9ULL};
+    static constexpr std::size_t speeds_column{10ULL};
+    static constexpr std::size_t max_distances_column{11ULL};
+    static constexpr std::size_t instigator_ids_column{12ULL};
+    static constexpr std::size_t sources_column{13ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace laser_spawn_requests
 
 /* **************************************** */
 // Owner

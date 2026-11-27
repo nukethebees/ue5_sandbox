@@ -3,11 +3,252 @@
 
 #pragma once
 
-#include "fighter_entity_data_compact_view.h"
+#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/sim/entities/entity_id.h"
+#include "ioj/sim/fighters/fighter_navigation_types.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj::sim {
+namespace fighter_entity_data {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<EntityId,
+                                      std::uint32_t,
+                                      float,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      float,
+                                      ::ioj::Team,
+                                      std::int16_t,
+                                      std::int16_t,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      fighters::NavigationRiskCode,
+                                      fighters::NavigationScanCount,
+                                      fighters::AvoidanceChoice,
+                                      fighters::NavigationScanCount,
+                                      std::int16_t,
+                                      EntityId,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      float,
+                                      float,
+                                      float,
+                                      std::uint8_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& desired_move_locations_view{source.view_desired_move_locations()};
+        auto const& aim_directions_view{source.view_aim_directions()};
+        auto const& planned_aim_directions_view{source.view_planned_aim_directions()};
+        auto const& desired_aiming_directions_view{source.view_desired_aiming_directions()};
+        auto const& movement_directions_view{source.view_movement_directions()};
+        auto const& velocities_view{source.view_velocities()};
+        auto const& separation_steering_view{source.view_separation_steering()};
+        auto const& target_locations_view{source.view_target_locations()};
+        auto const& target_velocities_view{source.view_target_velocities()};
+        return func(source.entity_ids(),
+                    source.integral_biases(),
+                    source.float_biases(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    desired_move_locations_view.xs(),
+                    desired_move_locations_view.ys(),
+                    desired_move_locations_view.zs(),
+                    aim_directions_view.xs(),
+                    aim_directions_view.ys(),
+                    aim_directions_view.zs(),
+                    planned_aim_directions_view.xs(),
+                    planned_aim_directions_view.ys(),
+                    planned_aim_directions_view.zs(),
+                    desired_aiming_directions_view.xs(),
+                    desired_aiming_directions_view.ys(),
+                    desired_aiming_directions_view.zs(),
+                    movement_directions_view.xs(),
+                    movement_directions_view.ys(),
+                    movement_directions_view.zs(),
+                    velocities_view.xs(),
+                    velocities_view.ys(),
+                    velocities_view.zs(),
+                    source.move_distances(),
+                    source.speeds(),
+                    source.teams(),
+                    source.navigation_update_countdowns_remaining_ticks(),
+                    source.navigation_update_countdowns_periods(),
+                    separation_steering_view.xs(),
+                    separation_steering_view.ys(),
+                    separation_steering_view.zs(),
+                    source.navigation_risk_tiers(),
+                    source.navigation_lower_risk_scan_counts(),
+                    source.avoidance_choice_indices(),
+                    source.avoidance_clear_scan_counts(),
+                    source.attack_cooldowns(),
+                    source.target_ids(),
+                    target_locations_view.xs(),
+                    target_locations_view.ys(),
+                    target_locations_view.zs(),
+                    target_velocities_view.xs(),
+                    target_velocities_view.ys(),
+                    target_velocities_view.zs(),
+                    source.intercept_times(),
+                    source.target_distance_sq(),
+                    source.target_distances(),
+                    source.target_radii(),
+                    source.carrier_launched());
+    }
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto integral_biases(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto float_biases(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto view_desired_move_locations(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto view_aim_directions(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto view_planned_aim_directions(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto view_desired_aiming_directions(this ColumnReceiver auto&& self) {
+        return column_at<7>(self);
+    }
+    auto view_movement_directions(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto view_velocities(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto move_distances(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto speeds(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto navigation_update_countdowns_remaining_ticks(this ColumnReceiver auto&& self) {
+        return column_at<13>(self);
+    }
+    auto navigation_update_countdowns_periods(this ColumnReceiver auto&& self) {
+        return column_at<14>(self);
+    }
+    auto view_separation_steering(this ColumnReceiver auto&& self) { return column_at<15>(self); }
+    auto navigation_risk_tiers(this ColumnReceiver auto&& self) { return column_at<16>(self); }
+    auto navigation_lower_risk_scan_counts(this ColumnReceiver auto&& self) {
+        return column_at<17>(self);
+    }
+    auto avoidance_choice_indices(this ColumnReceiver auto&& self) { return column_at<18>(self); }
+    auto avoidance_clear_scan_counts(this ColumnReceiver auto&& self) {
+        return column_at<19>(self);
+    }
+    auto attack_cooldowns(this ColumnReceiver auto&& self) { return column_at<20>(self); }
+    auto target_ids(this ColumnReceiver auto&& self) { return column_at<21>(self); }
+    auto view_target_locations(this ColumnReceiver auto&& self) { return column_at<22>(self); }
+    auto view_target_velocities(this ColumnReceiver auto&& self) { return column_at<23>(self); }
+    auto intercept_times(this ColumnReceiver auto&& self) { return column_at<24>(self); }
+    auto target_distance_sq(this ColumnReceiver auto&& self) { return column_at<25>(self); }
+    auto target_distances(this ColumnReceiver auto&& self) { return column_at<26>(self); }
+    auto target_radii(this ColumnReceiver auto&& self) { return column_at<27>(self); }
+    auto carrier_launched(this ColumnReceiver auto&& self) { return column_at<28>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t entity_ids_column{0ULL};
+    static constexpr std::size_t integral_biases_column{1ULL};
+    static constexpr std::size_t float_biases_column{2ULL};
+    static constexpr std::size_t locations_xs_column{3ULL};
+    static constexpr std::size_t locations_ys_column{4ULL};
+    static constexpr std::size_t locations_zs_column{5ULL};
+    static constexpr std::size_t desired_move_locations_xs_column{6ULL};
+    static constexpr std::size_t desired_move_locations_ys_column{7ULL};
+    static constexpr std::size_t desired_move_locations_zs_column{8ULL};
+    static constexpr std::size_t aim_directions_xs_column{9ULL};
+    static constexpr std::size_t aim_directions_ys_column{10ULL};
+    static constexpr std::size_t aim_directions_zs_column{11ULL};
+    static constexpr std::size_t planned_aim_directions_xs_column{12ULL};
+    static constexpr std::size_t planned_aim_directions_ys_column{13ULL};
+    static constexpr std::size_t planned_aim_directions_zs_column{14ULL};
+    static constexpr std::size_t desired_aiming_directions_xs_column{15ULL};
+    static constexpr std::size_t desired_aiming_directions_ys_column{16ULL};
+    static constexpr std::size_t desired_aiming_directions_zs_column{17ULL};
+    static constexpr std::size_t movement_directions_xs_column{18ULL};
+    static constexpr std::size_t movement_directions_ys_column{19ULL};
+    static constexpr std::size_t movement_directions_zs_column{20ULL};
+    static constexpr std::size_t velocities_xs_column{21ULL};
+    static constexpr std::size_t velocities_ys_column{22ULL};
+    static constexpr std::size_t velocities_zs_column{23ULL};
+    static constexpr std::size_t move_distances_column{24ULL};
+    static constexpr std::size_t speeds_column{25ULL};
+    static constexpr std::size_t teams_column{26ULL};
+    static constexpr std::size_t navigation_update_countdowns_remaining_ticks_column{27ULL};
+    static constexpr std::size_t navigation_update_countdowns_periods_column{28ULL};
+    static constexpr std::size_t separation_steering_xs_column{29ULL};
+    static constexpr std::size_t separation_steering_ys_column{30ULL};
+    static constexpr std::size_t separation_steering_zs_column{31ULL};
+    static constexpr std::size_t navigation_risk_tiers_column{32ULL};
+    static constexpr std::size_t navigation_lower_risk_scan_counts_column{33ULL};
+    static constexpr std::size_t avoidance_choice_indices_column{34ULL};
+    static constexpr std::size_t avoidance_clear_scan_counts_column{35ULL};
+    static constexpr std::size_t attack_cooldowns_column{36ULL};
+    static constexpr std::size_t target_ids_column{37ULL};
+    static constexpr std::size_t target_locations_xs_column{38ULL};
+    static constexpr std::size_t target_locations_ys_column{39ULL};
+    static constexpr std::size_t target_locations_zs_column{40ULL};
+    static constexpr std::size_t target_velocities_xs_column{41ULL};
+    static constexpr std::size_t target_velocities_ys_column{42ULL};
+    static constexpr std::size_t target_velocities_zs_column{43ULL};
+    static constexpr std::size_t intercept_times_column{44ULL};
+    static constexpr std::size_t target_distance_sq_column{45ULL};
+    static constexpr std::size_t target_distances_column{46ULL};
+    static constexpr std::size_t target_radii_column{47ULL};
+    static constexpr std::size_t carrier_launched_column{48ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace fighter_entity_data
 
 /* **************************************** */
 // Owner

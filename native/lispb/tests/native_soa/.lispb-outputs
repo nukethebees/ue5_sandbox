@@ -1,5 +1,3 @@
 lispb-outputs-v1
 include/native_soa/types.hpp
-include/native_soa/types_compact_view.hpp
-include/native_soa/types_view.hpp
 src/types.cpp

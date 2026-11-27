@@ -3,4 +3,504 @@
 
 #pragma once
 
-#include "FieldMasks_compact_view.h"
+#include "ioj/field_mask.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
+
+namespace codegen_compile_fixture {
+
+enum class EField8 : std::uint8_t {
+    Values = 0,
+    Count = static_cast<std::uint8_t>(Values) + (8),
+};
+struct FFieldMask8 : ioj::FieldMask<EField8, static_cast<std::size_t>(EField8::Count)> {
+    using Base = ioj::FieldMask<EField8, static_cast<std::size_t>(EField8::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField8 {
+        return static_cast<EField8>(static_cast<std::int32_t>(EField8::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask8>);
+
+namespace f_mask_rows8 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask8, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows8
+
+enum class EField9 : std::uint8_t {
+    Values = 0,
+    Tail = static_cast<std::uint8_t>(Values) + (8),
+    Count = static_cast<std::uint8_t>(Tail) + 1,
+};
+struct FFieldMask9 : ioj::FieldMask<EField9, static_cast<std::size_t>(EField9::Count)> {
+    using Base = ioj::FieldMask<EField9, static_cast<std::size_t>(EField9::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField9 {
+        return static_cast<EField9>(static_cast<std::int32_t>(EField9::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask9>);
+
+namespace f_mask_rows9 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask9, std::int32_t, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values(), source.tail());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto tail(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+    static constexpr std::size_t tail_column{2ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows9
+
+enum class EField16 : std::uint8_t {
+    Values = 0,
+    Count = static_cast<std::uint8_t>(Values) + (16),
+};
+struct FFieldMask16 : ioj::FieldMask<EField16, static_cast<std::size_t>(EField16::Count)> {
+    using Base = ioj::FieldMask<EField16, static_cast<std::size_t>(EField16::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField16 {
+        return static_cast<EField16>(static_cast<std::int32_t>(EField16::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask16>);
+
+namespace f_mask_rows16 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask16, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows16
+
+enum class EField17 : std::uint8_t {
+    Values = 0,
+    Count = static_cast<std::uint8_t>(Values) + (17),
+};
+struct FFieldMask17 : ioj::FieldMask<EField17, static_cast<std::size_t>(EField17::Count)> {
+    using Base = ioj::FieldMask<EField17, static_cast<std::size_t>(EField17::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField17 {
+        return static_cast<EField17>(static_cast<std::int32_t>(EField17::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask17>);
+
+namespace f_mask_rows17 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask17, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows17
+
+enum class EField32 : std::uint8_t {
+    Values = 0,
+    Count = static_cast<std::uint8_t>(Values) + (32),
+};
+struct FFieldMask32 : ioj::FieldMask<EField32, static_cast<std::size_t>(EField32::Count)> {
+    using Base = ioj::FieldMask<EField32, static_cast<std::size_t>(EField32::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField32 {
+        return static_cast<EField32>(static_cast<std::int32_t>(EField32::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask32>);
+
+namespace f_mask_rows32 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask32, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows32
+
+enum class EField33 : std::uint8_t {
+    Values = 0,
+    Count = static_cast<std::uint8_t>(Values) + (33),
+};
+struct FFieldMask33 : ioj::FieldMask<EField33, static_cast<std::size_t>(EField33::Count)> {
+    using Base = ioj::FieldMask<EField33, static_cast<std::size_t>(EField33::Count)>;
+
+    using Base::Base;
+    [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
+        -> EField33 {
+        return static_cast<EField33>(static_cast<std::int32_t>(EField33::Values) + value_index);
+    }
+};
+
+static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));
+
+static_assert(std::is_trivially_copyable_v<FFieldMask33>);
+
+namespace f_mask_rows33 {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<FFieldMask33, std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.masks(), source.values());
+    }
+    auto masks(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto values(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t masks_column{0ULL};
+    static constexpr std::size_t values_column{1ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace f_mask_rows33
+} // namespace codegen_compile_fixture

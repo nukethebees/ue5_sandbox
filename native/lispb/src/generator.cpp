@@ -379,27 +379,6 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(decls.size() + 1);
                     emissions.push_back(emitter.generated_forward_declarations(module_id, graph));
-                    std::set<DeclarationHandle> view_types;
-                    auto collect_view_types = [&](auto&& visit, schema::TypeId type) -> void {
-                        if (graph.module(type) != module_id ||
-                            !view_types.insert(graph.source_declaration(type)).second) {
-                            return;
-                        }
-                        for (auto const dependency : graph.dependencies_of(type)) {
-                            visit(visit, dependency);
-                        }
-                        for (auto const dependency : complete.of(type)) {
-                            visit(visit, dependency);
-                        }
-                    };
-                    for (auto const declaration : decls) {
-                        if (declaration.kind() == DeclarationKind::soa) {
-                            collect_view_types(
-                                collect_view_types,
-                                *graph.find_declared(module_id, store.soas.name[declaration]));
-                        }
-                    }
-                    emissions.front().in_resolved_header = !view_types.empty();
                     for (auto const index :
                          declaration_emission_order(store, module_id, decls, graph, complete)) {
                         auto const declaration{decls[index]};
@@ -521,9 +500,6 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     std::unreachable();
                             }
                         }());
-                        emissions.back().in_resolved_header =
-                            declaration.kind() != DeclarationKind::soa &&
-                            view_types.contains(declaration);
                     }
                     if (store.normal_modules.s7_constructors[store.normal_modules.index(module)]) {
                         emissions.push_back(emitter.lower_s7_constructors(ctx));

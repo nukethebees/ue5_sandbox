@@ -5,14 +5,117 @@
 
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/distribution_id.hpp"
-#include "ioj/layout/analysis/distribution_table_compact_view.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace ioj::layout {
+namespace distribution_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  RowRange,
+                                                  std::uint64_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<long double>,
+                                                  std::optional<long double>,
+                                                  std::optional<long double>,
+                                                  std::optional<long double>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.analysis(),
+                    source.entries(),
+                    source.element_count(),
+                    source.total_weight(),
+                    source.total_extent_bytes(),
+                    source.total_slack_bytes(),
+                    source.expected_extent_bytes(),
+                    source.expected_slack_bytes(),
+                    source.expected_selected_extent_bytes(),
+                    source.expected_selected_slack_bytes());
+    }
+    auto analysis(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto entries(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto element_count(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto total_weight(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto total_extent_bytes(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto total_slack_bytes(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto expected_extent_bytes(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto expected_slack_bytes(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto expected_selected_extent_bytes(this ColumnReceiver auto&& self) {
+        return column_at<8>(self);
+    }
+    auto expected_selected_slack_bytes(this ColumnReceiver auto&& self) {
+        return column_at<9>(self);
+    }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t analysis_column{0ULL};
+    static constexpr std::size_t entries_column{1ULL};
+    static constexpr std::size_t element_count_column{2ULL};
+    static constexpr std::size_t total_weight_column{3ULL};
+    static constexpr std::size_t total_extent_bytes_column{4ULL};
+    static constexpr std::size_t total_slack_bytes_column{5ULL};
+    static constexpr std::size_t expected_extent_bytes_column{6ULL};
+    static constexpr std::size_t expected_slack_bytes_column{7ULL};
+    static constexpr std::size_t expected_selected_extent_bytes_column{8ULL};
+    static constexpr std::size_t expected_selected_slack_bytes_column{9ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace distribution_table
 
 /* **************************************** */
 // Owner

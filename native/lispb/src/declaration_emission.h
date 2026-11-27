@@ -28,9 +28,6 @@ struct DeclarationEmission {
     std::vector<ModuleId> additional_modules;
     std::optional<std::string> tail_namespace;
     bool format_generated{};
-    Nodes resolved_views;
-    Nodes compact_views;
-    bool in_resolved_header{};
 };
 
 }

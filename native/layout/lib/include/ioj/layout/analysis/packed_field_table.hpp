@@ -3,13 +3,176 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/packed_field_table_compact_view.hpp"
+#include "ioj/layout/analysis/analysis_id.hpp"
+#include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include "codegen/schema/packed_field_kind.h"
+#include "codegen/schema/packed_integer_value.h"
+#include "lispb/indices.h"
+#include "lispb/schema/indices.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace ioj::layout {
+namespace packed_field_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  lispb::schema::ChildOccurrenceId,
+                                                  std::string_view,
+                                                  std::optional<lispb::schema::TypeId>,
+                                                  lispb::StringId,
+                                                  lispb::codegen::PackedFieldKind,
+                                                  std::uint8_t,
+                                                  std::uint32_t,
+                                                  std::uint8_t,
+                                                  std::uint32_t,
+                                                  std::uint8_t,
+                                                  std::uint64_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::int64_t>,
+                                                  std::optional<std::int64_t>,
+                                                  std::optional<lispb::codegen::PackedIntegerValue>,
+                                                  std::optional<lispb::codegen::PackedIntegerValue>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::uint64_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint32_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  RowRange>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.parent(),
+                    source.segment(),
+                    source.name(),
+                    source.semantic_type(),
+                    source.logical_type(),
+                    source.kind(),
+                    source.reserved(),
+                    source.schema_bit_width(),
+                    source.schema_bit_width_auto(),
+                    source.bit_width(),
+                    source.overridden(),
+                    source.least_significant_bit(),
+                    source.most_significant_bit(),
+                    source.maximum_unsigned_value(),
+                    source.minimum_signed_value(),
+                    source.maximum_signed_value(),
+                    source.minimum_semantic_value(),
+                    source.maximum_semantic_value(),
+                    source.semantic_value_count(),
+                    source.sentinel_code_count(),
+                    source.required_code_count(),
+                    source.minimum_required_bits(),
+                    source.unused_codes(),
+                    source.codes());
+    }
+    auto parent(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto segment(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto name(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto semantic_type(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto logical_type(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto kind(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto reserved(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto schema_bit_width(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto schema_bit_width_auto(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto bit_width(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto overridden(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto least_significant_bit(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto most_significant_bit(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto maximum_unsigned_value(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto minimum_signed_value(this ColumnReceiver auto&& self) { return column_at<14>(self); }
+    auto maximum_signed_value(this ColumnReceiver auto&& self) { return column_at<15>(self); }
+    auto minimum_semantic_value(this ColumnReceiver auto&& self) { return column_at<16>(self); }
+    auto maximum_semantic_value(this ColumnReceiver auto&& self) { return column_at<17>(self); }
+    auto semantic_value_count(this ColumnReceiver auto&& self) { return column_at<18>(self); }
+    auto sentinel_code_count(this ColumnReceiver auto&& self) { return column_at<19>(self); }
+    auto required_code_count(this ColumnReceiver auto&& self) { return column_at<20>(self); }
+    auto minimum_required_bits(this ColumnReceiver auto&& self) { return column_at<21>(self); }
+    auto unused_codes(this ColumnReceiver auto&& self) { return column_at<22>(self); }
+    auto codes(this ColumnReceiver auto&& self) { return column_at<23>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t parent_column{0ULL};
+    static constexpr std::size_t segment_column{1ULL};
+    static constexpr std::size_t name_column{2ULL};
+    static constexpr std::size_t semantic_type_column{3ULL};
+    static constexpr std::size_t logical_type_column{4ULL};
+    static constexpr std::size_t kind_column{5ULL};
+    static constexpr std::size_t reserved_column{6ULL};
+    static constexpr std::size_t schema_bit_width_column{7ULL};
+    static constexpr std::size_t schema_bit_width_auto_column{8ULL};
+    static constexpr std::size_t bit_width_column{9ULL};
+    static constexpr std::size_t overridden_column{10ULL};
+    static constexpr std::size_t least_significant_bit_column{11ULL};
+    static constexpr std::size_t most_significant_bit_column{12ULL};
+    static constexpr std::size_t maximum_unsigned_value_column{13ULL};
+    static constexpr std::size_t minimum_signed_value_column{14ULL};
+    static constexpr std::size_t maximum_signed_value_column{15ULL};
+    static constexpr std::size_t minimum_semantic_value_column{16ULL};
+    static constexpr std::size_t maximum_semantic_value_column{17ULL};
+    static constexpr std::size_t semantic_value_count_column{18ULL};
+    static constexpr std::size_t sentinel_code_count_column{19ULL};
+    static constexpr std::size_t required_code_count_column{20ULL};
+    static constexpr std::size_t minimum_required_bits_column{21ULL};
+    static constexpr std::size_t unused_codes_column{22ULL};
+    static constexpr std::size_t codes_column{23ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace packed_field_table
 
 /* **************************************** */
 // Owner

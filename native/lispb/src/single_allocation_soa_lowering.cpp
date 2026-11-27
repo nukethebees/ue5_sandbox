@@ -29,23 +29,20 @@ class SingleAllocationLowering : public CppIRBuilder {
         auto result{node_list()};
         auto source{node_list()};
         auto view_source{node_list()};
-        auto resolved{node_list()};
-        auto compact{node_list()};
+        auto views{node_list()};
         auto declarations{node_list()};
         declarations.add(forward_declaration(store_text("Schema"))).new_lines(1);
-        auto const views{emit_resolved_views(ctx, model, view_source, declarations)};
-
-        resolved.append(declarations.build()).new_lines(2).append(views);
-        compact.append(emit_single_allocation_layout(ctx, model)).new_lines(2);
-        compact.append(emit_compact_views(ctx, model, view_source));
-        Nodes resolved_nodes{namespace_node(namespace_name, resolved.build())};
-        Nodes compact_nodes{namespace_node(namespace_name, compact.build())};
+        auto const resolved{emit_resolved_views(ctx, model, view_source, declarations)};
+        views.append(declarations.build()).new_lines(2).append(resolved).new_lines(2);
+        views.append(emit_single_allocation_layout(ctx, model)).new_lines(2);
+        views.append(emit_compact_views(ctx, model, view_source));
+        result.add(namespace_node(namespace_name, views.build()));
         auto const source_views{view_source.build()};
         if (!source_views.empty()) {
             source.add(namespace_node(namespace_name, source_views)).new_lines(2);
         }
         if (soas.layout_only[row]) {
-            return {result.build(), source.build(), resolved_nodes, compact_nodes};
+            return {result.build(), source.build()};
         }
         result.new_lines(2);
         result.add(block_comment("****************************************"))
@@ -61,7 +58,7 @@ class SingleAllocationLowering : public CppIRBuilder {
         }
         result.add(emit_single_allocation_container(ctx, model, source));
 
-        return {result.build(), source.build(), resolved_nodes, compact_nodes};
+        return {result.build(), source.build()};
     }
 };
 

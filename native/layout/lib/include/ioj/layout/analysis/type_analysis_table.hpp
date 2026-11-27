@@ -3,15 +3,108 @@
 
 #pragma once
 
+#include "ioj/layout/analysis/aggregate_layout.hpp"
 #include "ioj/layout/analysis/analysis_id.hpp"
+#include "ioj/layout/analysis/enum_backing.hpp"
+#include "ioj/layout/analysis/packed_layout.hpp"
+#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analysis/scenario_id.hpp"
-#include "ioj/layout/analysis/type_analysis_table_compact_view.hpp"
+#include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
+#include <cstddef>
+#include <optional>
+
 namespace ioj::layout {
+namespace type_analysis_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<lispb::schema::TypeId,
+                                                  ScenarioId,
+                                                  std::optional<ioj::layout::PhysicalFactId>,
+                                                  std::optional<ioj::layout::EnumBacking>,
+                                                  std::optional<ioj::layout::AggregateLayout>,
+                                                  std::optional<ioj::layout::PackedLayout>,
+                                                  std::optional<ioj::layout::SoaLayout>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.schema_type(),
+                    source.scenario(),
+                    source.physical(),
+                    source.enum_backing(),
+                    source.aggregate(),
+                    source.packed(),
+                    source.soa());
+    }
+    auto schema_type(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto scenario(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto physical(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto enum_backing(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto aggregate(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto packed(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto soa(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t schema_type_column{0ULL};
+    static constexpr std::size_t scenario_column{1ULL};
+    static constexpr std::size_t physical_column{2ULL};
+    static constexpr std::size_t enum_backing_column{3ULL};
+    static constexpr std::size_t aggregate_column{4ULL};
+    static constexpr std::size_t packed_column{5ULL};
+    static constexpr std::size_t soa_column{6ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace type_analysis_table
 
 /* **************************************** */
 // Owner

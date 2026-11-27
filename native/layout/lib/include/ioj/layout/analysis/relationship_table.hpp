@@ -3,13 +3,88 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/relationship_table_compact_view.hpp"
+#include "ioj/layout/analysis/analysis_id.hpp"
+#include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include "lispb/schema/indices.h"
 
 #include <cstddef>
+#include <optional>
 
 namespace ioj::layout {
+namespace relationship_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  std::optional<std::size_t>,
+                                                  lispb::schema::RelationshipId,
+                                                  std::optional<ioj::layout::RelationshipMetrics>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.owner(), source.field(), source.relationship(), source.metrics());
+    }
+    auto owner(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto field(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto relationship(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto metrics(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t owner_column{0ULL};
+    static constexpr std::size_t field_column{1ULL};
+    static constexpr std::size_t relationship_column{2ULL};
+    static constexpr std::size_t metrics_column{3ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace relationship_table
 
 /* **************************************** */
 // Owner

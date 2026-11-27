@@ -43,12 +43,8 @@ class SoaLowering : public CppIRBuilder {
             header.new_lines(2).append(masks).new_lines(2);
         }
         auto lowered{lower_single_allocation(ctx, schema)};
-        header.append(lowered.resolved);
-        return {.header = lowered.header,
-                .source = lowered.source,
-                .format_generated = true,
-                .resolved_views = header.build(),
-                .compact_views = lowered.compact};
+        header.append(lowered.header);
+        return {.header = header.build(), .source = lowered.source, .format_generated = true};
     }
   private:
     auto mask_field_width(LoweringContext& ctx, SoaMemberId member) -> Expr {

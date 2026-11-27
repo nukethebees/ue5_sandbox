@@ -4,10 +4,91 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotators3f_compact_view.h"
+#include "ioj/rotator_types.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj {
+namespace rotators3f {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<float, float, float>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.pitches(), source.yaws(), source.rolls());
+    }
+    auto pitches(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto yaws(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto rolls(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    using equivalent_type = Rotator3f;
+    auto operator[](this auto const& self, std::uint32_t index) -> equivalent_type {
+        assert((index < self.num()));
+        auto const& columns{self.view()};
+        return equivalent_type{
+            columns.pitches()[index], columns.yaws()[index], columns.rolls()[index]};
+    }
+    using writable_equivalent = equivalent_type;
+    static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
+        return func(value.pitch, value.yaw, value.roll);
+    }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t pitches_column{0ULL};
+    static constexpr std::size_t yaws_column{1ULL};
+    static constexpr std::size_t rolls_column{2ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace rotators3f
 
 /* **************************************** */
 // Owner

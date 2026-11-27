@@ -3,11 +3,100 @@
 
 #pragma once
 
-#include "fighter_spawn_queue_compact_view.h"
+#include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/sim/levels/level_entity_ref.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
+
+#include <cstddef>
 
 namespace ioj::sim {
+namespace fighter_spawn_queue {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<LevelEntityRef,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      ::ioj::Team>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& directions_view{source.view_directions()};
+        return func(source.entity_indices(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    directions_view.xs(),
+                    directions_view.ys(),
+                    directions_view.zs(),
+                    source.teams());
+    }
+    auto entity_indices(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_directions(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t entity_indices_column{0ULL};
+    static constexpr std::size_t locations_xs_column{1ULL};
+    static constexpr std::size_t locations_ys_column{2ULL};
+    static constexpr std::size_t locations_zs_column{3ULL};
+    static constexpr std::size_t directions_xs_column{4ULL};
+    static constexpr std::size_t directions_ys_column{5ULL};
+    static constexpr std::size_t directions_zs_column{6ULL};
+    static constexpr std::size_t teams_column{7ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace fighter_spawn_queue
 
 /* **************************************** */
 // Owner

@@ -3,11 +3,77 @@
 
 #pragma once
 
+#include "compile_fixture/restricted_leaf.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
-#include "RestrictionRows_compact_view.h"
+#include "ioj/single_allocation/view.h"
+
+#include <cstddef>
 
 namespace codegen_compile_fixture {
+namespace single_restriction_rows {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using ioj::soa_storage_detail::column_at;
+using ioj::soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = ioj::soa_storage_detail::SchemaColumns<RestrictedLeaf>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.restricted());
+    }
+    auto restricted(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : ioj::soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : ioj::soa_storage_detail::
+          ViewRowOperations<View, ioj::soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<ioj::single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t restricted_column{0ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : ioj::soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::ViewRowOperations<
+          CompactView,
+          ioj::soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace single_restriction_rows
 
 /* **************************************** */
 // Owner

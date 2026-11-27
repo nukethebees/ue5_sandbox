@@ -723,7 +723,7 @@ TEST_F(SourceLoaderTest, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
         expect_dependency_edge(graph, consumer, health);
     }
     auto const generated{files.render(manifest)};
-    auto const& header{generated.at(1).content};
+    auto const& header{generated.front().content};
     expect_contains_all(header, {"struct Health", "#include <cstdint>"});
     EXPECT_LT(header.find("struct Health"), header.find("struct Vessel"));
     EXPECT_TRUE(generated.front().content.contains("struct Fleet"));
@@ -2226,7 +2226,7 @@ TEST_F(SourceLoaderTest, OrdinarySoaPreservesLogicalApi) {
     auto const generated{files.render(manifest)};
     auto const& output{generated.front().content};
     expect_contains_all(output, {"struct API Rows", "native_soa::Owner<"});
-    EXPECT_TRUE(generated.at(2).content.contains("return this->values()[0];"));
+    EXPECT_TRUE(output.contains("return this->values()[0];"));
     EXPECT_FALSE(output.contains("struct Rows {"));
     EXPECT_TRUE(output.contains("void noop() {"));
 }

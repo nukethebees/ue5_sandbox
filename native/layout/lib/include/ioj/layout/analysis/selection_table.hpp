@@ -3,14 +3,103 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/selection_table_compact_view.hpp"
+#include "ioj/layout/analysis/payload_footprint.hpp"
+#include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 
 namespace ioj::layout {
+namespace selection_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<std::size_t,
+                                                  AccessOperation,
+                                                  PayloadFootprint,
+                                                  PayloadFootprint,
+                                                  RegionFootprint,
+                                                  RegionFootprint,
+                                                  std::optional<std::uint64_t>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.source(),
+                    source.operation(),
+                    source.bytes(),
+                    source.bits(),
+                    source.cache(),
+                    source.pages(),
+                    source.capacity_slack_bytes());
+    }
+    auto source(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto operation(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto bytes(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto bits(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto cache(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto pages(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto capacity_slack_bytes(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t source_column{0ULL};
+    static constexpr std::size_t operation_column{1ULL};
+    static constexpr std::size_t bytes_column{2ULL};
+    static constexpr std::size_t bits_column{3ULL};
+    static constexpr std::size_t cache_column{4ULL};
+    static constexpr std::size_t pages_column{5ULL};
+    static constexpr std::size_t capacity_slack_bytes_column{6ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace selection_table
 
 /* **************************************** */
 // Owner

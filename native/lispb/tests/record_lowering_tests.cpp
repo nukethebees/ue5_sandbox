@@ -372,7 +372,7 @@ TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
                       dependencies.end());
         }
         auto const files{render_test_manifest(ctx, manifest)};
-        auto const& output{files.at(1).content};
+        auto const& output{files.front().content};
         EXPECT_LT(output.find("namespace example::inner"), output.find("struct A;"));
         auto const view_definition{output.find("using Pointers =")};
         ASSERT_NE(view_definition, std::string::npos);
@@ -420,7 +420,7 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
     (projections (cpp :storage std::uint8_t)))))";
     auto manifest{parse_test_manifest(ctx, source)};
     auto const files{render_test_manifest(ctx, manifest)};
-    auto const& output{files.at(2).content};
+    auto const& output{files.front().content};
     for (auto const name : {"Record", "Tagged", "Packed", "Table", "Values"}) {
         EXPECT_NE(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }

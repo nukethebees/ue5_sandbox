@@ -3,11 +3,96 @@
 
 #pragma once
 
-#include "entity_frame_changes_compact_view.h"
+#include "ioj/levels/team.h"
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotator_types.h"
+#include "ioj/sim/entities/entity_frame_change.h"
+#include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj::sim {
+namespace entity_frame_changes {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::
+    SchemaColumns<EntityFrameChangeKind, std::uint32_t, Vector3f, Rotator3f, ::ioj::Team, EntityId>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.kinds(),
+                    source.indices(),
+                    source.locations(),
+                    source.rotations(),
+                    source.teams(),
+                    source.ids());
+    }
+    auto kinds(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto indices(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto locations(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto rotations(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto ids(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t kinds_column{0ULL};
+    static constexpr std::size_t indices_column{1ULL};
+    static constexpr std::size_t locations_column{2ULL};
+    static constexpr std::size_t rotations_column{3ULL};
+    static constexpr std::size_t teams_column{4ULL};
+    static constexpr std::size_t ids_column{5ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace entity_frame_changes
 
 /* **************************************** */
 // Owner

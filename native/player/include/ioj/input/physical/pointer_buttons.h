@@ -3,11 +3,84 @@
 
 #pragma once
 
+#include "ioj/input/physical/button_state.h"
+#include "ioj/input/physical/physical_key.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
-#include "pointer_buttons_compact_view.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vector.h"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj {
+namespace physical_pointer_buttons_rows {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<Vector2f, PhysicalKey, ButtonState, std::uint8_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.positions(), source.keys(), source.states(), source.clicks());
+    }
+    auto positions(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto keys(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto states(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto clicks(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t positions_column{0ULL};
+    static constexpr std::size_t keys_column{1ULL};
+    static constexpr std::size_t states_column{2ULL};
+    static constexpr std::size_t clicks_column{3ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace physical_pointer_buttons_rows
 
 /* **************************************** */
 // Owner

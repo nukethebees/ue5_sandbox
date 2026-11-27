@@ -3,13 +3,139 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/soa_column_table_compact_view.hpp"
+#include "ioj/layout/analysis/analysis_id.hpp"
+#include "ioj/layout/analysis/physical_fact_id.hpp"
+#include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
+
+#include "lispb/indices.h"
+#include "lispb/schema/indices.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace ioj::layout {
+namespace soa_column_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  std::string_view,
+                                                  lispb::schema::TypeId,
+                                                  lispb::StringId,
+                                                  lispb::StringId,
+                                                  std::uint8_t,
+                                                  std::optional<ioj::layout::PhysicalFactId>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<ioj::layout::CacheLineTiling>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.parent(),
+                    source.name(),
+                    source.semantic_type(),
+                    source.schema_type(),
+                    source.physical_type(),
+                    source.overridden(),
+                    source.type_facts(),
+                    source.total_bytes(),
+                    source.allocation_offset_bytes(),
+                    source.padding_before_bytes(),
+                    source.minimum_cache_lines(),
+                    source.elements_per_cache_line(),
+                    source.minimum_pages(),
+                    source.complete_elements_per_page(),
+                    source.cache_line_tiling());
+    }
+    auto parent(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto name(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto semantic_type(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto schema_type(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto physical_type(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto overridden(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto type_facts(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto total_bytes(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto allocation_offset_bytes(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto padding_before_bytes(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto minimum_cache_lines(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto elements_per_cache_line(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto minimum_pages(this ColumnReceiver auto&& self) { return column_at<12>(self); }
+    auto complete_elements_per_page(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto cache_line_tiling(this ColumnReceiver auto&& self) { return column_at<14>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t parent_column{0ULL};
+    static constexpr std::size_t name_column{1ULL};
+    static constexpr std::size_t semantic_type_column{2ULL};
+    static constexpr std::size_t schema_type_column{3ULL};
+    static constexpr std::size_t physical_type_column{4ULL};
+    static constexpr std::size_t overridden_column{5ULL};
+    static constexpr std::size_t type_facts_column{6ULL};
+    static constexpr std::size_t total_bytes_column{7ULL};
+    static constexpr std::size_t allocation_offset_bytes_column{8ULL};
+    static constexpr std::size_t padding_before_bytes_column{9ULL};
+    static constexpr std::size_t minimum_cache_lines_column{10ULL};
+    static constexpr std::size_t elements_per_cache_line_column{11ULL};
+    static constexpr std::size_t minimum_pages_column{12ULL};
+    static constexpr std::size_t complete_elements_per_page_column{13ULL};
+    static constexpr std::size_t cache_line_tiling_column{14ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace soa_column_table
 
 /* **************************************** */
 // Owner

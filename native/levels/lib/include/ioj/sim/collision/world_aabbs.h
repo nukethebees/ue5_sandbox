@@ -4,10 +4,89 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
-#include "world_aabbs_compact_view.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
+
+#include <cstddef>
 
 namespace ioj::sim::collision {
+namespace world_aabbs {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& min_points_view{source.view_min_points()};
+        auto const& max_points_view{source.view_max_points()};
+        return func(min_points_view.xs(),
+                    min_points_view.ys(),
+                    min_points_view.zs(),
+                    max_points_view.xs(),
+                    max_points_view.ys(),
+                    max_points_view.zs());
+    }
+    auto view_min_points(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_max_points(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t min_points_xs_column{0ULL};
+    static constexpr std::size_t min_points_ys_column{1ULL};
+    static constexpr std::size_t min_points_zs_column{2ULL};
+    static constexpr std::size_t max_points_xs_column{3ULL};
+    static constexpr std::size_t max_points_ys_column{4ULL};
+    static constexpr std::size_t max_points_zs_column{5ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace world_aabbs
 
 /* **************************************** */
 // Owner

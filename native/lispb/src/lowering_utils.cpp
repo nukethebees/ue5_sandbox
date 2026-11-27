@@ -84,12 +84,6 @@ auto join_lines(LoweringContext const& ctx, SchemaRange<StringId> values) -> std
     return join(ctx, values, "\n");
 }
 
-auto soa_header_path(std::string_view path, std::string_view suffix) -> std::string {
-    auto const header{std::filesystem::path{path}};
-    return (header.parent_path() /
-            (header.stem().string() + std::string{suffix} + header.extension().string()))
-        .generic_string();
-}
 auto source_include(LoweringContext const& ctx, ModuleSettingsId settings) -> std::string {
     if (ctx.declarations.module_settings_store.header_include[settings].has_value()) {
         return ctx.text(*ctx.declarations.module_settings_store.header_include[settings]);

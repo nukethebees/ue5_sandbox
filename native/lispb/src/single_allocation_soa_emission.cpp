@@ -106,8 +106,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                  .children = children.build(),
                  .bases = {base},
                  .export_specifier =
-                     ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)],
-                 .dependencies = child_dependencies(ctx, schema, true)})};
+                     ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)]})};
             result.add(record_id).new_lines(1).append(view_validation_nodes(name)).new_lines(1);
         }
         return result.build();
@@ -251,9 +250,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
         return add_record({.name = this->name(store_text("Schema")),
                            .children = children.build(),
                            .bases = {base},
-                           .dependencies = child_dependencies(ctx, schema, false)});
+                           .dependencies = child_dependencies(ctx, schema)});
     }
-    auto child_dependencies(LoweringContext& ctx, DeclarationHandle schema, bool compact)
+    auto child_dependencies(LoweringContext& ctx, DeclarationHandle schema)
         -> std::vector<TypeDependencyId> {
         std::vector<TypeDependencyId> deps;
         for (auto member : ctx.declarations.items(ctx.declarations.soas.members[schema])) {
@@ -263,10 +262,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
             auto const child{ctx.for_declaration(schema).nested_declaration(member)};
             auto const target{ctx.for_declaration(child).module};
             if (target != ctx.module) {
-                deps.push_back(dependency(
-                    schema_namespace(ctx, child),
-                    soa_header_path(source_include(ctx, ctx.declarations.module_settings(target)),
-                                    compact ? "_compact_view" : "_view")));
+                deps.push_back(
+                    dependency(schema_namespace(ctx, child),
+                               source_include(ctx, ctx.declarations.module_settings(target))));
             }
         }
         return deps;
@@ -282,10 +280,14 @@ class SingleAllocationEmitter : public CppIRBuilder {
             args.push_back(named_type(scope + "::Layout", NameOrigin::global));
         }
         args.push_back(intern_type(receiver == SoaReceiver::const_view ? "true" : "false"));
-        auto const base{template_type(named_type(resolved ? "ioj::soa_storage_detail::ResolvedView"
-                                                          : "ioj::soa_storage_detail::CompactView",
-                                                 NameOrigin::global),
-                                      args)};
+        auto const base{template_type(
+            named_type(resolved ? "ioj::soa_storage_detail::ResolvedView"
+                                : "ioj::soa_storage_detail::CompactView",
+                       NameOrigin::global,
+                       {dependency(resolved ? "ResolvedView" : "CompactView",
+                                   resolved ? "ioj/single_allocation/view.h"
+                                            : "ioj/single_allocation/compact_view.h")}),
+            args)};
         return soa_row_operations(ctx, schema, receiver, name, base);
     }
     auto emit_pointer_views(LoweringContext& ctx,

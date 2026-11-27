@@ -3,15 +3,118 @@
 
 #pragma once
 
-#include "ioj/layout/analysis/scalar_table_compact_view.hpp"
+#include "ioj/layout/analysis/enum_domain.hpp"
+#include "ioj/layout/analysis/fixed_encoding.hpp"
+#include "ioj/layout/analysis/float_encoding.hpp"
+#include "ioj/layout/analysis/integer_domain.hpp"
+#include "ioj/layout/analysis/optional_presence_encoding.hpp"
+#include "ioj/layout/analysis/optional_sentinel_encoding.hpp"
+#include "ioj/layout/analysis/quantized_encoding.hpp"
+#include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
 #include <cstddef>
+#include <optional>
 
 namespace ioj::layout {
+namespace scalar_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<lispb::schema::TypeId,
+                                      std::optional<ioj::layout::IntegerDomain>,
+                                      std::optional<ioj::layout::EnumDomain>,
+                                      std::optional<ioj::layout::OptionalSentinelEncoding>,
+                                      std::optional<ioj::layout::OptionalPresenceEncoding>,
+                                      std::optional<ioj::layout::QuantizedEncoding>,
+                                      std::optional<ioj::layout::FixedEncoding>,
+                                      std::optional<ioj::layout::FloatEncoding>,
+                                      std::optional<ioj::layout::VarintEncoding>>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.type(),
+                    source.integer_domain(),
+                    source.enum_domain(),
+                    source.optional_sentinel_encoding(),
+                    source.optional_presence_encoding(),
+                    source.quantized_encoding(),
+                    source.fixed_encoding(),
+                    source.float_encoding(),
+                    source.varint_encoding());
+    }
+    auto type(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto integer_domain(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto enum_domain(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto optional_sentinel_encoding(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto optional_presence_encoding(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto quantized_encoding(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto fixed_encoding(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto float_encoding(this ColumnReceiver auto&& self) { return column_at<7>(self); }
+    auto varint_encoding(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t type_column{0ULL};
+    static constexpr std::size_t integer_domain_column{1ULL};
+    static constexpr std::size_t enum_domain_column{2ULL};
+    static constexpr std::size_t optional_sentinel_encoding_column{3ULL};
+    static constexpr std::size_t optional_presence_encoding_column{4ULL};
+    static constexpr std::size_t quantized_encoding_column{5ULL};
+    static constexpr std::size_t fixed_encoding_column{6ULL};
+    static constexpr std::size_t float_encoding_column{7ULL};
+    static constexpr std::size_t varint_encoding_column{8ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace scalar_table
 
 /* **************************************** */
 // Owner

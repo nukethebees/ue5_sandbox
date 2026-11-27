@@ -25,7 +25,7 @@ flowchart LR
 | Slate | Declare the static widget tree and slots. Keep dynamic state and event handling in the host. |
 | Material | Edit the [source graph](../../Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb). For UI glow, run `coj unreal generate-ui-glow-material`. See `coj unreal --help` for other assets. |
 
-Include `<name>_view.h` to borrow column pointers and a shared row count. The columns may come from independent allocations. Include `<name>_compact_view.h` for allocation layouts and compact or strided views. Call `.resolve()` once before a hot loop. Include `<name>.h` to own and resize a table. Reacquire views after storage moves or borrowed rows are removed or reordered. Inspect physical layout with [Layout Planner](../../tools/layout_planner/README.md).
+Each table header contains its owner, resolved column views, layout and compact views. A resolved view can borrow columns from independent allocations. Call `.resolve()` once before a hot loop. Reacquire views after storage moves or borrowed rows are removed or reordered. Inspect physical layout with [Layout Planner](../../tools/layout_planner/README.md).
 
 ## S7 records and settings
 

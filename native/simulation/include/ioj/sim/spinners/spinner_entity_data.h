@@ -4,10 +4,98 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/column_types.h"
+#include "ioj/single_allocation/compact_view.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/operations.h"
-#include "spinner_entity_data_compact_view.h"
+#include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace ioj::sim {
+namespace spinner_entity_data {
+struct Schema;
+struct View;
+struct ConstView;
+struct CompactView;
+struct CompactConstView;
+
+using soa_storage_detail::column_at;
+using soa_storage_detail::ColumnReceiver;
+
+/* **************************************** */
+// Columns
+/* **************************************** */
+using Columns =
+    soa_storage_detail::SchemaColumns<EntityId,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      std::int16_t,
+                                      std::int32_t>;
+using Pointers = Columns::pointers;
+
+struct Schema
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        return func(source.entity_ids(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    source.yaws(),
+                    source.laser_cooldowns(),
+                    source.next_fire_point_indices());
+    }
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto yaws(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto next_fire_point_indices(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+};
+
+/* **************************************** */
+// Views
+/* **************************************** */
+struct ConstView : soa_storage_detail::ResolvedView<Schema, true> {
+    using implementation_type::implementation_type;
+};
+struct View
+    : soa_storage_detail::ViewRowOperations<View, soa_storage_detail::ResolvedView<Schema, false>> {
+    using implementation_type::implementation_type;
+};
+
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : Pointers::apply<single_allocation_layout::ColumnLayouts> {
+    static constexpr std::size_t entity_ids_column{0ULL};
+    static constexpr std::size_t locations_xs_column{1ULL};
+    static constexpr std::size_t locations_ys_column{2ULL};
+    static constexpr std::size_t locations_zs_column{3ULL};
+    static constexpr std::size_t yaws_column{4ULL};
+    static constexpr std::size_t laser_cooldowns_column{5ULL};
+    static constexpr std::size_t next_fire_point_indices_column{6ULL};
+};
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+struct CompactConstView : soa_storage_detail::CompactView<Schema, Layout, true> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, soa_storage_detail::CompactView<Schema, Layout, false>> {
+    using implementation_type::implementation_type;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
+
+} // namespace spinner_entity_data
 
 /* **************************************** */
 // Owner

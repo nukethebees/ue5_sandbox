@@ -21,7 +21,6 @@
 #include <span>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -35,48 +34,6 @@ class ModuleAssembler : public CppIRBuilder {
     auto assemble_module(LoweringContext& ctx,
                          ModuleSettingsId settings,
                          std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
-        auto const split{std::ranges::any_of(
-            emissions, [](auto const& item) { return !item.compact_views.empty(); })};
-        if (!split) {
-            return assemble_files(ctx, settings, emissions);
-        }
-
-        std::vector<DeclarationEmission> resolved;
-        std::vector<DeclarationEmission> compact;
-        for (auto& item : emissions) {
-            if (item.in_resolved_header) {
-                resolved.push_back(
-                    {.header_prefix = std::move(item.header_prefix),
-                     .header_generated_include = std::move(item.header_generated_include),
-                     .header = std::move(item.header),
-                     .header_immediate_global = std::move(item.header_immediate_global),
-                     .header_after = std::move(item.header_after),
-                     .header_global = std::move(item.header_global),
-                     .header_tail = std::move(item.header_tail),
-                     .tail_namespace = item.tail_namespace});
-            }
-            if (!item.resolved_views.empty()) {
-                resolved.push_back({.header = std::move(item.resolved_views)});
-            }
-            if (!item.compact_views.empty()) {
-                compact.push_back({.header = std::move(item.compact_views)});
-            }
-        }
-
-        auto const base{source_include(ctx, settings)};
-        auto result{
-            assemble_files(ctx, settings, emissions, {}, soa_header_path(base, "_compact_view"))};
-        result.append_range(assemble_files(ctx, settings, resolved, "_view"));
-        result.append_range(assemble_files(
-            ctx, settings, compact, "_compact_view", soa_header_path(base, "_view")));
-        return result;
-    }
-  private:
-    auto assemble_files(LoweringContext& ctx,
-                        ModuleSettingsId settings,
-                        std::span<DeclarationEmission> emissions,
-                        std::string_view suffix = {},
-                        std::string_view include_header = {}) -> std::vector<ModuleId> {
         auto const& settings_store{ctx.declarations.module_settings_store};
         auto const has_output{
             std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
@@ -89,7 +46,7 @@ class ModuleAssembler : public CppIRBuilder {
                        !emission.reader_declarations.empty() ||
                        !emission.writer_declarations.empty();
             })};
-        if (!has_output && include_header.empty()) {
+        if (!has_output) {
             std::vector<ModuleId> additional;
             for (auto const& emission : emissions) {
                 additional.insert(additional.end(),
@@ -101,20 +58,12 @@ class ModuleAssembler : public CppIRBuilder {
 
         auto header{node_list()};
         auto source{node_list()};
-        if (!include_header.empty()) {
-            header.add(include(store_text(include_header), IncludeStyle::quoted), 1);
-        }
-        if (suffix == "_compact_view") {
-            header.add(
-                include(store_text("ioj/single_allocation/compact_view.h"), IncludeStyle::quoted),
-                1);
-        }
         header.add(include_dependencies(), 2);
-        if (include_header.empty() && !settings_store.prelude_lines[settings].empty()) {
+        if (!settings_store.prelude_lines[settings].empty()) {
             header.add(raw_lines(ctx.declarations.items(settings_store.prelude_lines[settings])),
                        2);
         }
-        if (suffix.empty() && settings_store.source[settings].has_value()) {
+        if (settings_store.source[settings].has_value()) {
             source.add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 2);
             source.add(include_dependencies(), 2);
         }
@@ -271,14 +220,12 @@ class ModuleAssembler : public CppIRBuilder {
         }
         auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
         auto const header_file{add_file(
-            {.path = suffix.empty() ? settings_store.header[settings]
-                                    : store_text(soa_header_path(
-                                          ctx.text(settings_store.header[settings]), suffix)),
+            {.path = settings_store.header[settings],
              .nodes = header.build(),
              .flags = {.clang_format_off = !format_generated, .format_generated = format_generated},
              .include_order = {std::from_range, include_order}})};
         CppFileId source_file;
-        if (auto const path{settings_store.source[settings]}; path && suffix.empty()) {
+        if (auto const path{settings_store.source[settings]}; path) {
             source_file = add_file({.path = *path,
                                     .nodes = source.build(),
                                     .flags = {.pragma_once = false,
@@ -286,10 +233,7 @@ class ModuleAssembler : public CppIRBuilder {
                                               .format_generated = format_generated},
                                     .include_order = {std::from_range, include_order}});
         }
-        auto const result{
-            append_module(store_text(ctx.text(settings_store.name[settings]) + std::string{suffix}),
-                          header_file,
-                          source_file)};
+        auto const result{append_module(settings_store.name[settings], header_file, source_file)};
 
         auto reader_nodes{reader_declarations.build()};
         if (!reader_nodes.empty()) {

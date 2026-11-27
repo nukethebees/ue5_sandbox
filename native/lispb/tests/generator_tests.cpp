@@ -59,23 +59,15 @@ auto example_manifest(CompilerTestContext& ctx) -> Manifest {
 TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     CompilerTestContext ctx;
     auto const files{render_test_manifest(ctx, example_manifest(ctx))};
-    ASSERT_EQ(files.size(), 4);
+    ASSERT_EQ(files.size(), 2);
     auto const& header{files[0].content};
     auto const& source{files[1].content};
-    ASSERT_EQ(files[2].path, "Generated_view.h");
-    ASSERT_EQ(files[3].path, "Generated_compact_view.h");
-    expect_contains_all(files[2].content,
-                        {"namespace f_data", "ResolvedView<", "#include \"Project/Handle.h\""});
-    expect_contains_none(files[2].content,
-                         {"single_allocation/compact_view.h",
-                          "ColumnLayouts",
-                          "native_soa/storage.h",
-                          "single_allocation/layout.h",
-                          "memory_resource"});
-    expect_contains_all(files[3].content,
-                        {"struct EXAMPLE_API CompactConstView", "Project/Generated_view.h"});
-    expect_contains_none(files[3].content, {"native_soa/storage.h", "StorageOperations"});
-    expect_contains_all(header, {"ioj::native_soa::Owner<", "Project/Generated_compact_view.h"});
+    expect_contains_all(header,
+                        {"namespace f_data",
+                         "ResolvedView<",
+                         "struct EXAMPLE_API CompactConstView",
+                         "ioj::native_soa::Owner<",
+                         "#include \"Project/Handle.h\""});
     expect_contains_none(header, {"void apply_permutation(", "TArray", "validate_array_sizes"});
     EXPECT_TRUE(source.contains("#include \"Project/Generated.h\""));
 }
@@ -91,7 +83,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
             (member last array std::int32_t :mask-field true))))")};
 
     auto const files{render_test_manifest(ctx, manifest)};
-    auto const& header{files.at(2).content};
+    auto const& header{files.at(0).content};
     expect_contains_all(
         header,
         {"enum class EField : std::uint8_t",

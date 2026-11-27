@@ -1,4 +1,4 @@
-#include <ioj/vectors3f_view.h>
+#include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>
 
