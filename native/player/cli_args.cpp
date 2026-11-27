@@ -62,10 +62,10 @@ auto parse_cli_args(int argc, char** argv) -> CliResult {
 
     app.add_flag("--exit-when-ready",
                  args.exit_when_ready,
-                 "Exit after the menu or mission is ready (headless by default)");
+                 "Exit after the menu or level is ready (headless by default)");
 
     app.add_option(
-        "--mission", args.mission_path, "S7 mission (absolute or relative to the staged project)");
+        "--level", args.level_path, "S7 level (absolute or relative to the staged project)");
     app.add_option("--editor-scripts",
                    args.editor_scripts_directory,
                    "Read settings and preferences from this LevelScripts directory")

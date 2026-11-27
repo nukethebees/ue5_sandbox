@@ -10,7 +10,7 @@
 
 namespace ioj {
 struct CliArgs {
-    std::filesystem::path mission_path;
+    std::filesystem::path level_path;
     std::filesystem::path editor_scripts_directory;
     std::filesystem::path user_directory;
     LaunchDisplayMode launch_display_mode{LaunchDisplayMode::Preferences};

@@ -37,7 +37,7 @@
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
 namespace ioj::editor {
-static auto current_mission_document() -> AS7LevelAuthoringDocument* {
+static auto current_level_document() -> AS7LevelAuthoringDocument* {
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     auto* const level{world ? world->GetCurrentLevel() : nullptr};
     if (!level) {
@@ -48,7 +48,7 @@ static auto current_mission_document() -> AS7LevelAuthoringDocument* {
     return document ? *document : nullptr;
 }
 
-auto prepare_staged_mission(AS7LevelAuthoringDocument& document) -> S7AuthoringResult<FString> {
+auto prepare_staged_level(AS7LevelAuthoringDocument& document) -> S7AuthoringResult<FString> {
     auto stale{s7_scene_needs_export(document)};
     if (!stale) {
         return std::unexpected{stale.error()};
@@ -67,7 +67,7 @@ auto prepare_staged_mission(AS7LevelAuthoringDocument& document) -> S7AuthoringR
         }
     }
 
-    return s7_mission_path(document);
+    return s7_level_path(document);
 }
 auto refresh_staged_player() -> FProcHandle {
     auto const project{FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())};
@@ -81,7 +81,7 @@ auto refresh_staged_player() -> FProcHandle {
                                         *project,
                                         nullptr);
 }
-auto launch_staged_mission(FString const& mission, bool exit_when_ready)
+auto launch_staged_level(FString const& level, bool exit_when_ready)
     -> S7AuthoringResult<FProcHandle> {
     FString executable;
     auto const marker{FPaths::ProjectSavedDir() / TEXT("IojPlayer.path")};
@@ -94,10 +94,8 @@ auto launch_staged_mission(FString const& mission, bool exit_when_ready)
 
     auto const scripts{
         FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("LevelScripts"))};
-    auto args{
-        FString::Printf(TEXT("--display-mode windowed --editor-scripts \"%s\" --mission \"%s\""),
-                        *scripts,
-                        *mission)};
+    auto args{FString::Printf(
+        TEXT("--display-mode windowed --editor-scripts \"%s\" --level \"%s\""), *scripts, *level)};
     if (exit_when_ready) {
         args += TEXT(" --exit-when-ready");
     }
@@ -113,8 +111,8 @@ auto launch_staged_mission(FString const& mission, bool exit_when_ready)
     return process;
 }
 
-static void launch_mission(FString const& mission) {
-    auto process{launch_staged_mission(mission)};
+static void launch_level(FString const& level) {
+    auto process{launch_staged_level(level)};
     if (!process) {
         FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(process.error()));
         return;
@@ -326,24 +324,24 @@ void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContex
         }
     }
 }
-bool FSandboxEditorModule::can_play_mission() const {
-    return !refresh_process_.IsValid() && ioj::editor::current_mission_document();
+bool FSandboxEditorModule::can_play_level() const {
+    return !refresh_process_.IsValid() && ioj::editor::current_level_document();
 }
 
-void FSandboxEditorModule::play_mission(bool refresh) {
-    auto* document{ioj::editor::current_mission_document()};
+void FSandboxEditorModule::play_level(bool refresh) {
+    auto* document{ioj::editor::current_level_document()};
     if (!document || refresh_process_.IsValid()) {
         return;
     }
 
-    auto mission{ioj::editor::prepare_staged_mission(*document)};
-    if (!mission) {
-        FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(mission.error()));
+    auto level{ioj::editor::prepare_staged_level(*document)};
+    if (!level) {
+        FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(level.error()));
         return;
     }
 
     if (!refresh) {
-        ioj::editor::launch_mission(*mission);
+        ioj::editor::launch_level(*level);
         return;
     }
 
@@ -355,7 +353,7 @@ void FSandboxEditorModule::play_mission(bool refresh) {
         return;
     }
 
-    refresh_mission_ = MoveTemp(*mission);
+    refresh_level_ = MoveTemp(*level);
     refresh_ticker_ = FTSTicker::GetCoreTicker().AddTicker(
         FTickerDelegate::CreateRaw(this, &FSandboxEditorModule::poll_refresh), 0.5f);
 }
@@ -370,7 +368,7 @@ bool FSandboxEditorModule::poll_refresh(float) {
     FPlatformProcess::CloseProc(refresh_process_);
     refresh_process_.Reset();
     if (success) {
-        ioj::editor::launch_mission(refresh_mission_);
+        ioj::editor::launch_level(refresh_level_);
     } else {
         FMessageDialog::Open(
             EAppMsgType::Ok,
@@ -378,7 +376,7 @@ bool FSandboxEditorModule::poll_refresh(float) {
                           code));
     }
 
-    refresh_mission_.Reset();
+    refresh_level_.Reset();
     return false;
 }
 
@@ -390,18 +388,18 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     auto* const play_menu{tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar")};
     play_menu->FindOrAddSection("Play").AddEntry(FToolMenuEntry::InitToolBarButton(
-        "SandboxPlayExternalMission",
-        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_mission, false),
-                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_mission)},
+        "SandboxPlayExternalLevel",
+        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_level, false),
+                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_level)},
         LOCTEXT("PlayMission", "Play Mission"),
         LOCTEXT("PlayMissionTip",
                 "Export scene changes and run this mission with the staged Development player"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "PlayWorld.PlayInViewport")));
 
     play_menu->FindOrAddSection("Play").AddEntry(FToolMenuEntry::InitToolBarButton(
-        "SandboxRefreshPlayMission",
-        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_mission, true),
-                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_mission)},
+        "SandboxRefreshPlayLevel",
+        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_level, true),
+                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_level)},
         LOCTEXT("RefreshPlay", "Refresh & Play"),
         LOCTEXT("RefreshPlayTip",
                 "Cook saved asset changes, stage the Development player, and run this mission"),

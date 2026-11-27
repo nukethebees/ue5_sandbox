@@ -251,7 +251,7 @@ void US7LevelAuthoringMode::refresh_document() {
     if (!found) {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *found.error());
     } else if (document_.IsValid() && document_ != previous_document &&
-               !FPaths::FileExists(s7_mission_path(*document_))) {
+               !FPaths::FileExists(s7_level_path(*document_))) {
         UE_LOG(LogS7LevelAuthoring,
                Warning,
                TEXT("Missing %s. Use Link Existing Script to locate it."),
@@ -386,7 +386,7 @@ void US7LevelAuthoringMode::create_document() {
                *document_->source_path);
         return;
     }
-    auto created{set_up_s7_mission(*level, MissionSetup::Create)};
+    auto created{set_up_s7_level(*level, LevelSetup::Create)};
     if (!created) {
         UE_LOG(LogS7LevelAuthoring, Error, TEXT("Create Level Script: %s"), *created.error());
         return;
@@ -456,7 +456,7 @@ void US7LevelAuthoringMode::link_script() {
     if (!level || !path) {
         return;
     }
-    auto linked{set_up_s7_mission(*level, MissionSetup::Link, *path)};
+    auto linked{set_up_s7_level(*level, LevelSetup::Link, *path)};
     if (!linked) {
         UE_LOG(LogS7LevelAuthoring, Error, TEXT("Link Existing Script: %s"), *linked.error());
         return;
@@ -469,7 +469,7 @@ void US7LevelAuthoringMode::link_script() {
 
 void US7LevelAuthoringMode::open_script_editor() {
     if (document_.IsValid()) {
-        auto const path{s7_mission_path(*document_)};
+        auto const path{s7_level_path(*document_)};
         FPlatformProcess::LaunchFileInDefaultExternalApplication(*path);
     }
 }

@@ -27,11 +27,11 @@ class SANDBOXEDITOR_API FSandboxEditorModule : public IModuleInterface {
     void on_property_changed(UObject* object, FPropertyChangedEvent& change);
     void on_transacted(UObject* object, FTransactionObjectEvent const& change);
     void on_pre_save_world(UWorld* world, FObjectPreSaveContext context);
-    void play_mission(bool refresh);
-    bool can_play_mission() const;
+    void play_level(bool refresh);
+    bool can_play_level() const;
     bool poll_refresh(float delta_seconds);
 
     FProcHandle refresh_process_;
     FTSTicker::FDelegateHandle refresh_ticker_;
-    FString refresh_mission_;
+    FString refresh_level_;
 };

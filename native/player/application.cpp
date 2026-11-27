@@ -104,11 +104,11 @@ auto Application::run(CliArgs args) -> ApplicationResult {
         args.editor_scripts_directory = std::filesystem::absolute(args.editor_scripts_directory);
     }
 
-    if (!args.mission_path.empty()) {
-        args.mission_path = (project_directory / args.mission_path).lexically_normal();
-        if (!std::filesystem::is_regular_file(args.mission_path)) {
+    if (!args.level_path.empty()) {
+        args.level_path = (project_directory / args.level_path).lexically_normal();
+        if (!std::filesystem::is_regular_file(args.level_path)) {
             return Result{std::unexpect,
-                          "Mission file does not exist: " + path_to_utf8(args.mission_path)};
+                          "Level file does not exist: " + path_to_utf8(args.level_path)};
         }
     }
 
@@ -179,7 +179,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     Result play_result;
     try {
-        play_result = application.play(window, args.mission_path, args.exit_when_ready);
+        play_result = application.play(window, args.level_path, args.exit_when_ready);
     } catch (std::exception const& error) {
         play_result = std::unexpected{std::string{error.what()}};
     } catch (...) {
@@ -205,7 +205,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     return shutdown_result;
 }
 auto Application::play(Window& window,
-                       std::filesystem::path const& mission_path,
+                       std::filesystem::path const& level_path,
                        bool exit_when_ready) -> ApplicationResult {
     if (!IojPlayer_GameReady()) {
         return ApplicationResult{std::unexpect,
@@ -224,8 +224,8 @@ auto Application::play(Window& window,
         host::present_settings(settings_.view(), window.supported_resolutions());
     }
 
-    if (!mission_path.empty()) {
-        if (auto result{launch_mission(mission_path)}; !result) {
+    if (!level_path.empty()) {
+        if (auto result{launch_mission(level_path)}; !result) {
             return result;
         }
     }
@@ -269,15 +269,15 @@ auto Application::play(Window& window,
 
         if (exit_when_ready) {
             auto const startup{IojPlayer_MissionStartup()};
-            if (mission_path.empty() || startup == MissionStartup::Ready) {
+            if (level_path.empty() || startup == MissionStartup::Ready) {
                 std::println("Ready: {}",
-                             mission_path.empty() ? "MainMenu" : path_to_utf8(mission_path));
+                             level_path.empty() ? "MainMenu" : path_to_utf8(level_path));
                 return {};
             }
 
             if (startup == MissionStartup::Failed || std::chrono::steady_clock::now() >= deadline) {
                 return ApplicationResult{
-                    std::unexpect, "Mission did not reach simulation readiness. See the game log."};
+                    std::unexpect, "Level did not reach simulation readiness. See the game log."};
             }
         }
 

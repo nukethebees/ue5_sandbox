@@ -20,9 +20,9 @@ class LevelDefinition;
 }
 
 namespace ioj::editor {
-SANDBOXEDITOR_API auto prepare_staged_mission(AS7LevelAuthoringDocument& document)
+SANDBOXEDITOR_API auto prepare_staged_level(AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<FString>;
-SANDBOXEDITOR_API auto launch_staged_mission(FString const& mission, bool exit_when_ready = false)
+SANDBOXEDITOR_API auto launch_staged_level(FString const& level, bool exit_when_ready = false)
     -> S7AuthoringResult<FProcHandle>;
 SANDBOXEDITOR_API auto refresh_staged_player() -> FProcHandle;
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)

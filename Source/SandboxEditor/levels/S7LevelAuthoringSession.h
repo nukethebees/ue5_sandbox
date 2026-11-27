@@ -12,11 +12,11 @@ class ULevel;
 namespace ioj::editor {
 SANDBOXEDITOR_API auto find_level_authoring_document(ULevel const& level)
     -> S7AuthoringResult<AS7LevelAuthoringDocument*>;
-enum class MissionSetup { Create, Link };
+enum class LevelSetup { Create, Link };
 SANDBOXEDITOR_API auto
-    set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_path = {})
+    set_up_s7_level(ULevel& level, LevelSetup operation, FString source_path = {})
         -> S7AuthoringResult<AS7LevelAuthoringDocument*>;
-SANDBOXEDITOR_API auto s7_mission_path(AS7LevelAuthoringDocument const& document) -> FString;
+SANDBOXEDITOR_API auto s7_level_path(AS7LevelAuthoringDocument const& document) -> FString;
 struct FS7SceneCheck {
     levels::LevelDefinition definition;
     TArray<FString> warnings;

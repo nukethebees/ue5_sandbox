@@ -108,11 +108,11 @@ add_unreal_automation_test(
 )
 if(UE_CONFIGURATION STREQUAL "Development")
   add_unreal_automation_test(
-    Sandbox.StagedEditorMissionTests
+    Sandbox.StagedEditorLevelTests
     FILTERS Sandbox.StagedEditorTests
     LABELS staged-editor
   )
-  set_tests_properties(Sandbox.StagedEditorMissionTests PROPERTIES
+  set_tests_properties(Sandbox.StagedEditorLevelTests PROPERTIES
     ENVIRONMENT "IOJ_GAME_ARTIFACT_ROOT=${IOJ_GAME_ARTIFACT_ROOT_ABSOLUTE}"
   )
 endif()

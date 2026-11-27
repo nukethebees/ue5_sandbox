@@ -150,7 +150,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
 
     auto& level{*world->GetCurrentLevel()};
     auto created{
-        ioj::editor::set_up_s7_mission(level, ioj::editor::MissionSetup::Create, directory.root())};
+        ioj::editor::set_up_s7_level(level, ioj::editor::LevelSetup::Create, directory.root())};
     if (!assert_success(test, TEXT("Create authoring document"), created)) {
         return std::nullopt;
     }
@@ -278,8 +278,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::set_up_s7_mission(
-            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Create, directory.root())};
+        auto created{ioj::editor::set_up_s7_level(
+            *world->GetCurrentLevel(), ioj::editor::LevelSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
@@ -650,7 +650,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              !ioj::editor::import_s7_level(
                                  level, document, ioj::editor::RebuildPolicy::DiscardEdits) &&
                                  IsValid(pending) && IsValid(previous_human));
-        if (!TestRunner->TestTrue(TEXT("Restore saved mission"),
+        if (!TestRunner->TestTrue(TEXT("Restore saved level"),
                                   write_source(directory.root(), fixture->human_source))) {
             return;
         }
@@ -679,7 +679,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               ioj::editor::check_s7_scene(level, document).has_value());
         TestRunner->TestFalse(TEXT("Export rejects the duplicate ID"),
                               ioj::editor::export_s7_editor_config(level, document).has_value());
-        TestRunner->TestTrue(TEXT("Saved mission remains playable"),
+        TestRunner->TestTrue(TEXT("Saved level remains playable"),
                              ioj::editor::read_s7_authored_level(document).has_value());
         GEditor->UndoTransaction();
         TestRunner->TestTrue(TEXT("Undoing a rebuild requests export"), document.needs_export);
@@ -732,8 +732,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto& level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::set_up_s7_mission(
-            level, ioj::editor::MissionSetup::Create, directory.root())};
+        auto created{
+            ioj::editor::set_up_s7_level(level, ioj::editor::LevelSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
@@ -753,8 +753,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 TEXT("Write generated baseline"),
                 write_source(ioj::editor::s7_editor_config_path(document),
                              ioj::to_fstring(authoring::emit_editor_level_source(*baseline)))) ||
-            !TestRunner->TestTrue(TEXT("Write human transformations"),
-                                  write_source(directory.root(), TEXT(R"scm((export level-definition)
+            !TestRunner->TestTrue(
+                TEXT("Write human transformations"),
+                write_source(directory.root(), TEXT(R"scm((export level-definition)
 (define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
 (define level-definition
   (copy-with base
@@ -953,8 +954,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto& level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::set_up_s7_mission(
-            level, ioj::editor::MissionSetup::Create, directory.root())};
+        auto created{
+            ioj::editor::set_up_s7_level(level, ioj::editor::LevelSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring files"), created)) {
             return;
         }
@@ -1119,21 +1120,23 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   FFileHelper::LoadFileToString(
                                       standalone, *ioj::editor::s7_editor_config_path(document))) ||
             !TestRunner->TestTrue(
-                TEXT("Make the mission standalone"),
-                write_source(directory.root(),
-                             standalone + TEXT("\n(export level-definition)\n(define level-definition scene)\n")))) {
+                TEXT("Make the level standalone"),
+                write_source(
+                    directory.root(),
+                    standalone +
+                        TEXT("\n(export level-definition)\n(define level-definition scene)\n")))) {
             return;
         }
         player->SetActorLocation(FVector{100, 20, 30});
         GEditor->BroadcastEndObjectMovement(*player);
-        TestRunner->TestTrue(TEXT("Standalone missions do not import the editor config"),
+        TestRunner->TestTrue(TEXT("Standalone levels do not import the editor config"),
                              ioj::editor::s7_scene_needs_export(document) == false);
-        TestRunner->TestFalse(TEXT("Play stops when the mission dropped the edited scene"),
-                              ioj::editor::prepare_staged_mission(document).has_value());
-        TestRunner->TestFalse(TEXT("A standalone mission cannot export its orphaned config"),
+        TestRunner->TestFalse(TEXT("Play stops when the level dropped the edited scene"),
+                              ioj::editor::prepare_staged_level(document).has_value());
+        TestRunner->TestFalse(TEXT("A standalone level cannot export its orphaned config"),
                               ioj::editor::check_s7_scene(level, document).has_value());
         if (!assert_success(*TestRunner,
-                            TEXT("Rebuild standalone mission"),
+                            TEXT("Rebuild standalone level"),
                             ioj::editor::import_s7_level(
                                 level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
@@ -1154,7 +1157,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  restored->get_team() == ioj::ETestTeam::Red);
         auto const* standalone_pilot{binding(document, TEXT("pilot"))};
         TestRunner->TestTrue(
-            TEXT("Standalone mission owns its pilot"),
+            TEXT("Standalone level owns its pilot"),
             standalone_pilot &&
                 !CastChecked<ioj::ATestSpaceShip>(standalone_pilot->actor)->export_to_script);
     }
@@ -1172,9 +1175,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
 
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::set_up_s7_mission(
-            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Link, directory.root())};
-        TestRunner->TestFalse(TEXT("Reject invalid mission"), created.has_value());
+        auto created{ioj::editor::set_up_s7_level(
+            *world->GetCurrentLevel(), ioj::editor::LevelSetup::Link, directory.root())};
+        TestRunner->TestFalse(TEXT("Reject invalid level"), created.has_value());
         FString saved;
         TestRunner->TestTrue(TEXT("Read preserved file"),
                              FFileHelper::LoadFileToString(saved, *directory.root()));

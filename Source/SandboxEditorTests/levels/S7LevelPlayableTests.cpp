@@ -149,7 +149,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
 
         auto* world{GEditor->GetEditorWorldContext().World()};
         auto document{editor::find_level_authoring_document(*world->GetCurrentLevel())};
-        if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
+        if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative level"),
                                   document && IsValid(*document) &&
                                       (*document)->source_path ==
                                           TEXT("LevelScripts/defend_capital/defend_capital.scm"))) {
@@ -158,7 +158,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
 
         auto definition{editor::read_s7_authored_level(**document)};
         if (!s7_level_playable_tests::assert_success(
-                *TestRunner, TEXT("Load linked mission"), definition)) {
+                *TestRunner, TEXT("Load linked level"), definition)) {
             return;
         }
 
@@ -175,7 +175,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         mode.set_collision_overlays({.grid = true});
         auto const grid{capture()};
         FBox grid_box{grid};
-        TestRunner->TestTrue(TEXT("Grid uses the mission's 500000 cm height"),
+        TestRunner->TestTrue(TEXT("Grid uses the level's 500000 cm height"),
                              grid_box.IsValid && grid_box.Min.Z == -250000. &&
                                  grid_box.Max.Z == 250000.);
         mode.set_collision_overlays({.bounds = true});
@@ -217,7 +217,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
     FString source_directory_;
 };
 
-TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
+TEST_CLASS(StagedLevel, "Sandbox.StagedEditorTests")
 {
     AFTER_EACH()
     {
@@ -264,7 +264,7 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
         auto const root{FPaths::Combine(source_directory_, TEXT("Playable/Playable.scm"))};
         auto& editor_level{*world->GetCurrentLevel()};
         auto created{
-            ioj::editor::set_up_s7_mission(editor_level, ioj::editor::MissionSetup::Create, root)};
+            ioj::editor::set_up_s7_level(editor_level, ioj::editor::LevelSetup::Create, root)};
         if (!assert_success(
                 *TestRunner, TEXT("Create generated configuration and human root"), created)) {
             return;
@@ -312,9 +312,10 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
         }
 
         if (!TestRunner->TestTrue(
-                TEXT("Set the mission star scale"),
+                TEXT("Set the level star scale"),
                 FFileHelper::SaveStringToFile(
-                    TEXT("\n(set! level-definition (copy-with level-definition :settings (merge-settings (level-ref "
+                    TEXT("\n(set! level-definition (copy-with level-definition :settings "
+                         "(merge-settings (level-ref "
                          "level-definition :settings) "
                          "(settings :starfield (starfield :star (star :scale 2))))))\n"),
                     *root,
@@ -360,7 +361,7 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
             return;
         }
 
-        auto conflict{ioj::editor::prepare_staged_mission(*document)};
+        auto conflict{ioj::editor::prepare_staged_level(*document)};
         TestRunner->TestFalse(TEXT("Conflicting source blocks Play"), conflict.has_value());
         FString untouched;
         TestRunner->TestTrue(TEXT("Play preserves the external edit"),
@@ -373,9 +374,9 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
             return;
         }
 
-        auto mission{ioj::editor::prepare_staged_mission(*document)};
+        auto level{ioj::editor::prepare_staged_level(*document)};
         if (!assert_success(
-                *TestRunner, TEXT("Prepare the edited mission for the staged player"), mission)) {
+                *TestRunner, TEXT("Prepare the edited level for the staged player"), level)) {
             return;
         }
 
@@ -420,7 +421,7 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
             TestCommandBuilder
                 .Until([this] { return !FPlatformProcess::IsProcRunning(process_); },
                        FTimespan::FromMinutes(12))
-                .Then([this, path = *mission] {
+                .Then([this, path = *level] {
                     if (!check_exit()) {
                         return;
                     }
@@ -431,7 +432,7 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
                     }
                 });
         } else {
-            launch(*mission);
+            launch(*level);
         }
         TestCommandBuilder
             .Until(
@@ -447,9 +448,9 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
     }
 
     void launch(FString const& path) {
-        auto player{ioj::editor::launch_staged_mission(path, true)};
+        auto player{ioj::editor::launch_staged_level(path, true)};
         if (s7_level_playable_tests::assert_success(
-                *TestRunner, TEXT("Launch staged mission"), player)) {
+                *TestRunner, TEXT("Launch staged level"), player)) {
             process_ = *player;
         }
     }

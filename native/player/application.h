@@ -24,7 +24,7 @@ class Application {
   private:
     explicit Application(profiles::ProfileManager profiles);
 
-    auto play(Window& window, std::filesystem::path const& mission_path, bool exit_when_ready)
+    auto play(Window& window, std::filesystem::path const& level_path, bool exit_when_ready)
         -> ApplicationResult;
     void publish_catalog();
     void publish_profiles() const;
