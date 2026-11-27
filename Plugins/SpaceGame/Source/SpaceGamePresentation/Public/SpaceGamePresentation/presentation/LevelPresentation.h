@@ -34,9 +34,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
     void tick(float dt, presentation::LevelFrame const& frame);
-    auto get_last_completed_tick() const -> sim::SimTick::value_type {
-        return last_completed_tick_.value();
-    }
   private:
     FLevelVisualConfig config_;
     FGameAudioFacade audio_;
@@ -50,7 +47,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FDelayedNiagaraSpawns effects;
   private:
     TOptional<FPlayerPresentation> player_;
-    sim::SimTick last_completed_tick_{};
 };
 
 } // namespace ioj

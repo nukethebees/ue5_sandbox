@@ -55,16 +55,7 @@ void FLaserPresentation::begin_play_presentation(presentation::LaserView const& 
     debug_drawer.world = instances->GetWorld();
 #endif
 
-    update_visual_data(lasers, nullptr);
-}
-
-void FLaserPresentation::update_visual_data(presentation::LaserView const& lasers,
-                                            presentation::FrameEvents const* impacts) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     update_ismc(lasers);
-    if (impacts) {
-        queue_hit_sparks(*impacts);
-    }
 }
 
 void FLaserPresentation::end_tick_presentation() {
@@ -150,19 +141,20 @@ void FLaserPresentation::fill_chunk(presentation::LaserView const& lasers,
                                                             transform_rotations);
 }
 
-void FLaserPresentation::queue_hit_sparks(presentation::FrameEvents const& events) {
+void FLaserPresentation::queue_hit_sparks(sim::laser_hit_details::ConstView impacts,
+                                          sim::SimTick tick,
+                                          std::span<sim::FrameEventCounts const> ticks) {
     if (actor_config->impact_sparks.count <= 0) {
         return;
     }
 
     auto const& style{actor_config->impact_sparks};
-    auto const locations{events.impacts.view_locations()};
-    auto const sources{events.impacts.sources()};
-    auto const directions{events.impacts.view_emission_directions()};
+    auto const locations{impacts.view_locations()};
+    auto const sources{impacts.sources()};
+    auto const directions{impacts.view_emission_directions()};
 
     std::uint32_t first{};
-    auto tick{events.base_tick};
-    for (auto const counts : events.ticks) {
+    for (auto const counts : ticks) {
         for (auto index{first}; index < counts.impacts; ++index) {
             auto const location{to_unreal(vector_at(locations, index))};
             auto const colour{source_colour(sources[index])};

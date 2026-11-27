@@ -32,15 +32,15 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
   private:
     void clear_runtime_state_presentation();
     void begin_play_presentation(presentation::LaserView const& lasers, int32 reserve);
-    void update_visual_data(presentation::LaserView const& lasers,
-                            presentation::FrameEvents const* impacts);
     void end_tick_presentation();
 
     void configure_ismc();
     void fill_chunk(presentation::LaserView const& lasers,
                     FSandboxISMCInstanceChunkWriter& chunk) const;
     void update_ismc(presentation::LaserView const& lasers);
-    void queue_hit_sparks(presentation::FrameEvents const& impacts);
+    void queue_hit_sparks(sim::laser_hit_details::ConstView impacts,
+                          sim::SimTick tick,
+                          std::span<sim::FrameEventCounts const> ticks);
 
     FLaserProjectileConfig const* actor_config{nullptr};
 

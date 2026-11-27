@@ -25,19 +25,19 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
   private:
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::LevelFrame const& frame);
-    void update_visual_data(presentation::FrameEvents const& events);
-    void commit_visual_data(presentation::LevelFrame const& frame);
-    void end_tick_presentation(presentation::LevelFrame const& frame);
+    void begin_play_presentation(presentation::AgentDisplayBatch const& entities,
+                                 rotators3f::ConstView rotations);
+    void update_visual_data(presentation::InstanceChanges const& changes);
+    void commit_visual_data(presentation::AgentDisplayBatch const& entities,
+                            presentation::TargetView const& target_view);
 
-    void add_initial_visual_instances(presentation::LevelFrame const& frame);
-    void add_visual_instances(presentation::LevelFrame const& frame,
-                              TArray<FTransform> const& transforms,
-                              int32 first_entity_index);
+    void add_initial_visual_instances(presentation::AgentDisplayBatch const& entities);
     void configure_ismc();
-    void trigger_death_effects(presentation::FrameEvents const& events);
-    void draw_debugging_shapes(presentation::LevelFrame const& frame) const;
-    void validate_array_sizes(presentation::LevelFrame const& frame) const;
+    void trigger_death_effects(std::span<sim::EntityId const> victims,
+                               std::span<Vector3f const> death_locations);
+    void draw_debugging_shapes(presentation::AgentDisplayBatch const& entities,
+                               presentation::TargetView const& target_view) const;
+    void validate_array_sizes(int32 count) const;
 
     FTurretConfig const* actor_config{nullptr};
     settings::TurretPresentation const* settings_{};

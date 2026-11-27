@@ -26,7 +26,8 @@ void FSpinnerPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FSpinnerPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
+void FSpinnerPresentation::begin_play_presentation(vectors3f::ConstView locations,
+                                                   std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FSpinnerPresentation actor_config is nullptr."));
@@ -37,16 +38,17 @@ void FSpinnerPresentation::begin_play_presentation(presentation::LevelFrame cons
     });
 
     configure_ismc();
-    update_ismc_transforms(frame);
+    update_ismc_transforms(locations, yaws);
     if (!ismc_transforms.IsEmpty()) {
         instances->AddInstances(ismc_transforms, false, is_world_space, false);
     }
-    validate_array_sizes(frame);
+    validate_array_sizes(static_cast<int32>(locations.num()));
 }
 
-void FSpinnerPresentation::update_visual_data(presentation::LevelFrame const& frame) {
+void FSpinnerPresentation::update_visual_data(vectors3f::ConstView locations,
+                                              std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_visual_data);
-    update_ismc(frame);
+    update_ismc(locations, yaws);
 }
 
 void FSpinnerPresentation::commit_visual_data() {
@@ -54,25 +56,17 @@ void FSpinnerPresentation::commit_visual_data() {
     instances->MarkRenderStateDirty();
 }
 
-void FSpinnerPresentation::end_tick_presentation(presentation::LevelFrame const& frame) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::end_tick_presentation);
-    validate_array_sizes(frame);
-}
-
 void FSpinnerPresentation::configure_ismc() {
     batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
 
-void FSpinnerPresentation::update_ismc_transforms(presentation::LevelFrame const& frame) {
+void FSpinnerPresentation::update_ismc_transforms(vectors3f::ConstView locations,
+                                                  std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc_transforms);
 
-    auto const& entities{frame.spinners()};
-    auto const n{static_cast<int32>(entities.num())};
+    auto const n{static_cast<int32>(locations.num())};
     ismc_transforms.Reset();
     ismc_transforms.AddUninitialized(n);
-
-    auto const yaws{frame.spinner_yaws};
-    auto const locations{entities.locations};
 
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
@@ -82,10 +76,11 @@ void FSpinnerPresentation::update_ismc_transforms(presentation::LevelFrame const
     }
 }
 
-void FSpinnerPresentation::update_ismc(presentation::LevelFrame const& frame) {
+void FSpinnerPresentation::update_ismc(vectors3f::ConstView locations,
+                                       std::span<float const> yaws) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc);
 
-    update_ismc_transforms(frame);
+    update_ismc_transforms(locations, yaws);
     auto const previous_count{instances->GetNumInstances()};
     auto const count{ismc_transforms.Num()};
     check(count >= previous_count);
@@ -99,9 +94,9 @@ void FSpinnerPresentation::update_ismc(presentation::LevelFrame const& frame) {
         0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 
-void FSpinnerPresentation::validate_array_sizes(presentation::LevelFrame const& frame) const {
+void FSpinnerPresentation::validate_array_sizes(int32 count) const {
     fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(frame.spinners().num())),
+        SANDBOX_NAMED_NUM(count),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });

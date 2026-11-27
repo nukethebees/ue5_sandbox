@@ -23,12 +23,12 @@ struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
                         settings::PlayerPresentation const& settings,
-                        presentation::LevelFrame const& frame);
-    void tick(presentation::LevelFrame const& frame);
+                        presentation::PlayerFrame const& state);
+    void tick(presentation::PlayerFrame const& state,
+              std::span<sim::player::PlayerEventKind const> events);
   private:
     FPlayerPresentationResources resources_;
     sim::player::BoostBrakeState boost_brake_state_{sim::player::BoostBrakeState::None};
-    sim::SimTick last_tick_{};
 };
 
 } // namespace ioj

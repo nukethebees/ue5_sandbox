@@ -22,15 +22,14 @@ struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
     void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::LevelFrame const& frame);
-    void update_visual_data(presentation::LevelFrame const& frame);
+    void begin_play_presentation(vectors3f::ConstView locations, std::span<float const> yaws);
+    void update_visual_data(vectors3f::ConstView locations, std::span<float const> yaws);
     void commit_visual_data();
-    void end_tick_presentation(presentation::LevelFrame const& frame);
 
     void configure_ismc();
-    void update_ismc_transforms(presentation::LevelFrame const& frame);
-    void update_ismc(presentation::LevelFrame const& frame);
-    void validate_array_sizes(presentation::LevelFrame const& frame) const;
+    void update_ismc_transforms(vectors3f::ConstView locations, std::span<float const> yaws);
+    void update_ismc(vectors3f::ConstView locations, std::span<float const> yaws);
+    void validate_array_sizes(int32 count) const;
 
     FTubeSpinnerConfig const* actor_config{nullptr};
 

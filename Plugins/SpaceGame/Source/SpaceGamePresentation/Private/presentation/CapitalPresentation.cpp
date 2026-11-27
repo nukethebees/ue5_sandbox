@@ -53,7 +53,8 @@ void FCapitalPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
 }
 
-void FCapitalPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
+void FCapitalPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
+                                                   rotators3f::ConstView rotations) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::begin_play_presentation);
 
     auto* const world{instances->GetWorld()};
@@ -67,14 +68,13 @@ void FCapitalPresentation::begin_play_presentation(presentation::LevelFrame cons
     });
 
     configure_ismc();
-    add_initial_visual_instances(frame);
-    validate_array_sizes(frame);
+    add_initial_visual_instances(entities, rotations);
+    validate_array_sizes(static_cast<int32>(entities.num()));
 }
 
-void FCapitalPresentation::update_visual_data(presentation::FrameEvents const& events) {
+void FCapitalPresentation::update_visual_data(presentation::InstanceChanges const& changes) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    auto const changes{events.capital_changes};
     auto const count{changes.kinds.size()};
     for (std::uint32_t row{}; row < count; ++row) {
         if (changes.kinds[row] == sim::EntityFrameChangeKind::RemoveSwap) {
@@ -89,18 +89,12 @@ void FCapitalPresentation::update_visual_data(presentation::FrameEvents const& e
             instances->SetCustomData(index, rgb, false);
         }
     }
-    trigger_death_effects(events);
 }
 
 void FCapitalPresentation::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
-}
-
-void FCapitalPresentation::end_tick_presentation(presentation::LevelFrame const& frame) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::end_tick_presentation);
-    validate_array_sizes(frame);
 }
 
 void FCapitalPresentation::configure_ismc() {
@@ -112,16 +106,10 @@ void FCapitalPresentation::configure_ismc() {
                           });
 }
 
-void FCapitalPresentation::add_initial_visual_instances(presentation::LevelFrame const& frame) {
-    auto const& entities{frame.capitals()};
+void FCapitalPresentation::add_initial_visual_instances(
+    presentation::AgentDisplayBatch const& entities, rotators3f::ConstView rotations) {
     auto const n_to_add{static_cast<int32>(entities.num())};
-    add_visual_instances(frame, 0, n_to_add);
-}
 
-void FCapitalPresentation::add_visual_instances(presentation::LevelFrame const& frame,
-                                                int32 const first_index,
-                                                int32 const n_to_add) {
-    auto const& entities{frame.capitals()};
     if (n_to_add == 0) {
         return;
     }
@@ -134,7 +122,7 @@ void FCapitalPresentation::add_visual_instances(presentation::LevelFrame const& 
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[to_unreal(teams[first_index + i])]};
+        auto const& colour{colour_cache[to_unreal(teams[i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -143,11 +131,10 @@ void FCapitalPresentation::add_visual_instances(presentation::LevelFrame const& 
     auto const locations{entities.locations};
     TArray<FTransform> transforms;
     transforms.Reserve(n_to_add);
-    auto const rotations{frame.capital_rotations};
     auto const pitches{rotations.pitches()};
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
-    for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
+    for (int32 index{}; index < n_to_add; ++index) {
         transforms.Emplace(
             FRotator{to_unreal(Rotator3f{pitches[index], yaws[index], rolls[index]})},
             FVector{to_unreal(vector_at(locations, index))});
@@ -156,12 +143,12 @@ void FCapitalPresentation::add_visual_instances(presentation::LevelFrame const& 
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);
     constexpr bool mark_render_state_dirty{false};
-    instances->SetCustomData(
-        first_index, first_index + n_to_add - 1, custom_data, mark_render_state_dirty);
+    instances->SetCustomData(0, n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
-void FCapitalPresentation::trigger_death_effects(presentation::FrameEvents const& events) {
-    auto const death_locations{events.death_locations};
+void FCapitalPresentation::trigger_death_effects(std::span<sim::FrameEventCounts const> ticks,
+                                                 std::span<sim::EntityId const> victims,
+                                                 std::span<Vector3f const> death_locations) {
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
@@ -180,10 +167,10 @@ void FCapitalPresentation::trigger_death_effects(presentation::FrameEvents const
                                       ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
 
     std::uint32_t first{};
-    for (auto const counts : events.ticks) {
+    for (auto const counts : ticks) {
         float current_delay{};
         for (auto row{first}; row < counts.deaths; ++row) {
-            if (events.victims[row].entity_type() != sim::EntityType::CapitalShip) {
+            if (victims[row].entity_type() != sim::EntityType::CapitalShip) {
                 continue;
             }
             presentation::CapitalExplosionTiming const timing{
@@ -222,9 +209,9 @@ void FCapitalPresentation::trigger_death_effects(presentation::FrameEvents const
     }
 }
 
-void FCapitalPresentation::validate_array_sizes(presentation::LevelFrame const& frame) const {
+void FCapitalPresentation::validate_array_sizes(int32 count) const {
     fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(frame.capitals().num())),
+        SANDBOX_NAMED_NUM(count),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

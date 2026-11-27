@@ -25,7 +25,9 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
+void FFighterPresentation::begin_play_presentation(presentation::AgentDisplayBatch const& entities,
+                                                   vectors3f::ConstView aim_directions,
+                                                   presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
@@ -41,19 +43,21 @@ void FFighterPresentation::begin_play_presentation(presentation::LevelFrame cons
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = instances->GetWorld();
-    update_visual_data(frame);
-    commit_visual_data(frame);
+    update_visual_data(entities, aim_directions);
+    commit_visual_data(entities.locations, target_view);
 }
 
-void FFighterPresentation::update_visual_data(presentation::LevelFrame const& frame) {
+void FFighterPresentation::update_visual_data(presentation::AgentDisplayBatch const& entities,
+                                              vectors3f::ConstView aim_directions) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
-    update_ismc(frame);
+    update_ismc(entities, aim_directions);
 }
 
-void FFighterPresentation::commit_visual_data(presentation::LevelFrame const& frame) {
+void FFighterPresentation::commit_visual_data(vectors3f::ConstView locations,
+                                              presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::commit_visual_data);
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
-        draw_debug_shapes(frame);
+        draw_debug_shapes(locations, target_view);
     }
 }
 
@@ -70,27 +74,26 @@ void FFighterPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FFighterPresentation::update_ismc(presentation::LevelFrame const& frame) {
+void FFighterPresentation::update_ismc(presentation::AgentDisplayBatch const& entities,
+                                       vectors3f::ConstView aim_directions) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
-    auto const& data{frame.fighters()};
-    auto const count{static_cast<int32>(data.num())};
-    auto const ids{data.ids};
+    auto const count{static_cast<int32>(entities.num())};
+    auto const ids{entities.ids};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
-        if (sim::is_alive(data.healths.health(ids[index]))) {
+        if (sim::is_alive(entities.healths.health(ids[index]))) {
             visible_indices_.Add(index);
         }
     }
     instances->set_instances(
         visible_indices_.Num(),
         ESandboxISMCParallelism::Auto,
-        [this, &data, &frame](FSandboxISMCInstanceChunkWriter& chunk) {
+        [this, &entities, aim_directions](FSandboxISMCInstanceChunkWriter& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
-            auto const locations{data.locations};
-            auto const aim_directions{frame.fighter_aim};
-            auto const teams{data.teams};
+            auto const locations{entities.locations};
+            auto const teams{entities.teams};
 
             TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
             transform_positions.SetNumUninitialized(chunk.num());
@@ -116,14 +119,13 @@ void FFighterPresentation::update_ismc(presentation::LevelFrame const& frame) {
         });
 }
 
-void FFighterPresentation::draw_debug_shapes(presentation::LevelFrame const& frame) {
+void FFighterPresentation::draw_debug_shapes(vectors3f::ConstView locations,
+                                             presentation::TargetView const& target_view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
-    auto const& data{frame.fighters()};
-    auto const n{static_cast<int32>(data.num())};
-    auto const locations{data.locations};
-    auto const targets{frame.fighter_targets.ids};
-    auto const target_locations{frame.fighter_targets.locations};
+    auto const n{static_cast<int32>(locations.num())};
+    auto const targets{target_view.ids};
+    auto const target_locations{target_view.locations};
 
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{to_unreal(vector_at(locations, i))};

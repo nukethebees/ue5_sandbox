@@ -14,9 +14,8 @@ namespace ioj {
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
                                          settings::PlayerPresentation const& settings,
-                                         presentation::LevelFrame const& frame)
-    : resources_{MoveTemp(resources)}
-    , last_tick_{frame.status.completed_tick} {
+                                         presentation::PlayerFrame const& state)
+    : resources_{MoveTemp(resources)} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
         !resources_.space_dust.IsValid()) {
         UE_LOG(LogSandbox, Error, TEXT("Player visual resources are incomplete"));
@@ -31,10 +30,10 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.engine->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                          settings.boost_effect_colour_intensity);
     resources_.space_dust->apply_settings(config.space_dust);
-    tick(frame);
+    tick(state, {});
 }
-void FPlayerPresentation::tick(presentation::LevelFrame const& frame) {
-    auto const& state{*frame.player};
+void FPlayerPresentation::tick(presentation::PlayerFrame const& state,
+                               std::span<sim::player::PlayerEventKind const> events) {
     auto const action{state.flight.boost_brake_state};
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
         !resources_.engine.IsValid() || !resources_.space_dust.IsValid()) {
@@ -46,15 +45,11 @@ void FPlayerPresentation::tick(presentation::LevelFrame const& frame) {
     resources_.engine->SetVectorParameter(TEXT("ship_velocity"),
                                           to_unreal(state.flight.ship_velocity));
     resources_.space_dust->update_motion(to_unreal(state.flight.ship_velocity));
-    auto const tick{frame.status.completed_tick};
-    if (last_tick_ != tick) {
-        for (auto const event : frame.events.player) {
-            if (event == sim::player::PlayerEventKind::BoostStarted) {
-                resources_.pulse->Activate();
-                break;
-            }
+    for (auto const event : events) {
+        if (event == sim::player::PlayerEventKind::BoostStarted) {
+            resources_.pulse->Activate();
+            break;
         }
-        last_tick_ = tick;
     }
     if (boost_brake_state_ != action) {
         if (action == sim::player::BoostBrakeState::Boost) {

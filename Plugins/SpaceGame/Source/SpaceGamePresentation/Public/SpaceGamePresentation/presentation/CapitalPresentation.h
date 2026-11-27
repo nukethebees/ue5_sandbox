@@ -29,17 +29,18 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void ValidateOptionalAssets() const;
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::LevelFrame const& frame);
-    void update_visual_data(presentation::FrameEvents const& events);
+    void begin_play_presentation(presentation::AgentDisplayBatch const& entities,
+                                 rotators3f::ConstView rotations);
+    void update_visual_data(presentation::InstanceChanges const& changes);
     void commit_visual_data();
-    void end_tick_presentation(presentation::LevelFrame const& frame);
 
     void configure_ismc();
-    void add_initial_visual_instances(presentation::LevelFrame const& frame);
-    void
-        add_visual_instances(presentation::LevelFrame const& frame, int32 first_index, int32 count);
-    void trigger_death_effects(presentation::FrameEvents const& events);
-    void validate_array_sizes(presentation::LevelFrame const& frame) const;
+    void add_initial_visual_instances(presentation::AgentDisplayBatch const& entities,
+                                      rotators3f::ConstView rotations);
+    void trigger_death_effects(std::span<sim::FrameEventCounts const> ticks,
+                               std::span<sim::EntityId const> victims,
+                               std::span<Vector3f const> death_locations);
+    void validate_array_sizes(int32 count) const;
 
     FCapitalShipConfig const* actor_config{nullptr};
     settings::CapitalPresentation const* settings_{};
