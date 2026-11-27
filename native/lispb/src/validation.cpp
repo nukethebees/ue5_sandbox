@@ -994,6 +994,7 @@ class Validator {
             }
         }
         std::vector<std::string> member_names;
+        std::set<std::pair<schema::TypeId, std::string>> accessor_keys;
         member_names.reserve(records.members[record].size());
         for (auto const member : declarations_.items(records.members[record])) {
             auto const ctx{record_context + " member '" + text(members.name[member]) + "'"};
@@ -1008,6 +1009,31 @@ class Validator {
                 continue;
             }
             validate_type(members.type[member], ctx);
+            if (auto const key{members.enum_accessor[member]}) {
+                auto const enumeration{graph_.find_reference(key->enumeration, module_)};
+                if (!enumeration || graph_.definition(*enumeration).kind() !=
+                                        schema::TypeDefinitionKind::enumeration) {
+                    throw std::invalid_argument{ctx + " enum-accessor requires a declared enum"};
+                }
+                auto const& domains{graph_.enum_domains()};
+                auto const domain{domains.find(graph_.source_declaration(*enumeration))};
+                auto const values{domains.values(domain)};
+                auto const found{std::ranges::find_if(values, [&](auto value) {
+                    return declarations_.enumerators.name[value] == key->enumerator;
+                })};
+                if (found == values.end()) {
+                    throw std::invalid_argument{ctx + " unknown accessor enumerator " +
+                                                text(key->enumerator)};
+                }
+                auto const code{domains.code(domain, found - values.begin())};
+                if (!accessor_keys
+                         .emplace(*enumeration,
+                                  code ? schema::format_enum_code(*code) : text(key->enumerator))
+                         .second) {
+                    throw std::invalid_argument{ctx + " duplicate enum-accessor key " +
+                                                text(key->enumerator)};
+                }
+            }
             if (members.case_label[member]) {
                 throw std::invalid_argument{ctx + " :case is only valid on union alternatives"};
             }
@@ -1024,6 +1050,15 @@ class Validator {
             }
         }
         require_unique_names(member_names, record_context + " members");
+        if (!accessor_keys.empty()) {
+            for (auto const name : {"get", "set"}) {
+                if (view(records.name[record]) == name ||
+                    std::ranges::contains(member_names, name)) {
+                    throw std::invalid_argument{record_context + " enum-accessor conflicts with " +
+                                                name};
+                }
+            }
+        }
         if (records.comparison_noexcept[record] &&
             records.comparison[record] == RecordComparison::none) {
             throw std::invalid_argument{"Record comparison-noexcept requires a comparison"};
@@ -1090,6 +1125,9 @@ class Validator {
             }
             if (declarations_.child_occurrences.count[alternative] == 0) {
                 throw std::invalid_argument{ctx + " count must be greater than zero"};
+            }
+            if (declarations_.child_occurrences.enum_accessor[alternative]) {
+                throw std::invalid_argument{ctx + " enum-accessor is only valid on record members"};
             }
             alternative_names.push_back(text(declarations_.child_occurrences.name[alternative]));
         }

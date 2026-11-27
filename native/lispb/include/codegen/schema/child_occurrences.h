@@ -12,6 +12,11 @@
 
 namespace lispb::codegen {
 
+struct EnumAccessorKey {
+    TypeRefId enumeration;
+    StringId enumerator;
+};
+
 struct ChildOccurrences {
     using Indexing = OneBasedIndex<ChildOccurrenceId>;
     template <typename T>
@@ -28,6 +33,7 @@ struct ChildOccurrences {
     Column<std::optional<std::uint64_t>> count;
     Column<std::optional<std::uint32_t>> bits;
     Column<std::optional<StringId>> case_label;
+    Column<std::optional<EnumAccessorKey>> enum_accessor;
     Column<std::optional<StringId>> tag;
     Column<std::optional<SemanticRelationId>> relationship;
     Column<std::optional<StringId>> initializer;

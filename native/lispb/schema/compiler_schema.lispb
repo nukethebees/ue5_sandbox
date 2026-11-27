@@ -185,6 +185,7 @@
     (value byte_order :serialized-name "byte-order")
     (value category :serialized-name "category")
     (value case_ :serialized-name "case")
+    (value enum_accessor :serialized-name "enum-accessor")
     (value clipping :serialized-name "clipping")
     (value columns :serialized-name "columns")
     (value comparison :serialized-name "comparison")

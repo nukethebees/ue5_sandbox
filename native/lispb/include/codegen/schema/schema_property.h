@@ -29,6 +29,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     byte_order,
     category,
     case_,
+    enum_accessor,
     clipping,
     columns,
     comparison,
@@ -155,8 +156,8 @@ inline constexpr MinMax<lispb::codegen::SchemaProperty> enum_range<lispb::codege
 template <>
 inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{PackedStrings{
     "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
-    "access\000bit-order\000bit-width\000bits\000body\000byte-"
-    "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
+    "access\000bit-order\000bit-width\000bits\000body\000byte-order\000category\000case\000enum-"
+    "accessor\000clipping\000columns\000comparison\000comparison-"
     "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
     "header\000conversions\000count\000custom-row\000default\000definition-in-"
     "source\000definitions-in-source\000dependencies\000device\000description\000display-"
@@ -178,14 +179,14 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "name\000target-storage\000target-access\000template-parameters\000tooltip\000total-"
     "bits\000trailing-return-type\000unit\000using-declarations\000validation\000validation-"
     "dependencies\000value\000pack\000groups\000contiguous-groups\000ordering",
-    std::array<std::uint16_t, 127>{
+    std::array<std::uint16_t, 128>{
         0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
-        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
-        332,  344,  357,  366,  377,  397,  420,  438,  454,  468,  485,  501,  517,  524,  537,
-        542,  549,  565,  577,  585,  604,  623,  642,  659,  666,  681,  689,  706,  714,  721,
-        735,  747,  754,  768,  773,  780,  792,  808,  819,  823,  831,  845,  849,  857,  867,
-        878,  900,  907,  917,  926,  935,  947,  955,  972,  980,  989,  997,  1008, 1017, 1026,
-        1041, 1050, 1065, 1081, 1092, 1100, 1114, 1133, 1140, 1149, 1165, 1175, 1182, 1199, 1206,
-        1215, 1222, 1227, 1235, 1242, 1246, 1258, 1273, 1287, 1307, 1315, 1326, 1347, 1352, 1371,
-        1382, 1406, 1412, 1417, 1424, 1442, 1451}}};
+        146,  155,  163,  174,  194,  200,  210,  228,  246,  258,  264,  275,  283,  304,  326,
+        339,  346,  358,  371,  380,  391,  411,  434,  452,  468,  482,  499,  515,  531,  538,
+        551,  556,  563,  579,  591,  599,  618,  637,  656,  673,  680,  695,  703,  720,  728,
+        735,  749,  761,  768,  782,  787,  794,  806,  822,  833,  837,  845,  859,  863,  871,
+        881,  892,  914,  921,  931,  940,  949,  961,  969,  986,  994,  1003, 1011, 1022, 1031,
+        1040, 1055, 1064, 1079, 1095, 1106, 1114, 1128, 1147, 1154, 1163, 1179, 1189, 1196, 1213,
+        1220, 1229, 1236, 1241, 1249, 1256, 1260, 1272, 1287, 1301, 1321, 1329, 1340, 1361, 1366,
+        1385, 1396, 1420, 1426, 1431, 1438, 1456, 1465}}};
 } // namespace ioj

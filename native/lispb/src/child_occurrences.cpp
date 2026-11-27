@@ -17,6 +17,7 @@ auto ChildOccurrences::append() -> ChildOccurrenceId {
     count.push_back({});
     bits.push_back({});
     case_label.push_back({});
+    enum_accessor.emplace_back();
     tag.push_back({});
     relationship.push_back({});
     initializer.push_back({});
@@ -34,6 +35,7 @@ auto ChildOccurrences::clone(ChildOccurrenceId id) -> ChildOccurrenceId {
     count[destination] = count[source_index];
     bits[destination] = bits[source_index];
     case_label[destination] = case_label[source_index];
+    enum_accessor[destination] = enum_accessor[source_index];
     tag[destination] = tag[source_index];
     relationship[destination] = relationship[source_index];
     initializer[destination] = initializer[source_index];
@@ -48,6 +50,7 @@ void ChildOccurrences::clear() {
     count.clear();
     bits.clear();
     case_label.clear();
+    enum_accessor.clear();
     tag.clear();
     relationship.clear();
     initializer.clear();

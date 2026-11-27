@@ -86,6 +86,9 @@ auto type_reference_role_text(Strings const& strings, TypeReferenceRole const& r
         case TypeReferencePart::relationship:
             result += " relationship";
             break;
+        case TypeReferencePart::enum_accessor:
+            result += " enum accessor";
+            break;
         case TypeReferencePart::return_type:
             result += " return";
             break;

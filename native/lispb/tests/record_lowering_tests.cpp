@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -47,6 +48,28 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     EXPECT_TRUE(output.contains("(define shared-ref"));
     EXPECT_TRUE(output.contains("((:shared) (lispb-record-with"));
     EXPECT_TRUE(output.contains("(define (shared?"));
+}
+
+TEST(RecordLowering, RejectsUnknownAndDuplicateEnumAccessorKeys) {
+    for (auto const key : {"@Key Missing", "@Missing First", "@Key First", "@Key Alias"}) {
+        CompilerTestContext ctx;
+        EXPECT_THROW(
+            {
+                auto manifest{parse_test_manifest(ctx,
+                                                  std::format(R"(
+            (module fields :header "Fields.h"
+              (enum Key std::int8_t :ordering manual
+                (value First :value -3) (value Alias :value -3) (projections (cpp)))
+              (record Flags
+                (member a bool :enum-accessor (@Key First))
+                (member b bool :enum-accessor ({}))
+                (projections (cpp)))))",
+                                                              key))};
+                static_cast<void>(render_test_manifest(ctx, manifest));
+            },
+            std::invalid_argument)
+            << key;
+    }
 }
 
 class InvalidConstructorTags : public testing::TestWithParam<char const*> {};

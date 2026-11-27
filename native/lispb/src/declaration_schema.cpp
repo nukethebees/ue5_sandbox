@@ -153,6 +153,13 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             return rewrite_row(columns, value, [&](auto field, auto row) {
                 auto const location{role(category, columns.name[row], index)};
                 field(columns.type, [&](auto& type) { return reference(location, type); });
+                if constexpr (requires { columns.enum_accessor; }) {
+                    auto key_location{location};
+                    key_location.part = TypeReferencePart::enum_accessor;
+                    field(columns.enum_accessor, [&](auto& key) {
+                        return key && reference(key_location, key->enumeration);
+                    });
+                }
                 if constexpr (requires { columns.relationship; }) {
                     field(columns.relationship,
                           [&](auto& relation) { return relationship(location, relation); });

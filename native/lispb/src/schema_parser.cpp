@@ -1127,6 +1127,7 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
     -> ChildOccurrenceId {
     Fields const fields{parser_, form, "member", 2};
     fields.validate({P::count,
+                     P::enum_accessor,
                      P::bits,
                      P::tag,
                      P::case_,
@@ -1165,6 +1166,20 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
     records.initializer[record_index] = optional_text_id(fields, P::initializer);
     records.tag[record_index] = optional_identifier(fields, P::tag);
     records.case_label[record_index] = optional_identifier(fields, P::case_);
+    if (auto const key{fields.optional(P::enum_accessor)}) {
+        if (!syntax_.is_list(*key) || syntax_.children(*key).size() != 2) {
+            parser_.fail(*key, "expected :enum-accessor (@Enum Enumerator)");
+        }
+
+        auto const parts{syntax_.children(*key)};
+        if (syntax_.is_list(parts[0]) ||
+            !parser_.text(parts[0], "accessor enum").starts_with('@')) {
+            parser_.fail(parts[0], "expected a Lispb @enum reference");
+        }
+        records.enum_accessor[record_index] =
+            EnumAccessorKey{parse_type_ref(declarations, parts[0]),
+                            parser_.identifier(parts[1], "accessor enumerator")};
+    }
     if (auto const bits{fields.optional(P::bits)}) {
         if (parser_.text(*bits, "member bits") != "auto") {
             records.bits[record_index] =

@@ -286,6 +286,10 @@ auto CanonicalRenderer::build_child(codegen::ChildOccurrenceId const child) -> E
     result.optional_field("bits", columns.bits[child]);
     result.optional_field("tag", columns.tag[child], atom);
     result.optional_field("case", columns.case_label[child], atom);
+    if (auto const key{columns.enum_accessor[child]}) {
+        result.field("enum-accessor",
+                     ir_.list({build_type_ref(key->enumeration), ir_.atom(key->enumerator)}));
+    }
     result.optional_field("default", columns.default_value[child], integer);
     auto const& s7{columns.s7[child]};
     result.optional_field("s7-name", s7.name, [this](auto value) { return ir_.string(value); });
