@@ -29,6 +29,10 @@ class InputSystem {
 
     // Frame views borrow dispatcher storage until the next advance or binding refresh.
     auto ship_input() const -> sim::player::PlayerInputFrame { return dispatch_.ship_input(); }
+    auto viewer_step(double seconds) const -> std::optional<host::ViewerStep> {
+        return logical_.viewer_step(seconds);
+    }
+    auto steering() const -> std::optional<Vector2d> { return logical_.state().pointer_steering; }
     auto menu_input() const -> std::span<host::MenuEvent const> { return dispatch_.menu_input(); }
     auto presentation_input() const -> std::span<host::PresentationEvent const> {
         return dispatch_.presentation_input();

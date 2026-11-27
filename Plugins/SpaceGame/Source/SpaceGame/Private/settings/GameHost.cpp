@@ -11,7 +11,9 @@
 #include <ioj/settings/player_settings_view.h>
 #include <ioj/settings/screen_resolution.h>
 #include <SpaceGame/settings/GameVideoSettings.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -49,6 +51,38 @@ void detach_level_world(ATestBatchOrchestrator& actor) {
     }
 }
 namespace host {
+namespace {
+auto controller() -> ASpaceGamePlayerController* {
+    auto* const world{GEngine->GameViewport->GetWorld()};
+    return world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController()) : nullptr;
+}
+}
+auto present_pause(PauseCommand command) -> bool {
+    auto* player{controller()};
+    check(player);
+    return player->present_pause(command);
+}
+void select_benchmark_button(bool end_selected) {
+    auto* player{controller()};
+    check(player);
+    if (auto* hud{player->get_benchmark_hud()}) {
+        hud->select_button(end_selected);
+    }
+}
+void present_viewer(ViewerStep const& step) {
+    auto* const player{controller()};
+    check(player);
+    player->present_viewer_motion(step.motion, step.seconds);
+}
+void present_steering(std::optional<Vector2d> direction) {
+    auto* const player{controller()};
+    check(player);
+    TOptional<FVector2D> position;
+    if (direction) {
+        position.Emplace(direction->x(), direction->y());
+    }
+    player->present_steering(position);
+}
 auto level_world_ready() -> bool {
     return level_world.IsValid();
 }

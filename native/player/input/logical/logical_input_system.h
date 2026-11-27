@@ -37,7 +37,7 @@ class LogicalInputSystem {
     auto relative_mouse() const -> bool;
     auto editing_text() const -> bool;
     auto state() const -> LogicalInputState const& { return state_; }
-    void append_frame_commands(double seconds, InputDispatcher& output) const;
+    auto viewer_step(double seconds) const -> std::optional<host::ViewerStep>;
   private:
     struct RoutedButton {
         PhysicalKey key;

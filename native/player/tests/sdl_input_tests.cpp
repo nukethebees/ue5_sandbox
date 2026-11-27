@@ -55,9 +55,6 @@ void present_input(PresentationEvent const& event) {
     if (auto const* pointer{std::get_if<MenuPointer>(&event)}) {
         view.pointer.push_back(pointer->pointer.action);
     }
-    if (auto const* step{std::get_if<ViewerStep>(&event)}) {
-        view.motion = step->motion;
-    }
 }
 
 }
@@ -83,7 +80,12 @@ class SdlPlayerInput
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
-    void frame() { input_->advance(0.016, *this); }
+    void frame() {
+        input_->advance(0.016, *this);
+        if (auto step{input_->viewer_step(0.016)}) {
+            host::tests::presentation.motion = step->motion;
+        }
+    }
     auto routing() const -> InputRouting override {
         return {pause_menu_.route(host::tests::presentation.route),
                 host::tests::presentation.menu.input_mode};
@@ -318,10 +320,9 @@ TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     map(WheelMotion{{}, 1.f});
     map(PhysicalButton{PhysicalKey::D, {}, ButtonState::Pressed});
     EXPECT_TRUE(input_.state().held.observer_right());
-    input_.append_frame_commands(0.016, dispatch_);
-    ASSERT_FALSE(dispatch_.presentation_input().empty());
-    EXPECT_FLOAT_EQ(std::get<host::ViewerStep>(dispatch_.presentation_input().back()).motion.speed,
-                    150000.f);
+    auto const step{input_.viewer_step(0.016)};
+    ASSERT_TRUE(step);
+    EXPECT_FLOAT_EQ(step->motion.speed, 150000.f);
     EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
     map(WindowFocus::Lost);
     EXPECT_FALSE(input_.relative_mouse());

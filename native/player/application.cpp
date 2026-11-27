@@ -431,8 +431,14 @@ auto Application::play(Window& window,
         auto const input_time{std::chrono::steady_clock::now()};
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
-        auto const window_events{play_input.input.advance(
-            std::min(input_delta.count(), max_frame_delta_seconds), play_input)};
+        auto const frame_seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
+        auto const window_events{play_input.input.advance(frame_seconds, play_input)};
+        if (auto step{play_input.input.viewer_step(frame_seconds)}) {
+            host::present_viewer(*step);
+        }
+        if (play_input.routing().route.context == InputContext::Gameplay) {
+            host::present_steering(play_input.input.steering());
+        }
         if (window_events.display_changed) {
             if (auto result{window.refresh_resolutions()}; !result) {
                 return result;

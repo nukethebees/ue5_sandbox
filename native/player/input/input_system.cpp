@@ -41,7 +41,6 @@ auto InputSystem::advance(double delta_seconds, InputReceiver& receiver) -> Wind
     if (physical_.focused()) {
         logical_.repeat_navigation(dispatch_, delta_seconds);
     }
-    logical_.append_frame_commands(delta_seconds, dispatch_);
     dispatch_.deliver_from(first, receiver);
     dispatch_.publish_ship(logical_.state());
     return window;

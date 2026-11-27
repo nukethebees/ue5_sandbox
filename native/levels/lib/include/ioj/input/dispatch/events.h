@@ -54,14 +54,11 @@ struct MenuText {
     std::string text;
     Modifiers modifiers;
 };
-struct SteeringIndicator {
-    std::optional<Vector2d> direction;
-};
 struct ViewerStep {
     ViewerMotion motion;
     double seconds;
 };
 using PresentationEvent =
-    std::variant<MenuKey, MenuAxis, MenuPointer, MenuText, SteeringIndicator, ViewerStep>;
+    std::variant<MenuKey, MenuAxis, MenuPointer, MenuText>;
 using MenuEvent = std::variant<PlayerAction, MenuButton>;
 }

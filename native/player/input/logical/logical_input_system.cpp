@@ -515,23 +515,21 @@ void LogicalInputSystem::repeat_navigation(InputDispatcher& output, double secon
         }
     }
 }
-void LogicalInputSystem::append_frame_commands(double seconds, InputDispatcher& output) const {
-    if (route_.context == InputContext::Gameplay) {
-        output.push(host::SteeringIndicator{state_.pointer_steering});
-    }
+auto LogicalInputSystem::viewer_step(double seconds) const -> std::optional<host::ViewerStep> {
     if (route_.context == InputContext::Observer) {
         auto const& held{state_.held};
         auto const look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         auto const speed{game_input_tables::observer_speeds[observer_.speed] *
                          (held.observer_fast() ? 4.f : 1.f)};
-        output.push(host::ViewerStep{{float(held.observer_right() - held.observer_left()),
-                                      float(held.observer_forward() - held.observer_backward()),
-                                      float(held.observer_up() - held.observer_down()),
-                                      look.x() * 0.1f,
-                                      look.y() * 0.1f,
-                                      speed,
-                                      observer_.look == ObserverLookMode::Camera},
-                                     seconds});
+        return host::ViewerStep{{float(held.observer_right() - held.observer_left()),
+                                 float(held.observer_forward() - held.observer_backward()),
+                                 float(held.observer_up() - held.observer_down()),
+                                 look.x() * 0.1f,
+                                 look.y() * 0.1f,
+                                 speed,
+                                 observer_.look == ObserverLookMode::Camera},
+                                seconds};
     }
+    return {};
 }
 }

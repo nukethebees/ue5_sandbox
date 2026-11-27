@@ -74,33 +74,7 @@ auto menu_status() -> MenuStatus {
                               : MenuInputMode::Navigation};
     return {mode, main ? main->focused_item() : std::nullopt};
 }
-auto present_pause(PauseCommand command) -> bool {
-    auto* player{controller()};
-    check(player);
-    return player->present_pause(command);
-}
-void select_benchmark_button(bool end_selected) {
-    auto* player{controller()};
-    check(player);
-    if (auto* hud{player->get_benchmark_hud()}) {
-        hud->select_button(end_selected);
-    }
-}
 namespace {
-void present_viewer_motion(ViewerMotion const& motion, double delta_seconds) {
-    auto* const player{controller()};
-    check(player);
-    player->present_viewer_motion(motion, delta_seconds);
-}
-void present_steering(std::optional<Vector2d> steering) {
-    auto* const player{controller()};
-    check(player);
-    TOptional<FVector2D> position;
-    if (steering) {
-        position.Emplace(steering->x(), steering->y());
-    }
-    player->present_steering(position);
-}
 void ui_key(PhysicalKey code, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const key{slate_key(code)};
@@ -257,10 +231,6 @@ void present_input(PresentationEvent const& event) {
                     return;
                 }
                 ui_pointer(item.pointer, item.modifiers);
-            } else if constexpr (std::is_same_v<T, ViewerStep>) {
-                present_viewer_motion(item.motion, item.seconds);
-            } else {
-                present_steering(item.direction);
             }
         },
         event);

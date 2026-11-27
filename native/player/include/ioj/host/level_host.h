@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/input/dispatch/events.h>
 #include <ioj/presentation/level_frame.h>
 #include <ioj/presentation/level_init.h>
 
@@ -22,6 +23,8 @@ IOJ_LEVEL_API auto initialize_level(presentation::LevelInit const& level,
                                     presentation::LevelFrame const& frame) -> bool;
 IOJ_LEVEL_API auto presents_level() -> bool;
 IOJ_LEVEL_API void present_level(double delta_seconds, presentation::LevelFrame const& frame);
+IOJ_LEVEL_API void present_viewer(ViewerStep const& step);
+IOJ_LEVEL_API void present_steering(std::optional<Vector2d> direction);
 IOJ_LEVEL_API void simulation_paused();
 IOJ_LEVEL_API void finish_level(profiles::CompletedLevel const& completed,
                                 bool scored,
