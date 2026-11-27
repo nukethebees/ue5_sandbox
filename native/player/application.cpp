@@ -164,7 +164,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     Application application{std::move(*profile_manager)};
 
-    Window window;
+    auto& window{application.window_};
     if (auto result{window.create()}; !result) {
         return result;
     }
@@ -202,7 +202,11 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
     auto const engine_command_line{
         engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
-    LevelStorage storage;
+    application.scripts_directory_ = scripts_directory;
+    application.exit_when_ready_ = args.exit_when_ready;
+    application.input_.emplace(
+        *window.sdl_window(), settings.applied().controls, application.endpoint_);
+    application.endpoint_.present_keyboard(&application.input_->keyboard());
     application.menu_.show_reset_profile = !IOJ_SHIPPING;
     application.menu_.draft.begin(settings.view().applied_values, settings.view().defaults);
     IojPlayer_Attach(capabilities, application.menu_);
@@ -215,8 +219,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     Result play_result;
     try {
-        play_result = application.play(
-            window, storage, args.level_path, scripts_directory, args.exit_when_ready);
+        play_result = application.play(args.level_path);
     } catch (std::exception const& error) {
         play_result = std::unexpected{std::string{error.what()}};
     } catch (...) {
@@ -224,7 +227,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     }
 
     try {
-        application.unload_level(storage, sim::RunEndReason::WorldEnd, false);
+        application.unload_level(sim::RunEndReason::WorldEnd, false);
     } catch (...) {
         if (auto shutdown{shutdown_engine(window)}; !shutdown) {
             std::println(
@@ -245,333 +248,325 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     return shutdown_result;
 }
-struct Application::PlayerInputSession {
-    PlayerInputSession(Application& owner,
-                       Window& game_window,
-                       PlayerSettings const& player_settings,
-                       PlayerMenu& player_menu,
-                       LevelStorage& levels)
-        : application{owner}
-        , endpoint{owner.endpoint_}
-        , storage{levels}
-        , window{game_window}
-        , settings{player_settings}
-        , menu{player_menu}
-        , input{*window.sdl_window(), settings.applied().controls, endpoint} {
-        endpoint.present_keyboard(&input.keyboard());
+auto Application::route() const -> InputRoute {
+    auto const* level{storage_.get()};
+    if (menu_.screen != MenuScreen::Closed || !level) {
+        return {InputContext::Menu, menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()};
     }
+    return {level->input_context()};
+}
+void Application::handle_action(host::PlayerAction action) {
+    auto* level{storage_.get()};
+    if (!level || level->presentation_setup) {
+        return;
+    }
+    using enum host::PlayerAction;
+    switch (action) {
+        case OpenPause:
+            if (menu_.screen != MenuScreen::Closed ||
+                level->simulation.state() == sim::LevelState::Stopped) {
+                return;
+            }
+            menu_.open(MenuScreen::Pause);
+            level->update_pause(true);
+            endpoint_.present_pause({host::PauseCommandKind::Open, host::PauseMenuItem::Resume});
+            break;
+        case RequestResume:
+            if (menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()) {
+                choose_pause(host::PauseMenuItem::Resume);
+            }
+            break;
+        case BenchmarkNext:
+            level->end_selected = !level->end_selected;
+            endpoint_.select_benchmark(level->end_selected);
+            break;
+        case BenchmarkActivate:
+            handle_action(level->end_selected ? EndBenchmark : ToggleBenchmark);
+            break;
+        case ToggleBenchmark:
+            level->set_simulation_mode(level->simulation.state() == sim::LevelState::Running
+                                           ? levels::LaunchMode::Paused
+                                           : levels::LaunchMode::Running);
+            break;
+        case EndBenchmark:
+            return_requested_ = true;
+            break;
+    }
+}
+void Application::choose_pause(host::PauseMenuItem item) {
+    if (item != menu_.pause_item() && !menu_.leave_ready()) {
+        menu_.pending_pause = item;
+        apply_menu({menu_.focus, MenuOperation::Focus});
+        return;
+    }
+    using enum host::PauseMenuItem;
+    switch (item) {
+        case Resume:
+            menu_.open(MenuScreen::Closed);
+            storage_.get()->update_pause(false);
+            endpoint_.present_pause({host::PauseCommandKind::Finish, item});
+            break;
+        case Controls:
+        case Audio:
+            menu_.select_page(item == Audio ? MainMenuItem::Audio : MainMenuItem::Controls);
+            menu_.pause_sidebar = false;
+            menu_.select(menu_.primary_target(settings_.view()));
+            endpoint_.present_pause({host::PauseCommandKind::ShowPage, item});
+            break;
+        case LevelSelect:
+            return_requested_ = true;
+            break;
+        case Quit:
+            quit_requested_ = true;
+            break;
+    }
+}
+void Application::finish_leave(bool accepted) {
+    if (auto item{std::exchange(menu_.pending_pause, {})}; item && accepted) {
+        choose_pause(*item);
+    } else if (auto update{menu_.finish_main_leave(accepted)}) {
+        apply_menu(*update);
+    }
+}
 
-    auto routing() const -> InputRoute {
-        if (menu.screen == MenuScreen::Pause) {
-            return {InputContext::Menu, !menu.pause_blocked()};
-        }
-        auto const* level{storage.get()};
-        return {level ? level->input_context() : InputContext::Menu};
-    }
-    void dispatch(host::PlayerAction action) {
-        auto* level{storage.get()};
-        if (!level || level->presentation_setup) {
-            return;
-        }
-        using enum host::PlayerAction;
-        switch (action) {
-            case OpenPause:
-                if (menu.screen != MenuScreen::Closed ||
-                    level->simulation.state() == sim::LevelState::Stopped) {
+void Application::apply_menu(MenuUpdate update) {
+    if (update.operation == MenuOperation::Activate) {
+        if (update.target.kind == MenuTarget::Kind::Profile ||
+            update.target.kind == MenuTarget::Kind::Outcome) {
+            publish_profiles();
+        } else if (update.target.kind == MenuTarget::Kind::Control) {
+            switch (update.target.control()) {
+                case MenuControl::ConfirmCreate:
+                case MenuControl::ActivateProfile:
+                case MenuControl::RefreshProfiles:
+                case MenuControl::ResetProfile:
+                    profile_action(update.target.control());
                     return;
-                }
-                menu.open(MenuScreen::Pause);
-                level->update_pause(true);
-                endpoint.present_pause({host::PauseCommandKind::Open, host::PauseMenuItem::Resume});
-                break;
-            case RequestResume:
-                if (menu.screen == MenuScreen::Pause && !menu.pause_blocked()) {
-                    choose_pause(host::PauseMenuItem::Resume);
-                }
-                break;
-            case BenchmarkNext:
-                level->end_selected = !level->end_selected;
-                endpoint.select_benchmark(level->end_selected);
-                break;
-            case BenchmarkActivate:
-                dispatch(level->end_selected ? EndBenchmark : ToggleBenchmark);
-                break;
-            case ToggleBenchmark:
-                level->set_simulation_mode(level->simulation.state() == sim::LevelState::Running
-                                               ? levels::LaunchMode::Paused
-                                               : levels::LaunchMode::Running);
-                break;
-            case EndBenchmark:
-                return_requested = true;
-                break;
-        }
-    }
-    void choose_pause(host::PauseMenuItem item) {
-        if (item != menu.pause_item() && !menu.leave_ready()) {
-            menu.pending_pause = item;
-            present_menu({menu.focus, MenuOperation::Focus});
-            return;
-        }
-        using enum host::PauseMenuItem;
-        switch (item) {
-            case Resume:
-                menu.open(MenuScreen::Closed);
-                storage.get()->update_pause(false);
-                endpoint.present_pause({host::PauseCommandKind::Finish, item});
-                break;
-            case Controls:
-            case Audio:
-                menu.select_page(item == Audio ? MainMenuItem::Audio : MainMenuItem::Controls);
-                menu.pause_sidebar = false;
-                menu.select(menu.primary_target(settings.view()));
-                endpoint.present_pause({host::PauseCommandKind::ShowPage, item});
-                break;
-            case LevelSelect:
-                return_requested = true;
-                break;
-            case Quit:
-                quit_requested = true;
-                break;
-        }
-    }
-    void finish_leave(bool accepted) {
-        if (auto item{std::exchange(menu.pending_pause, {})}; item && accepted) {
-            choose_pause(*item);
-        } else if (auto update{menu.finish_main_leave(accepted)}) {
-            present_menu(*update);
-        }
-    }
-
-    void present_menu(MenuUpdate const& update) {
-        if (update.operation == MenuOperation::Activate) {
-            if (update.target.kind == MenuTarget::Kind::Profile ||
-                update.target.kind == MenuTarget::Kind::Outcome) {
-                application.publish_profiles();
-            } else if (update.target.kind == MenuTarget::Kind::Control) {
-                switch (update.target.control()) {
-                    case MenuControl::ConfirmCreate:
-                    case MenuControl::ActivateProfile:
-                    case MenuControl::RefreshProfiles:
-                    case MenuControl::ResetProfile:
-                        application.profile_action(update.target.control());
-                        return;
-                    default:
-                        break;
-                }
-            }
-        }
-        if (menu.prompt == OptionsPrompt::Dirty && update.operation == MenuOperation::Activate) {
-            auto const choice{update.target.control()};
-            menu.set_prompt(OptionsPrompt::None);
-            if (choice == MenuControl::Discard) {
-                menu.draft.cancel();
-            }
-            host::present_menu({menu.focus, MenuOperation::Focus});
-            if (choice == MenuControl::Save) {
-                host::present_menu(update);
-            } else {
-                finish_leave(choice == MenuControl::Discard);
-            }
-        } else {
-            host::present_menu(update);
-        }
-    }
-    void process_widget_actions() {
-        auto const& replies{endpoint.exchange()};
-        for (std::size_t cursor{}; cursor < replies.order.size(); ++cursor) {
-            auto const [kind, index]{replies.order[cursor]};
-            switch (kind) {
-                case host::UnrealMessageKind::PauseInteraction: {
-                    auto const event{replies.pause_events[index]};
-                    if (menu.screen != MenuScreen::Pause) {
-                        break;
-                    }
-                    switch (event.kind) {
-                        case host::PauseWidgetEventKind::Activate:
-                            if (!menu.pause_blocked()) {
-                                choose_pause(event.item);
-                            }
-                            break;
-                        case host::PauseWidgetEventKind::Select:
-                            if (menu.select_pause_item(event.item)) {
-                                endpoint.present_pause(
-                                    {host::PauseCommandKind::Select, event.item});
-                            }
-                            break;
-                        case host::PauseWidgetEventKind::ContentFocused:
-                            if (!menu.pause_blocked()) {
-                                menu.pause_sidebar = false;
-                            }
-                            break;
-                    }
-                    break;
-                }
-                case host::UnrealMessageKind::Status:
-                    application.engine_ = replies.status[index];
-                    if (application.engine_.failed) {
-                        pause_presentation = std::unexpected{"Unreal reported a critical error"};
-                    }
-                    break;
-                case host::UnrealMessageKind::SimulationMode:
-                    if (auto* level{storage.get()};
-                        level && !level->presentation_setup && menu.screen != MenuScreen::Pause) {
-                        level->set_simulation_mode(replies.simulation_modes[index]);
-                    }
-                    break;
-                case host::UnrealMessageKind::LevelInitialized:
-                    break;
-                case host::UnrealMessageKind::PausePresented:
-                    if (!replies.pause_results[index]) {
-                        pause_presentation = std::unexpected{
-                            "Could not present the native pause menu. See the game log."};
-                    }
-                    break;
-                case host::UnrealMessageKind::RefreshProfiles:
-                    application.profile_action(MenuControl::RefreshProfiles);
-                    break;
-                case host::UnrealMessageKind::ResetTestProfile:
-                    application.profile_action(MenuControl::ResetProfile);
-                    break;
-                case host::UnrealMessageKind::Setting: {
-                    auto const& change{replies.settings[index]};
-                    if (!menu.saving && menu.prompt == OptionsPrompt::None &&
-                        menu.draft.binding_edit().prompt == BindingPrompt::Closed &&
-                        settings.view().set_setting(menu.draft,
-                                                    change.setting,
-                                                    change.value,
-                                                    window.supported_resolutions())) {
-                        menu.select(change.setting);
-                        present_menu({menu.focus, MenuOperation::RefreshSettings});
-                    }
-                    break;
-                }
-                case host::UnrealMessageKind::EditText: {
-                    auto const& edit{replies.edits[index]};
-                    if (auto update{menu.edit_text(edit.control, edit.value)}) {
-                        present_menu(*update);
-                    }
-                    break;
-                }
-                case host::UnrealMessageKind::Action:
-                    dispatch(replies.actions[index]);
-                    break;
-                case host::UnrealMessageKind::Hit:
-                    if (auto update{menu.activate(replies.hits[index],
-                                                  settings.view(),
-                                                  window.supported_resolutions())}) {
-                        present_menu(*update);
-                    }
-                    break;
                 default:
-                    std::unreachable();
+                    break;
             }
         }
-        endpoint.release_replies();
-        for (;;) {
-            auto const actions{host::take_widget_actions()};
-            if (actions.empty()) {
+    }
+    if (menu_.prompt == OptionsPrompt::Dirty && update.operation == MenuOperation::Activate) {
+        auto const choice{update.target.control()};
+        menu_.set_prompt(OptionsPrompt::None);
+        if (choice == MenuControl::Discard) {
+            menu_.draft.cancel();
+        }
+        host::present_menu({menu_.focus, MenuOperation::Focus});
+        if (choice == MenuControl::Save) {
+            host::present_menu(update);
+        } else {
+            finish_leave(choice == MenuControl::Discard);
+        }
+    } else {
+        host::present_menu(update);
+    }
+}
+void Application::exchange() {
+    auto const& replies{endpoint_.exchange()};
+    for (std::size_t cursor{}; cursor < replies.order.size(); ++cursor) {
+        auto const [kind, index]{replies.order[cursor]};
+        switch (kind) {
+            case host::UnrealMessageKind::PauseInteraction: {
+                auto const event{replies.pause_events[index]};
+                if (menu_.screen != MenuScreen::Pause) {
+                    break;
+                }
+                switch (event.kind) {
+                    case host::PauseWidgetEventKind::Activate:
+                        if (!menu_.pause_blocked()) {
+                            choose_pause(event.item);
+                        }
+                        break;
+                    case host::PauseWidgetEventKind::Select:
+                        if (menu_.select_pause_item(event.item)) {
+                            endpoint_.present_pause({host::PauseCommandKind::Select, event.item});
+                        }
+                        break;
+                    case host::PauseWidgetEventKind::ContentFocused:
+                        if (!menu_.pause_blocked()) {
+                            menu_.pause_sidebar = false;
+                        }
+                        break;
+                }
                 break;
             }
-            for (auto const& action : actions) {
-                if (auto const* result{std::get_if<host::SettingsSaveResult>(&action)}) {
-                    finish_leave(result->succeeded);
-                } else {
-                    dispatch(std::get<host::PlayerAction>(action));
+            case host::UnrealMessageKind::Status:
+                engine_ = replies.status[index];
+                if (engine_.failed) {
+                    result_ = std::unexpected{"Unreal reported a critical error"};
                 }
+                break;
+            case host::UnrealMessageKind::SimulationMode:
+                if (auto* level{storage_.get()};
+                    level && !level->presentation_setup && menu_.screen != MenuScreen::Pause) {
+                    level->set_simulation_mode(replies.simulation_modes[index]);
+                }
+                break;
+            case host::UnrealMessageKind::LevelInitialized:
+                break;
+            case host::UnrealMessageKind::PausePresented:
+                if (!replies.pause_results[index]) {
+                    result_ = std::unexpected{
+                        "Could not present the native pause menu. See the game log."};
+                }
+                break;
+            case host::UnrealMessageKind::RefreshProfiles:
+                profile_action(MenuControl::RefreshProfiles);
+                break;
+            case host::UnrealMessageKind::ResetTestProfile:
+                profile_action(MenuControl::ResetProfile);
+                break;
+            case host::UnrealMessageKind::Setting: {
+                auto const& change{replies.settings[index]};
+                if (!menu_.saving && menu_.prompt == OptionsPrompt::None &&
+                    menu_.draft.binding_edit().prompt == BindingPrompt::Closed &&
+                    settings_.view().set_setting(menu_.draft,
+                                                 change.setting,
+                                                 change.value,
+                                                 window_.supported_resolutions())) {
+                    menu_.select(change.setting);
+                    apply_menu({menu_.focus, MenuOperation::RefreshSettings});
+                }
+                break;
+            }
+            case host::UnrealMessageKind::EditText: {
+                auto const& edit{replies.edits[index]};
+                if (auto update{menu_.edit_text(edit.control, edit.value)}) {
+                    apply_menu(*update);
+                }
+                break;
+            }
+            case host::UnrealMessageKind::Action:
+                handle_action(replies.actions[index]);
+                break;
+            case host::UnrealMessageKind::Hit:
+                if (auto update{menu_.activate(
+                        replies.hits[index], settings_.view(), window_.supported_resolutions())}) {
+                    apply_menu(*update);
+                }
+                break;
+            default:
+                std::unreachable();
+        }
+    }
+    endpoint_.release_replies();
+    for (;;) {
+        auto const actions{host::take_widget_actions()};
+        if (actions.empty()) {
+            break;
+        }
+        for (auto const& action : actions) {
+            if (auto const* result{std::get_if<host::SettingsSaveResult>(&action)}) {
+                finish_leave(result->succeeded);
+            } else {
+                handle_action(std::get<host::PlayerAction>(action));
             }
         }
     }
-    void navigate_menu(MenuButton button) {
-        if (auto update{menu.navigate(
-                button.command, button.repeat, settings.view(), window.supported_resolutions())}) {
-            present_menu(*update);
+}
+void Application::consume_commands() {
+    for (std::size_t i{}; i < input_->commands().size(); ++i) {
+        auto const command{input_->commands()[i]};
+        switch (command.kind) {
+            case InputCommand::Kind::Action:
+                handle_action(command.action);
+                break;
+            case InputCommand::Kind::Capture:
+                menu_.draft.capture_binding(command.key);
+                host::present_menu(
+                    {menu_.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+                break;
+            case InputCommand::Kind::Navigation: {
+                auto const button{command.button};
+                if (!button.down) {
+                    break;
+                }
+                if (menu_.draft.binding_edit().prompt != BindingPrompt::Closed) {
+                    menu_.draft.navigate_binding(button.command, button.repeat);
+                    host::present_menu(
+                        {menu_.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+                } else if (menu_.screen == MenuScreen::Pause &&
+                           (menu_.pause_sidebar || button.command == MenuCommand::Back) &&
+                           !menu_.pause_blocked()) {
+                    auto const before{menu_.pause_selection};
+                    if (auto item{menu_.navigate_pause(button.command, button.repeat)}) {
+                        choose_pause(*item);
+                    } else if (before != menu_.pause_selection) {
+                        endpoint_.present_pause(
+                            {host::PauseCommandKind::Select, menu_.pause_selection});
+                    }
+                } else if (auto update{menu_.navigate(button.command,
+                                                      button.repeat,
+                                                      settings_.view(),
+                                                      window_.supported_resolutions())}) {
+                    apply_menu(std::move(*update));
+                }
+                break;
+            }
         }
     }
-    void navigate(MenuButton button) {
-        if (!button.down) {
+    input_->clear_commands();
+}
+void Application::process_input(double seconds) {
+    auto const window{input_->poll()};
+    if (window.close_requested) {
+        quit_requested_ = true;
+        return;
+    }
+    if (window.keyboard_changed) {
+        endpoint_.present_keyboard(&input_->keyboard());
+    }
+    if (window.display_changed) {
+        result_ = window_.refresh_resolutions();
+        if (!result_) {
             return;
         }
-        if (menu.draft.binding_edit().prompt != BindingPrompt::Closed) {
-            menu.draft.navigate_binding(button.command, button.repeat);
-            host::present_menu({menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
-        } else if (menu.screen == MenuScreen::Pause &&
-                   (menu.pause_sidebar || button.command == MenuCommand::Back) &&
-                   !menu.pause_blocked()) {
-            auto const before{menu.pause_selection};
-            if (auto item{menu.navigate_pause(button.command, button.repeat)}) {
-                choose_pause(*item);
-            } else if (before != menu.pause_selection) {
-                endpoint.present_pause({host::PauseCommandKind::Select, menu.pause_selection});
-            }
-
-        } else {
-            navigate_menu(button);
-        }
+        host::present_settings(settings_.view(), window_.supported_resolutions());
     }
-    void consume_commands() {
-        for (auto const& command : input.commands()) {
-            switch (command.kind) {
-                case InputCommand::Kind::Action:
-                    dispatch(command.action);
-                    break;
-                case InputCommand::Kind::Capture:
-                    menu.draft.capture_binding(command.key);
-                    host::present_menu(
-                        {menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
-                    break;
-                case InputCommand::Kind::Navigation:
-                    navigate(command.button);
-                    break;
-            }
+    if (window.viewport_changed) {
+        result_ = window_.synchronize_resize(settings_);
+        if (!result_) {
+            return;
         }
-        input.clear_commands();
+        host::present_settings(settings_.view(), window_.supported_resolutions());
     }
-    auto advance(double seconds) -> WindowInputEvents {
-        auto const events{input.poll()};
-        if (events.keyboard_changed) {
-            endpoint.present_keyboard(&input.keyboard());
-        }
-        auto const& batch{input.events()};
-        std::size_t cursor{};
-        for (;;) {
-            input.synchronize(routing(), menu.input_mode());
-            if (!input.commands().empty()) {
-                consume_commands();
-                process_widget_actions();
-                continue;
-            }
-            if (cursor == batch.order.size()) {
-                break;
-            }
-            cursor = input.map_events(batch, cursor);
+    auto const& events{input_->events()};
+    std::size_t cursor{};
+    for (;;) {
+        input_->synchronize(route(), menu_.input_mode());
+        if (!input_->commands().empty()) {
             consume_commands();
-            process_widget_actions();
+            continue;
         }
-        input.repeat_navigation(seconds);
+        if (cursor == events.order.size()) {
+            break;
+        }
+        cursor = input_->map_events(events, cursor);
         consume_commands();
-        process_widget_actions();
-        return events;
+        if (endpoint_.size() != 0) {
+            exchange();
+        }
+        if (quit_requested_ || !result_) {
+            return;
+        }
     }
+    input_->repeat_navigation(seconds);
+    consume_commands();
+    if (auto step{input_->viewer_step(seconds)}) {
+        endpoint_.step_viewer(*step);
+    }
+    if (route().context == InputContext::Gameplay) {
+        endpoint_.present_steering(input_->steering());
+    }
+    if (endpoint_.size() != 0) {
+        exchange();
+    }
+}
 
-    Application& application;
-    host::NativeEndpoint& endpoint;
-    LevelStorage& storage;
-    Window& window;
-    PlayerSettings const& settings;
-    PlayerMenu& menu;
-    InputSystem input;
-    ApplicationResult pause_presentation{};
-    bool return_requested{};
-    bool quit_requested{};
-};
-
-auto Application::play(Window& window,
-                       LevelStorage& storage,
-                       std::filesystem::path const& level_path,
-                       std::filesystem::path const& scripts_directory,
-                       bool exit_when_ready) -> ApplicationResult {
-    PlayerInputSession play_input{*this, window, settings_, menu_, storage};
-    play_input.process_widget_actions();
+auto Application::play(std::filesystem::path const& level_path) -> ApplicationResult {
+    exchange();
     if (!engine_.ready) {
         return ApplicationResult{std::unexpect,
                                  "Unreal did not initialize a playable world. See the game log."};
@@ -583,14 +578,14 @@ auto Application::play(Window& window,
     }
 
     if (settings_.launch_display_mode() != LaunchDisplayMode::Headless) {
-        if (auto result{window.show(settings_)}; !result) {
+        if (auto result{window_.show(settings_)}; !result) {
             return result;
         }
-        host::present_settings(settings_.view(), window.supported_resolutions());
+        host::present_settings(settings_.view(), window_.supported_resolutions());
     }
 
     if (!level_path.empty()) {
-        if (auto result{launch_level(storage, level_path)}; !result) {
+        if (auto result{launch_level(level_path)}; !result) {
             return result;
         }
     }
@@ -598,7 +593,6 @@ auto Application::play(Window& window,
     constexpr double max_frame_delta_seconds{0.1};
     auto last_input_frame{std::chrono::steady_clock::now()};
     auto const deadline{last_input_frame + std::chrono::minutes{2}};
-    std::vector<AvailableLevel> available_levels;
 
     while (!engine_.exit_requested) {
         IojPlayer_BeginFrame();
@@ -606,42 +600,20 @@ auto Application::play(Window& window,
             menu_.display_seconds_remaining() == 0) {
             host::present_menu({MenuControl::RevertDisplay, MenuOperation::Activate});
         }
-        play_input.process_widget_actions();
+        exchange();
         auto const input_time{std::chrono::steady_clock::now()};
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
         auto const frame_seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
-        auto const window_events{play_input.advance(frame_seconds)};
-        if (auto step{play_input.input.viewer_step(frame_seconds)}) {
-            endpoint_.step_viewer(*step);
+        process_input(frame_seconds);
+        if (!result_) {
+            return result_;
         }
-        if (play_input.routing().context == InputContext::Gameplay) {
-            endpoint_.present_steering(play_input.input.steering());
-        }
-        if (endpoint_.size() != 0) {
-            play_input.process_widget_actions();
-        }
-        if (window_events.display_changed) {
-            if (auto result{window.refresh_resolutions()}; !result) {
-                return result;
-            }
-            host::present_settings(settings_.view(), window.supported_resolutions());
-        }
-        if (!play_input.pause_presentation) {
-            return play_input.pause_presentation;
-        }
-        if (window_events.close_requested || play_input.quit_requested || engine_.exit_requested) {
+        if (quit_requested_ || engine_.exit_requested) {
             break;
         }
 
-        if (window_events.viewport_changed) {
-            if (auto result{window.synchronize_resize(settings_)}; !result) {
-                return result;
-            }
-            host::present_settings(settings_.view(), window.supported_resolutions());
-        }
-
-        if (exit_when_ready) {
+        if (exit_when_ready_) {
             if (level_path.empty()) {
                 std::println("Ready: MainMenu");
                 return {};
@@ -657,33 +629,33 @@ auto Application::play(Window& window,
             return result;
         }
 
-        play_input.process_widget_actions();
+        exchange();
         auto const messages{host::take_messages()};
-        if (play_input.return_requested) {
-            auto const id{storage.get()->simulation.level_metadata().id};
-            unload_level(storage, sim::RunEndReason::WorldEnd, false);
+        if (return_requested_) {
+            auto const id{storage_.get()->simulation.level_metadata().id};
+            unload_level(sim::RunEndReason::WorldEnd, false);
             menu_.selected_level = id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             endpoint_.open_menu({});
             endpoint_.exchange();
-            play_input.return_requested = false;
+            return_requested_ = false;
             continue;
         }
-        if (process_preferences(window, messages.preference_edits)) {
-            play_input.input.refresh_bindings();
-            play_input.consume_commands();
+        if (process_preferences(messages.preference_edits)) {
+            input_->refresh_bindings();
+            consume_commands();
         }
 
         if (messages.refresh_catalog) {
-            available_levels = publish_catalog(scripts_directory);
+            publish_catalog();
         }
 
         auto const& navigation{messages.navigation_request};
-        if (exit_when_ready && !std::holds_alternative<std::monostate>(navigation)) {
+        if (exit_when_ready_ && !std::holds_alternative<std::monostate>(navigation)) {
             return ApplicationResult{std::unexpect, "Level startup was cancelled"};
         }
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
-            unload_level(storage, sim::RunEndReason::WorldEnd, false);
+            unload_level(sim::RunEndReason::WorldEnd, false);
             menu_.selected_level = menu->preferred_level_id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             endpoint_.open_menu(menu->launch_error);
@@ -692,16 +664,14 @@ auto Application::play(Window& window,
         }
 
         if (auto const* selection{std::get_if<host::LevelSelection>(&navigation)}) {
-            unload_level(storage, sim::RunEndReason::WorldEnd, false);
-            auto const entry{std::ranges::find_if(available_levels, [&](auto const& candidate) {
+            unload_level(sim::RunEndReason::WorldEnd, false);
+            auto const entry{std::ranges::find_if(available_levels_, [&](auto const& candidate) {
                 return candidate.definition.metadata().id == selection->id;
             })};
-            if (entry != available_levels.end()) {
-                auto result{launch_level(storage,
-                                         entry->definition,
-                                         path_to_utf8(entry->source_path),
-                                         selection->options)};
-                available_levels = std::vector<AvailableLevel>{};
+            if (entry != available_levels_.end()) {
+                auto result{launch_level(
+                    entry->definition, path_to_utf8(entry->source_path), selection->options)};
+                available_levels_ = std::vector<AvailableLevel>{};
                 if (!result) {
                     menu_.selected_level = selection->id.value;
                     menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
@@ -717,7 +687,7 @@ auto Application::play(Window& window,
             continue;
         }
 
-        auto* const level{storage.get()};
+        auto* const level{storage_.get()};
         if (!level) {
             continue;
         }
@@ -729,8 +699,8 @@ auto Application::play(Window& window,
                                      level->control_context == levels::ControlContext::Observer)};
             if (auto error{initialize_presentation(*level, endpoint_)}; !error.empty()) {
                 menu_.selected_level = level->simulation.level_metadata().id.value;
-                unload_level(storage, sim::RunEndReason::WorldEnd, false);
-                if (exit_when_ready) {
+                unload_level(sim::RunEndReason::WorldEnd, false);
+                if (exit_when_ready_) {
                     return ApplicationResult{std::unexpect, std::move(error)};
                 }
                 menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
@@ -740,12 +710,12 @@ auto Application::play(Window& window,
             }
 
             if (start_paused) {
-                play_input.dispatch(host::PlayerAction::OpenPause);
+                handle_action(host::PlayerAction::OpenPause);
             }
             if (level->simulation.state() == sim::LevelState::Stopped) {
-                unload_level(storage, sim::RunEndReason::LevelCompleted, true);
+                unload_level(sim::RunEndReason::LevelCompleted, true);
             }
-            if (exit_when_ready) {
+            if (exit_when_ready_) {
                 std::println("Ready: {}", path_to_utf8(level_path));
                 return {};
             }
@@ -755,32 +725,34 @@ auto Application::play(Window& window,
         }
 
         if (engine_.presents_level) {
-            level->simulation.append_player_input(play_input.input.ship_input());
+            level->simulation.append_player_input(input_->ship_input());
 
             advance_level(level->simulation, level->elapsed_seconds(), endpoint_);
             level->update_pause(menu_.screen == MenuScreen::Pause);
             if (level->simulation.state() == sim::LevelState::Stopped) {
-                unload_level(storage, sim::RunEndReason::LevelCompleted, true);
+                unload_level(sim::RunEndReason::LevelCompleted, true);
             }
         }
     }
 
-    if (exit_when_ready) {
+    if (exit_when_ready_) {
         return ApplicationResult{std::unexpect, "Engine exited before readiness"};
     }
 
     return {};
 }
 
-auto Application::publish_catalog(std::filesystem::path const& scripts_directory)
-    -> std::vector<AvailableLevel> {
+void Application::publish_catalog() {
+    auto const& scripts_directory{scripts_directory_};
+    available_levels_.clear();
     auto loaded{
         levels::authoring::DefinitionReader{}.read_root_file(scripts_directory / "catalog.scm")};
     auto const directory{path_to_utf8(scripts_directory)};
     menu_.levels.clear();
     if (!loaded) {
-        host::present_catalog({directory, levels::format_diagnostics(loaded.error()), {}, {}});
-        return {};
+        auto const error{levels::format_diagnostics(loaded.error())};
+        host::present_catalog({directory, error, {}, {}});
+        return;
     }
 
     auto const rows{bridge::make_catalog_rows(
@@ -816,16 +788,14 @@ auto Application::publish_catalog(std::filesystem::path const& scripts_directory
     }
     host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
 
-    std::vector<AvailableLevel> available_levels;
-    available_levels.reserve(
+    available_levels_.reserve(
         std::ranges::count(rows.listings, true, &presentation::LevelListing::unlocked));
     for (auto [entry, row] : std::views::zip(loaded->levels, rows.listings)) {
         if (row.unlocked) {
-            available_levels.emplace_back(std::move(*entry.definition),
-                                          std::move(entry.source_path));
+            available_levels_.emplace_back(std::move(*entry.definition),
+                                           std::move(entry.source_path));
         }
     }
-    return available_levels;
 }
 
 void Application::publish_profiles() {
@@ -904,8 +874,7 @@ void Application::profile_action(MenuControl action) {
     publish_profiles();
 }
 
-auto Application::process_preferences(Window& window, std::span<host::PreferenceEdit const> edits)
-    -> bool {
+auto Application::process_preferences(std::span<host::PreferenceEdit const> edits) -> bool {
     bool controls_changed{};
     auto const count{edits.size()};
     for (std::size_t index{}; index < count; ++index) {
@@ -913,8 +882,8 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
         if (edit.action != host::PreferenceAction::Save) {
             auto result{
                 edit.action == host::PreferenceAction::PreviewDisplay
-                    ? window.preview({edit.values.video.window_mode, edit.values.video.resolution})
-                    : window.revert_preview()};
+                    ? window_.preview({edit.values.video.window_mode, edit.values.video.resolution})
+                    : window_.revert_preview()};
             menu_.saving = false;
             if (result && edit.action == host::PreferenceAction::RevertDisplay) {
                 menu_.draft.cancel();
@@ -928,7 +897,7 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
             continue;
         }
 
-        auto result{edit.category == GameSettingCategory::Video ? window.verify_preview()
+        auto result{edit.category == GameSettingCategory::Video ? window_.verify_preview()
                                                                 : ApplicationResult{}};
         if (result) {
             result = settings_.save_category(edit.category, edit.values, edit.original_settings);
@@ -937,7 +906,7 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
         menu_.set_prompt(OptionsPrompt::None);
         if (!result) {
             if (edit.category == GameSettingCategory::Video) {
-                if (auto rollback{window.revert_preview()}; !rollback) {
+                if (auto rollback{window_.revert_preview()}; !rollback) {
                     result.error() += "; rollback failed: " + rollback.error();
                 }
             }
@@ -948,7 +917,7 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
         switch (edit.category) {
             case GameSettingCategory::Video:
                 settings_.apply(edit.values.video);
-                window.keep_preview(settings_);
+                window_.keep_preview(settings_);
                 break;
             case GameSettingCategory::Audio:
                 settings_.apply(edit.values.audio);
@@ -962,15 +931,14 @@ auto Application::process_preferences(Window& window, std::span<host::Preference
                 break;
         }
 
-        host::present_settings(settings_.view(), window.supported_resolutions());
+        host::present_settings(settings_.view(), window_.supported_resolutions());
         menu_.draft.begin(settings_.view().applied_values, settings_.view().defaults);
         host::preference_result(index, {});
     }
     return controls_changed;
 }
 
-auto Application::launch_level(LevelStorage& storage, std::filesystem::path const& path)
-    -> ApplicationResult {
+auto Application::launch_level(std::filesystem::path const& path) -> ApplicationResult {
     auto definition{levels::authoring::DefinitionReader::for_level(path).read_level_file(path)};
     if (!definition) {
         return ApplicationResult{std::unexpect, levels::format_diagnostics(definition.error())};
@@ -979,10 +947,9 @@ auto Application::launch_level(LevelStorage& storage, std::filesystem::path cons
     levels::LaunchOptions options;
     options.control_context =
         definition->camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
-    return launch_level(storage, *definition, path_to_utf8(path), options);
+    return launch_level(*definition, path_to_utf8(path), options);
 }
-auto Application::launch_level(LevelStorage& storage,
-                               levels::LevelDefinition const& definition,
+auto Application::launch_level(levels::LevelDefinition const& definition,
                                std::string source_path,
                                levels::LaunchOptions options) -> ApplicationResult {
     if (settings_.application().start_levels_paused) {
@@ -1004,7 +971,7 @@ auto Application::launch_level(LevelStorage& storage,
         return ApplicationResult{std::unexpect, std::move(errors)};
     }
 
-    storage.load(
+    storage_.load(
         std::move(*built),
         bridge::make_level_presentation_setup(definition, std::move(source_path), options));
     menu_.open(MenuScreen::Closed);
@@ -1012,8 +979,8 @@ auto Application::launch_level(LevelStorage& storage,
     endpoint_.exchange();
     return {};
 }
-void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results) {
-    auto* const level{storage.get()};
+void Application::unload_level(sim::RunEndReason reason, bool show_results) {
+    auto* const level{storage_.get()};
     if (!level) {
         return;
     }
@@ -1040,6 +1007,6 @@ void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, 
         endpoint_.exchange();
     }
 
-    storage.unload();
+    storage_.unload();
 }
 }
