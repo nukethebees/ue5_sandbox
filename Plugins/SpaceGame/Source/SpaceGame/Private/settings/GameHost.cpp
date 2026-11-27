@@ -5,7 +5,6 @@
 #include "SpaceGame/UnrealMessages.h"
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
-#include <ioj/host/level_startup.h>
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/launch_options.h>
@@ -41,7 +40,6 @@
 namespace ioj {
 namespace {
 TWeakObjectPtr<ATestBatchOrchestrator> level_world;
-LevelStartup level_status{LevelStartup::Pending};
 }
 void attach_level_world(ATestBatchOrchestrator& actor) {
     check(!level_world.IsValid());
@@ -58,7 +56,6 @@ auto level_world_ready() -> bool {
 }
 void open_level() {
     level_world.Reset();
-    level_status = LevelStartup::Pending;
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/GameRuntime"));
 }
@@ -101,15 +98,8 @@ void finish_level(profiles::CompletedLevel const& completed,
     }
 }
 }
-auto IojPlayer_LevelStartup() -> LevelStartup {
-    return level_status;
-}
-void report_level_startup(LevelStartup status) {
-    level_status = status;
-}
 void IojPlayer_Detach() {
     detach_player();
-    level_status = LevelStartup::Pending;
 }
 
 auto IojPlayer_ApplyPreferences() -> bool {

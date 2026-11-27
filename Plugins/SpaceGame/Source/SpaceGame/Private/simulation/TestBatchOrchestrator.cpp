@@ -3,7 +3,6 @@
 #include "SpaceGame/UnrealMessages.h"
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include "settings/GameHost.h"
-#include <ioj/host/level_startup.h>
 #endif
 #include <ioj/levels/launch_options.h>
 #include <ioj/profiles/level_score.h>
@@ -266,15 +265,9 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
 
     UE_LOG(LogSandbox, Display, TEXT("Level ready: %s"), *to_fstring(level.setup.source_path));
     frame_delta_seconds_.reset();
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    report_level_startup(LevelStartup::Ready);
-#endif
     return {};
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    report_level_startup(LevelStartup::Failed);
-#endif
     release_level();
     FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
 }

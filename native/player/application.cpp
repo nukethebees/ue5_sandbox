@@ -9,7 +9,6 @@
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
-#include <ioj/host/level_startup.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
@@ -267,16 +266,14 @@ auto Application::play(Window& window,
         }
 
         if (exit_when_ready) {
-            auto const startup{IojPlayer_LevelStartup()};
-            if (level_path.empty() || startup == LevelStartup::Ready) {
-                std::println("Ready: {}",
-                             level_path.empty() ? "MainMenu" : path_to_utf8(level_path));
+            if (level_path.empty()) {
+                std::println("Ready: MainMenu");
                 return {};
             }
 
-            if (startup == LevelStartup::Failed || std::chrono::steady_clock::now() >= deadline) {
+            if (std::chrono::steady_clock::now() >= deadline) {
                 return ApplicationResult{
-                    std::unexpect, "Level did not reach simulation readiness. See the game log."};
+                    std::unexpect, "Timed out waiting for level readiness. See the game log."};
             }
         }
 
@@ -293,6 +290,9 @@ auto Application::play(Window& window,
         }
 
         auto const& navigation{messages.navigation_request};
+        if (exit_when_ready && !std::holds_alternative<std::monostate>(navigation)) {
+            return ApplicationResult{std::unexpect, "Level startup was cancelled"};
+        }
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
             host::open_menu(menu->preferred_level_id.value, menu->launch_error);
@@ -323,7 +323,15 @@ auto Application::play(Window& window,
         }
 
         if (level->presentation_setup && host::level_world_ready()) {
-            initialize_presentation(*level);
+            auto const initialized{initialize_presentation(*level)};
+            if (exit_when_ready) {
+                if (!initialized) {
+                    return ApplicationResult{std::unexpect,
+                                             "Level initialization failed. See the game log."};
+                }
+                std::println("Ready: {}", path_to_utf8(level_path));
+                return {};
+            }
             continue;
         }
 
@@ -519,7 +527,7 @@ auto Application::launch_level(levels::LevelDefinition const& definition,
     host::open_level();
     return {};
 }
-void Application::initialize_presentation(LoadedLevel& level) {
+auto Application::initialize_presentation(LoadedLevel& level) -> bool {
     auto const mode{level.presentation_setup->launch_mode};
     auto& simulation{level.simulation};
     auto const initialized{
@@ -529,7 +537,7 @@ void Application::initialize_presentation(LoadedLevel& level) {
 
     if (!initialized) {
         unload_level(sim::RunEndReason::WorldEnd, false);
-        return;
+        return false;
     }
 
     if (simulation.state() == sim::LevelState::Stopped) {
@@ -538,6 +546,7 @@ void Application::initialize_presentation(LoadedLevel& level) {
                simulation.state() == sim::LevelState::Paused) {
         simulation.start();
     }
+    return true;
 }
 void Application::advance_level(sim::LevelSim& simulation, double delta_seconds) {
     auto const state{simulation.state()};

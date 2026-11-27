@@ -43,7 +43,7 @@ class Application {
     auto launch_level(levels::LevelDefinition const& definition,
                       std::string source_path,
                       levels::LaunchOptions options) -> ApplicationResult;
-    void initialize_presentation(LoadedLevel& level);
+    auto initialize_presentation(LoadedLevel& level) -> bool;
     void advance_level(sim::LevelSim& simulation, double delta_seconds);
     void unload_level(sim::RunEndReason reason, bool show_results);
 

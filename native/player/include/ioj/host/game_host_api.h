@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/host/level_startup.h>
 #include <ioj/profiles/create_profile_result.h>
 #include <ioj/settings/screen_resolution.h>
 
@@ -26,7 +25,6 @@ struct PlayerSettingsView;
 #endif
 extern "C" {
     IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities);
-    IOJ_PLAYER_API auto IojPlayer_LevelStartup() -> LevelStartup;
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
     IOJ_PLAYER_API auto IojPlayer_GameFailed() -> bool;
