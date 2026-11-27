@@ -82,6 +82,11 @@ auto PlayerSettings::save_category(GameSettingCategory category,
         }
     }
 
+    if (category == GameSettingCategory::Controls &&
+        state.controls.bindings != original_settings.controls.bindings) {
+        next.controls.bindings = state.controls.bindings;
+    }
+
     if (next == saved_settings_) {
         return {};
     }

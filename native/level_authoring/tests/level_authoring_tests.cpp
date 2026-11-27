@@ -176,6 +176,30 @@ TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
     EXPECT_EQ(persisted->applied, saved);
 }
 
+TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "Config/user-settings.scm"};
+    ScreenResolution const desktop{1920, 1080};
+    PlayerSettings settings;
+    ASSERT_TRUE(settings.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
+    auto edited{settings.applied()};
+    edited.controls.bindings = std::vector<KeyBinding>{{"Starfox.Boost.KeyboardMouse", "B"},
+                                                       {"Starfox.FirePrimary.Gamepad", ""}};
+    auto saved{settings.save_category(GameSettingCategory::Controls, edited, settings.applied())};
+    ASSERT_TRUE(saved) << saved.error();
+    auto loaded{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
+    ASSERT_TRUE(loaded) << loaded.error();
+    EXPECT_EQ(loaded->applied.controls.bindings, edited.controls.bindings);
+
+    settings.apply(edited.controls);
+    edited.controls.bindings->clear();
+    saved = settings.save_category(GameSettingCategory::Controls, edited, settings.applied());
+    ASSERT_TRUE(saved) << saved.error();
+    loaded = read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop);
+    ASSERT_TRUE(loaded) << loaded.error();
+    EXPECT_EQ(loaded->applied.controls.bindings, edited.controls.bindings);
+}
+
 TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     TemporaryLevelDirectory directory;
     std::filesystem::path const scripts{IOJ_LEVEL_SCRIPTS};
