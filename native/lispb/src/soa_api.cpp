@@ -227,20 +227,6 @@ class SoaApiLowering : public CppIRBuilder {
             result.add(header_function(add_function(function))).new_lines(1);
         }
 
-        auto mapping = [&](std::string_view name,
-                           CppTypeId argument_type,
-                           std::string_view argument,
-                           std::vector<Syntax> const& values) {
-            FunctionDefinition const function{
-                .name = this->name(name),
-                .return_type = intern_type("decltype(auto)"),
-                .parameters = {parameter(argument_type, argument), parameter("auto&&", "func")},
-                .implementation = {.kind = FunctionImplementationKind::body,
-                                   .body = {return_stmt(call(this->name("func"), values))}},
-                .receiver = FunctionReceiver::static_,
-                .flags = {.define_in_header = true}};
-            result.add(header_function(add_function(function))).new_lines(1);
-        };
         auto mapped = [&](auto&& self, DeclarationHandle current) -> bool {
             for (auto member : ctx.declarations.items(soas.members[current])) {
                 if (!members.equivalent_member[member] ||
@@ -251,72 +237,38 @@ class SoaApiLowering : public CppIRBuilder {
             }
             return soas.equivalent_type[current].has_value();
         };
-        bool grouped{};
-        std::vector<CppTypeId> logical_types;
-        std::vector<Syntax> logical_columns;
-        auto collect = [&](auto&& self, DeclarationHandle current, Expr source) -> void {
-            for (auto member : ctx.declarations.items(soas.members[current])) {
-                auto local{ctx.for_declaration(current)};
-                auto name{ctx.text(members.name[member])};
-                auto type{members.type[member]};
-                if (members.kind[member] == SoaMemberKind::nested) {
-                    auto child{local.nested_declaration(member)};
-                    name = "view_" + name;
-                    if (!mapped(mapped, child)) {
-                        self(self, child, member_call(source, name));
-                        continue;
-                    }
-                    grouped = true;
-                    local.module = ctx.for_declaration(child).module;
-                    type = *soas.equivalent_type[child];
-                }
-                logical_types.push_back(local.resolve(type));
-                logical_columns.push_back(member_call(source, name));
-            }
-        };
-        collect(collect, schema, named("source"));
-        std::vector<CppTypeId> shapes{named_type("column_types")};
-        auto const equivalent{mapped(mapped, schema)};
-        if (grouped || equivalent) {
-            if (!grouped) {
-                logical_types.clear();
-            }
-            shapes.push_back(template_type(
-                named_type("ioj::soa_storage_detail::ColumnTypes", NameOrigin::global),
-                logical_types));
-            if (grouped) {
-                mapping("logical_columns", intern_type("auto const&"), "source", logical_columns);
-            }
-            if (equivalent) {
-                shapes.push_back(named_type("equivalent_type"));
-                std::vector<Syntax> values;
-                auto flatten = [&](auto&& self, DeclarationHandle current, Expr parent) -> void {
-                    for (auto member : ctx.declarations.items(soas.members[current])) {
-                        auto value{member_access(parent, *members.equivalent_member[member])};
-                        if (members.equivalent_accessor[member]) {
-                            value = call(value);
-                        }
-                        if (members.kind[member] == SoaMemberKind::nested) {
-                            self(self,
-                                 ctx.for_declaration(current).nested_declaration(member),
-                                 value);
-                        } else {
-                            values.push_back(value);
-                        }
-                    }
-                };
-                flatten(flatten, schema, named("value"));
-                mapping("equivalent_values",
-                        decorate_type(named_type("equivalent_type"), "", " const&"),
-                        "value",
-                        values);
-            }
+        if (mapped(mapped, schema)) {
             result
-                .add(using_declaration(store_text("row_types"),
-                                       template_type(named_type("ioj::soa_storage_detail::RowTypes",
-                                                                NameOrigin::global),
-                                                     shapes)))
+                .add(using_declaration(store_text("writable_equivalent"),
+                                       named_type("equivalent_type")))
                 .new_lines(1);
+            std::vector<Syntax> values;
+            auto flatten = [&](auto&& self, DeclarationHandle current, Expr parent) -> void {
+                for (auto member : ctx.declarations.items(soas.members[current])) {
+                    auto value{member_access(parent, *members.equivalent_member[member])};
+                    if (members.equivalent_accessor[member]) {
+                        value = call(value);
+                    }
+                    if (members.kind[member] == SoaMemberKind::nested) {
+                        self(self, ctx.for_declaration(current).nested_declaration(member), value);
+                    } else {
+                        values.push_back(value);
+                    }
+                }
+            };
+            flatten(flatten, schema, named("value"));
+            FunctionDefinition const function{
+                .name = this->name("equivalent_values"),
+                .return_type = intern_type("decltype(auto)"),
+                .parameters = {parameter(
+                                   decorate_type(named_type("equivalent_type"), "", " const&"),
+                                   "value"),
+                               parameter("auto&&", "func")},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {return_stmt(call(this->name("func"), values))}},
+                .receiver = FunctionReceiver::static_,
+                .flags = {.define_in_header = true}};
+            result.add(header_function(add_function(function))).new_lines(1);
         }
         return result.build();
     }

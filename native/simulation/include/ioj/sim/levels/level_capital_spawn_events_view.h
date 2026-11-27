@@ -5,8 +5,6 @@
 
 #include "ioj/constrained_numbers.h"
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/rotator_types.h"
 #include "ioj/rotators3f_view.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_ref.h"
@@ -26,22 +24,20 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<LevelEntityRef,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    ::ioj::Team,
-                                                    Health,
-                                                    ioj::NonNegativeFinite<float>,
-                                                    ioj::NonNegativeFinite<float>>;
+using Columns =
+    soa_storage_detail::SchemaColumns<LevelEntityRef,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<rotators3f::Schema>,
+                                      ::ioj::Team,
+                                      Health,
+                                      ioj::NonNegativeFinite<float>,
+                                      ioj::NonNegativeFinite<float>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -59,36 +55,14 @@ struct Schema
                     source.fighter_spawn_cooldowns());
     }
     auto entity_indices(this ColumnReceiver auto&& self) { return column_at<0>(self); }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 1>(self);
-    }
-    auto view_rotations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::rotators3f::Schema, 4>(self);
-    }
-    auto teams(this ColumnReceiver auto&& self) { return column_at<7>(self); }
-    auto healths(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_rotations(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto healths(this ColumnReceiver auto&& self) { return column_at<4>(self); }
     auto initial_fighter_spawn_delays(this ColumnReceiver auto&& self) {
-        return column_at<9>(self);
+        return column_at<5>(self);
     }
-    auto fighter_spawn_cooldowns(this ColumnReceiver auto&& self) { return column_at<10>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.entity_indices(),
-                    source.view_locations(),
-                    source.view_rotations(),
-                    source.teams(),
-                    source.healths(),
-                    source.initial_fighter_spawn_delays(),
-                    source.fighter_spawn_cooldowns());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<ioj::sim::LevelEntityRef,
-                                             Vector3f,
-                                             Rotator3f,
-                                             ::ioj::Team,
-                                             Health,
-                                             ioj::NonNegativeFinite<float>,
-                                             ioj::NonNegativeFinite<float>>>;
+    auto fighter_spawn_cooldowns(this ColumnReceiver auto&& self) { return column_at<6>(self); }
 };
 
 /* **************************************** */

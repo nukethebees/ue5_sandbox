@@ -19,12 +19,13 @@ using ioj::soa_storage_detail::column_at;
 using ioj::soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = ioj::soa_storage_detail::ColumnPointers<RestrictedLeaf>;
+using Columns = ioj::soa_storage_detail::SchemaColumns<RestrictedLeaf>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : ioj::soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.restricted());

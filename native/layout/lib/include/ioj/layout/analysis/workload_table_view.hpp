@@ -27,27 +27,28 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
-                                                    RowRange,
-                                                    std::uint64_t,
-                                                    std::uint64_t,
-                                                    PayloadFootprint,
-                                                    PayloadFootprint,
-                                                    RegionFootprint,
-                                                    RegionFootprint,
-                                                    CacheCapacityAnalysis,
-                                                    PackedAccessWaste,
-                                                    std::uint8_t,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>>;
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  RowRange,
+                                                  std::uint64_t,
+                                                  std::uint64_t,
+                                                  PayloadFootprint,
+                                                  PayloadFootprint,
+                                                  RegionFootprint,
+                                                  RegionFootprint,
+                                                  CacheCapacityAnalysis,
+                                                  PackedAccessWaste,
+                                                  std::uint8_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.analysis(),

@@ -21,12 +21,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<EntityId, std::int32_t, EntityId>;
+using Columns = soa_storage_detail::SchemaColumns<EntityId, std::int32_t, EntityId>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.damaged_entities(), source.damage_amounts(), source.instigators());

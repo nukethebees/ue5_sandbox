@@ -72,9 +72,11 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .new_lines(1)
             .add(using_import(named_type("ioj::soa_storage_detail::column_at", NameOrigin::global)))
             .new_lines(2)
-            .append(section_header("Column pointers"))
+            .append(section_header("Columns"))
             .new_lines(1)
-            .add(column_pointers_alias(model))
+            .add(schema_columns(ctx, model.schema))
+            .new_lines(1)
+            .add(using_declaration(store_text("Pointers"), named_type("Columns::pointers")))
             .new_lines(2)
             .add(schema_node(ctx, model))
             .new_lines(2)
@@ -158,17 +160,25 @@ class SingleAllocationEmitter : public CppIRBuilder {
                          line_comment(title),
                          block_comment("****************************************")});
     }
-    auto column_pointers_alias(SingleAllocationModel const& model) -> NodeId {
+    auto schema_columns(LoweringContext& ctx, DeclarationHandle schema) -> NodeId {
+        auto const& members{ctx.declarations.soa_members};
         std::vector<CppTypeId> types;
-        for (auto const& column : model.columns) {
-            types.push_back(column.type);
+        for (auto member : ctx.declarations.items(ctx.declarations.soas.members[schema])) {
+            if (members.kind[member] == SoaMemberKind::nested) {
+                auto const child{ctx.for_declaration(schema).nested_declaration(member)};
+                types.push_back(template_type(
+                    named_type("ioj::soa_storage_detail::NestedColumn", NameOrigin::global),
+                    {named_type(schema_namespace(ctx, child) + "::Schema", NameOrigin::global)}));
+            } else {
+                types.push_back(ctx.for_declaration(schema).resolve(members.type[member]));
+            }
         }
         return using_declaration(
-            store_text("Pointers"),
+            store_text("Columns"),
             template_type(
-                named_type("ioj::soa_storage_detail::ColumnPointers",
+                named_type("ioj::soa_storage_detail::SchemaColumns",
                            NameOrigin::global,
-                           {dependency("ColumnPointers", "ioj/single_allocation/column_types.h")}),
+                           {dependency("SchemaColumns", "ioj/single_allocation/column_types.h")}),
                 types));
     }
     auto schema_node(LoweringContext& ctx, SingleAllocationModel const& model) -> NodeId {
@@ -207,22 +217,15 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                       type_template_parameter(store_text("Func"))})};
         auto const schema{model.schema};
         auto const& members{ctx.declarations.soa_members};
-        auto const& selected{model.columns};
         auto children{node_list()};
         children.add(header_function(add_function(function))).new_lines(1);
         std::size_t index{};
         for (auto member : ctx.declarations.items(ctx.declarations.soas.members[schema])) {
-            auto name{ctx.text(members.name[member])};
-            auto const nested{members.kind[member] == SoaMemberKind::nested};
-            std::vector<Syntax> args;
-            if (nested) {
-                auto const child{ctx.for_declaration(schema).nested_declaration(member)};
-                args.push_back(type_reference(
-                    named_type(schema_namespace(ctx, child) + "::Schema", NameOrigin::global)));
-                name = "view_" + name;
-            }
-            args.push_back(literal(std_types().size_t, std::to_string(index)));
-            auto const access{template_call(this->name("column_at"), args, {named("self")})};
+            auto const name{(members.kind[member] == SoaMemberKind::nested ? "view_" : "") +
+                            ctx.text(members.name[member])};
+            auto const access{template_call(this->name("column_at"),
+                                            {literal(std_types().size_t, std::to_string(index))},
+                                            {named("self")})};
             FunctionDefinition const accessor{
                 .name = this->name(name),
                 .return_type = intern_type("auto"),
@@ -233,9 +236,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 .flags = {.define_in_header = true},
                 .formatting = {.body_layout = FunctionBodyLayout::compact}};
             children.add(header_function(add_function(accessor))).new_lines(1);
-            do {
-                ++index;
-            } while (index < selected.size() && selected[index].member == members.name[member]);
+            ++index;
         }
         children.append(schema_rows(ctx, schema));
         auto const base{
@@ -246,7 +247,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                            named_type("ConstView"),
                            named_type("CompactView"),
                            named_type("CompactConstView"),
-                           named_type("Pointers")})};
+                           named_type("Columns")})};
         return add_record({.name = this->name(store_text("Schema")),
                            .children = children.build(),
                            .bases = {base},

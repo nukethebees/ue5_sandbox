@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/single_allocation/column_types.h"
@@ -25,60 +24,42 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<EntityId,
-                                                    std::uint32_t,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    ::ioj::Team,
-                                                    std::int16_t,
-                                                    std::int16_t,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    fighters::NavigationRiskCode,
-                                                    fighters::NavigationScanCount,
-                                                    fighters::AvoidanceChoice,
-                                                    fighters::NavigationScanCount,
-                                                    std::int16_t,
-                                                    EntityId,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    std::uint8_t>;
+using Columns =
+    soa_storage_detail::SchemaColumns<EntityId,
+                                      std::uint32_t,
+                                      float,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      float,
+                                      ::ioj::Team,
+                                      std::int16_t,
+                                      std::int16_t,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      fighters::NavigationRiskCode,
+                                      fighters::NavigationScanCount,
+                                      fighters::AvoidanceChoice,
+                                      fighters::NavigationScanCount,
+                                      std::int16_t,
+                                      EntityId,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      float,
+                                      float,
+                                      float,
+                                      std::uint8_t>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -144,122 +125,42 @@ struct Schema
     auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
     auto integral_biases(this ColumnReceiver auto&& self) { return column_at<1>(self); }
     auto float_biases(this ColumnReceiver auto&& self) { return column_at<2>(self); }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 3>(self);
-    }
-    auto view_desired_move_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 6>(self);
-    }
-    auto view_aim_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 9>(self);
-    }
-    auto view_planned_aim_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 12>(self);
-    }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto view_desired_move_locations(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto view_aim_directions(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto view_planned_aim_directions(this ColumnReceiver auto&& self) { return column_at<6>(self); }
     auto view_desired_aiming_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 15>(self);
+        return column_at<7>(self);
     }
-    auto view_movement_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 18>(self);
-    }
-    auto view_velocities(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 21>(self);
-    }
-    auto move_distances(this ColumnReceiver auto&& self) { return column_at<24>(self); }
-    auto speeds(this ColumnReceiver auto&& self) { return column_at<25>(self); }
-    auto teams(this ColumnReceiver auto&& self) { return column_at<26>(self); }
+    auto view_movement_directions(this ColumnReceiver auto&& self) { return column_at<8>(self); }
+    auto view_velocities(this ColumnReceiver auto&& self) { return column_at<9>(self); }
+    auto move_distances(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto speeds(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<12>(self); }
     auto navigation_update_countdowns_remaining_ticks(this ColumnReceiver auto&& self) {
-        return column_at<27>(self);
+        return column_at<13>(self);
     }
     auto navigation_update_countdowns_periods(this ColumnReceiver auto&& self) {
-        return column_at<28>(self);
+        return column_at<14>(self);
     }
-    auto view_separation_steering(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 29>(self);
-    }
-    auto navigation_risk_tiers(this ColumnReceiver auto&& self) { return column_at<32>(self); }
+    auto view_separation_steering(this ColumnReceiver auto&& self) { return column_at<15>(self); }
+    auto navigation_risk_tiers(this ColumnReceiver auto&& self) { return column_at<16>(self); }
     auto navigation_lower_risk_scan_counts(this ColumnReceiver auto&& self) {
-        return column_at<33>(self);
+        return column_at<17>(self);
     }
-    auto avoidance_choice_indices(this ColumnReceiver auto&& self) { return column_at<34>(self); }
+    auto avoidance_choice_indices(this ColumnReceiver auto&& self) { return column_at<18>(self); }
     auto avoidance_clear_scan_counts(this ColumnReceiver auto&& self) {
-        return column_at<35>(self);
+        return column_at<19>(self);
     }
-    auto attack_cooldowns(this ColumnReceiver auto&& self) { return column_at<36>(self); }
-    auto target_ids(this ColumnReceiver auto&& self) { return column_at<37>(self); }
-    auto view_target_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 38>(self);
-    }
-    auto view_target_velocities(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 41>(self);
-    }
-    auto intercept_times(this ColumnReceiver auto&& self) { return column_at<44>(self); }
-    auto target_distance_sq(this ColumnReceiver auto&& self) { return column_at<45>(self); }
-    auto target_distances(this ColumnReceiver auto&& self) { return column_at<46>(self); }
-    auto target_radii(this ColumnReceiver auto&& self) { return column_at<47>(self); }
-    auto carrier_launched(this ColumnReceiver auto&& self) { return column_at<48>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.entity_ids(),
-                    source.integral_biases(),
-                    source.float_biases(),
-                    source.view_locations(),
-                    source.view_desired_move_locations(),
-                    source.view_aim_directions(),
-                    source.view_planned_aim_directions(),
-                    source.view_desired_aiming_directions(),
-                    source.view_movement_directions(),
-                    source.view_velocities(),
-                    source.move_distances(),
-                    source.speeds(),
-                    source.teams(),
-                    source.navigation_update_countdowns_remaining_ticks(),
-                    source.navigation_update_countdowns_periods(),
-                    source.view_separation_steering(),
-                    source.navigation_risk_tiers(),
-                    source.navigation_lower_risk_scan_counts(),
-                    source.avoidance_choice_indices(),
-                    source.avoidance_clear_scan_counts(),
-                    source.attack_cooldowns(),
-                    source.target_ids(),
-                    source.view_target_locations(),
-                    source.view_target_velocities(),
-                    source.intercept_times(),
-                    source.target_distance_sq(),
-                    source.target_distances(),
-                    source.target_radii(),
-                    source.carrier_launched());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<EntityId,
-                                             std::uint32_t,
-                                             float,
-                                             Vector3f,
-                                             Vector3f,
-                                             Vector3f,
-                                             Vector3f,
-                                             Vector3f,
-                                             Vector3f,
-                                             Vector3f,
-                                             float,
-                                             float,
-                                             ::ioj::Team,
-                                             std::int16_t,
-                                             std::int16_t,
-                                             Vector3f,
-                                             ioj::sim::fighters::NavigationRiskCode,
-                                             ioj::sim::fighters::NavigationScanCount,
-                                             ioj::sim::fighters::AvoidanceChoice,
-                                             ioj::sim::fighters::NavigationScanCount,
-                                             std::int16_t,
-                                             EntityId,
-                                             Vector3f,
-                                             Vector3f,
-                                             float,
-                                             float,
-                                             float,
-                                             float,
-                                             std::uint8_t>>;
+    auto attack_cooldowns(this ColumnReceiver auto&& self) { return column_at<20>(self); }
+    auto target_ids(this ColumnReceiver auto&& self) { return column_at<21>(self); }
+    auto view_target_locations(this ColumnReceiver auto&& self) { return column_at<22>(self); }
+    auto view_target_velocities(this ColumnReceiver auto&& self) { return column_at<23>(self); }
+    auto intercept_times(this ColumnReceiver auto&& self) { return column_at<24>(self); }
+    auto target_distance_sq(this ColumnReceiver auto&& self) { return column_at<25>(self); }
+    auto target_distances(this ColumnReceiver auto&& self) { return column_at<26>(self); }
+    auto target_radii(this ColumnReceiver auto&& self) { return column_at<27>(self); }
+    auto carrier_launched(this ColumnReceiver auto&& self) { return column_at<28>(self); }
 };
 
 /* **************************************** */

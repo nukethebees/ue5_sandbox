@@ -30,21 +30,22 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers =
-    soa_storage_detail::ColumnPointers<lispb::schema::TypeId,
-                                       std::optional<ioj::layout::IntegerDomain>,
-                                       std::optional<ioj::layout::EnumDomain>,
-                                       std::optional<ioj::layout::OptionalSentinelEncoding>,
-                                       std::optional<ioj::layout::OptionalPresenceEncoding>,
-                                       std::optional<ioj::layout::QuantizedEncoding>,
-                                       std::optional<ioj::layout::FixedEncoding>,
-                                       std::optional<ioj::layout::FloatEncoding>,
-                                       std::optional<ioj::layout::VarintEncoding>>;
+using Columns =
+    soa_storage_detail::SchemaColumns<lispb::schema::TypeId,
+                                      std::optional<ioj::layout::IntegerDomain>,
+                                      std::optional<ioj::layout::EnumDomain>,
+                                      std::optional<ioj::layout::OptionalSentinelEncoding>,
+                                      std::optional<ioj::layout::OptionalPresenceEncoding>,
+                                      std::optional<ioj::layout::QuantizedEncoding>,
+                                      std::optional<ioj::layout::FixedEncoding>,
+                                      std::optional<ioj::layout::FloatEncoding>,
+                                      std::optional<ioj::layout::VarintEncoding>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.type(),

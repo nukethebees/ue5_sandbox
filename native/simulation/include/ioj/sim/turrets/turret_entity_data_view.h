@@ -4,8 +4,6 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
-#include "ioj/rotator_types.h"
 #include "ioj/rotators3f_view.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
@@ -26,34 +24,26 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<EntityId,
-                                                    std::uint32_t,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    ::ioj::Team,
-                                                    std::int16_t,
-                                                    std::int32_t,
-                                                    std::int16_t,
-                                                    std::int16_t,
-                                                    EntityId,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float>;
+using Columns =
+    soa_storage_detail::SchemaColumns<EntityId,
+                                      std::uint32_t,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<rotators3f::Schema>,
+                                      ::ioj::Team,
+                                      std::int16_t,
+                                      std::int32_t,
+                                      std::int16_t,
+                                      std::int16_t,
+                                      EntityId,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -87,61 +77,21 @@ struct Schema
     }
     auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
     auto integral_biases(this ColumnReceiver auto&& self) { return column_at<1>(self); }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 2>(self);
-    }
-    auto view_fire_point_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 5>(self);
-    }
-    auto view_rotations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::rotators3f::Schema, 8>(self);
-    }
-    auto teams(this ColumnReceiver auto&& self) { return column_at<11>(self); }
-    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<12>(self); }
-    auto laser_damages(this ColumnReceiver auto&& self) { return column_at<13>(self); }
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto view_fire_point_locations(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto view_rotations(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<5>(self); }
+    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<6>(self); }
+    auto laser_damages(this ColumnReceiver auto&& self) { return column_at<7>(self); }
     auto target_refresh_countdowns_periods(this ColumnReceiver auto&& self) {
-        return column_at<14>(self);
+        return column_at<8>(self);
     }
     auto target_refresh_countdowns_remaining_ticks(this ColumnReceiver auto&& self) {
-        return column_at<15>(self);
+        return column_at<9>(self);
     }
-    auto target_ids(this ColumnReceiver auto&& self) { return column_at<16>(self); }
-    auto view_target_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 17>(self);
-    }
-    auto view_target_velocities(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 20>(self);
-    }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.entity_ids(),
-                    source.integral_biases(),
-                    source.view_locations(),
-                    source.view_fire_point_locations(),
-                    source.view_rotations(),
-                    source.teams(),
-                    source.laser_cooldowns(),
-                    source.laser_damages(),
-                    source.target_refresh_countdowns_periods(),
-                    source.target_refresh_countdowns_remaining_ticks(),
-                    source.target_ids(),
-                    source.view_target_locations(),
-                    source.view_target_velocities());
-    }
-    using row_types =
-        ioj::soa_storage_detail::RowTypes<column_types,
-                                          ioj::soa_storage_detail::ColumnTypes<EntityId,
-                                                                               std::uint32_t,
-                                                                               Vector3f,
-                                                                               Vector3f,
-                                                                               Rotator3f,
-                                                                               ::ioj::Team,
-                                                                               std::int16_t,
-                                                                               std::int32_t,
-                                                                               std::int16_t,
-                                                                               std::int16_t,
-                                                                               EntityId,
-                                                                               Vector3f,
-                                                                               Vector3f>>;
+    auto target_ids(this ColumnReceiver auto&& self) { return column_at<10>(self); }
+    auto view_target_locations(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto view_target_velocities(this ColumnReceiver auto&& self) { return column_at<12>(self); }
 };
 
 /* **************************************** */

@@ -29,36 +29,36 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers =
-    soa_storage_detail::ColumnPointers<AnalysisId,
-                                       lispb::schema::ChildOccurrenceId,
-                                       std::string_view,
-                                       std::optional<lispb::schema::TypeId>,
-                                       lispb::StringId,
-                                       lispb::codegen::PackedFieldKind,
-                                       std::uint8_t,
-                                       std::uint32_t,
-                                       std::uint8_t,
-                                       std::uint32_t,
-                                       std::uint8_t,
-                                       std::uint64_t,
-                                       std::optional<std::uint64_t>,
-                                       std::optional<std::uint64_t>,
-                                       std::optional<std::int64_t>,
-                                       std::optional<std::int64_t>,
-                                       std::optional<lispb::codegen::PackedIntegerValue>,
-                                       std::optional<lispb::codegen::PackedIntegerValue>,
-                                       std::optional<std::uint64_t>,
-                                       std::uint64_t,
-                                       std::optional<std::uint64_t>,
-                                       std::optional<std::uint32_t>,
-                                       std::optional<std::uint64_t>,
-                                       RowRange>;
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  lispb::schema::ChildOccurrenceId,
+                                                  std::string_view,
+                                                  std::optional<lispb::schema::TypeId>,
+                                                  lispb::StringId,
+                                                  lispb::codegen::PackedFieldKind,
+                                                  std::uint8_t,
+                                                  std::uint32_t,
+                                                  std::uint8_t,
+                                                  std::uint32_t,
+                                                  std::uint8_t,
+                                                  std::uint64_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::int64_t>,
+                                                  std::optional<std::int64_t>,
+                                                  std::optional<lispb::codegen::PackedIntegerValue>,
+                                                  std::optional<lispb::codegen::PackedIntegerValue>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::uint64_t,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint32_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  RowRange>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),

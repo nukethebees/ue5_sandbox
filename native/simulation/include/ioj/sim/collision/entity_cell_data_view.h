@@ -3,15 +3,11 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
-#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/sim/collision/cell_coords_view.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
-
-#include <cstdint>
 
 namespace ioj::sim::collision {
 namespace entity_cell_data {
@@ -25,24 +21,18 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    std::int32_t,
-                                                    std::int32_t,
-                                                    std::int32_t,
-                                                    std::int32_t,
-                                                    std::int32_t,
-                                                    std::int32_t,
-                                                    EntityId>;
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<cell_coords::Schema>,
+                                      soa_storage_detail::NestedColumn<cell_coords::Schema>,
+                                      EntityId>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& min_points_view{source.view_min_points()};
@@ -63,33 +53,11 @@ struct Schema
                     max_cells_view.zs(),
                     source.entity_ids());
     }
-    auto view_min_points(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 0>(self);
-    }
-    auto view_max_points(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 3>(self);
-    }
-    auto view_min_cells(this ColumnReceiver auto&& self) {
-        return column_at<ioj::sim::collision::cell_coords::Schema, 6>(self);
-    }
-    auto view_max_cells(this ColumnReceiver auto&& self) {
-        return column_at<ioj::sim::collision::cell_coords::Schema, 9>(self);
-    }
-    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<12>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.view_min_points(),
-                    source.view_max_points(),
-                    source.view_min_cells(),
-                    source.view_max_cells(),
-                    source.entity_ids());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<Vector3f,
-                                             Vector3f,
-                                             ioj::sim::collision::CellCoord,
-                                             ioj::sim::collision::CellCoord,
-                                             EntityId>>;
+    auto view_min_points(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_max_points(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_min_cells(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto view_max_cells(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto entity_ids(this ColumnReceiver auto&& self) { return column_at<4>(self); }
 };
 
 /* **************************************** */

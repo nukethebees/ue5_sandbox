@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
@@ -23,13 +22,18 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::
-    ColumnPointers<EntityId, float, float, float, float, std::int16_t, std::int32_t>;
+using Columns =
+    soa_storage_detail::SchemaColumns<EntityId,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      float,
+                                      std::int16_t,
+                                      std::int32_t>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -42,23 +46,10 @@ struct Schema
                     source.next_fire_point_indices());
     }
     auto entity_ids(this ColumnReceiver auto&& self) { return column_at<0>(self); }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 1>(self);
-    }
-    auto yaws(this ColumnReceiver auto&& self) { return column_at<4>(self); }
-    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<5>(self); }
-    auto next_fire_point_indices(this ColumnReceiver auto&& self) { return column_at<6>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.entity_ids(),
-                    source.view_locations(),
-                    source.yaws(),
-                    source.laser_cooldowns(),
-                    source.next_fire_point_indices());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::
-            ColumnTypes<EntityId, Vector3f, float, std::int16_t, std::int32_t>>;
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto yaws(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto laser_cooldowns(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto next_fire_point_indices(this ColumnReceiver auto&& self) { return column_at<4>(self); }
 };
 
 /* **************************************** */

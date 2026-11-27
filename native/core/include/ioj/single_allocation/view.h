@@ -33,13 +33,6 @@ void validate_column_sizes([[maybe_unused]] std::uint32_t const count,
 // reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.
 // Accessors trust this contract; they do not detect stale borrows.
 
-struct NoEquivalentRow {};
-
-template <typename Physical,
-          typename Logical = ColumnTypes<>,
-          typename Equivalent = NoEquivalentRow>
-struct RowTypes {};
-
 template <typename Column, typename T>
 void assign_column(Column column, std::uint32_t index, T const& value) {
     if constexpr (requires { column.set(index, value); }) {
@@ -57,24 +50,27 @@ void assign_row(View const& view, std::uint32_t index, Ts const&... values) {
         auto const& resolved{view.resolve()};
         auto const& [... columns]{resolved.physical_pointers()};
         ((columns[index] = values), ...);
-    } else if constexpr (requires {
-                             Schema::equivalent_values(values..., [](auto const&...) {});
-                         }) {
+    } else if constexpr (std::is_same_v<ColumnTypes<Ts...>,
+                                        ColumnTypes<typename Schema::writable_equivalent>>) {
         Schema::equivalent_values(
             values..., [&](auto const&... fields) { assign_row(view, index, fields...); });
     } else {
-        Schema::logical_columns(
-            view, [&](auto... columns) { (assign_column(columns, index, values), ...); });
+        [&]<std::size_t... I>(std::index_sequence<I...>) {
+            (assign_column(Schema::columns::template logical_column<I>(view), index, values), ...);
+        }(std::index_sequence_for<Ts...>{});
     }
 }
 
-template <typename Self, typename Base, typename Rows = typename Base::soa_schema::row_types>
+template <typename Self,
+          typename Base,
+          typename Physical = typename Base::soa_schema::columns::physical,
+          typename Logical = typename Base::soa_schema::columns::logical,
+          typename Equivalent = typename Base::soa_schema::writable_equivalent>
 struct ViewRowOperations;
 
 template <typename Self, typename Base, typename... Ts, typename... Logical, typename Equivalent>
-struct ViewRowOperations<Self,
-                         Base,
-                         RowTypes<ColumnTypes<Ts...>, ColumnTypes<Logical...>, Equivalent>> : Base {
+struct ViewRowOperations<Self, Base, ColumnTypes<Ts...>, ColumnTypes<Logical...>, Equivalent>
+    : Base {
     using Base::Base;
     using implementation_type = ViewRowOperations;
     static constexpr bool generated_set{true};
@@ -82,7 +78,7 @@ struct ViewRowOperations<Self,
         assign_row(static_cast<Self const&>(*this), index, values...);
     }
     void set(std::uint32_t index, Logical... values) const
-        requires (sizeof...(Logical) != 0)
+        requires (!std::is_same_v<ColumnTypes<Ts...>, ColumnTypes<Logical...>>)
     {
         assign_row(static_cast<Self const&>(*this), index, values...);
     }
@@ -136,23 +132,19 @@ struct ViewOperations : Schema {
 template <typename T>
 concept ColumnReceiver = std::is_lvalue_reference_v<T> || requires { typename T::const_view_type; };
 
-template <std::size_t Index>
-auto column_at(auto& source) {
-    return source.template column_at<Index>();
+template <std::size_t Index, typename Source>
+auto column_at(Source& source) {
+    return Source::soa_schema::columns::template column<Index>(source);
 }
 
-template <typename Child, std::size_t First>
-auto column_at(auto& source) {
-    return source.template nested_at<Child, First>();
-}
-
-template <class View, class ConstView, class Compact, class ConstCompact, class Pointers>
+template <class View, class ConstView, class Compact, class ConstCompact, class Columns>
 struct ViewTypes {
-    using pointer_types = Pointers;
-    using column_types = typename Pointers::template apply<ColumnTypes>;
-    using row_types = RowTypes<column_types>;
+    using columns = Columns;
+    using pointer_types = typename Columns::pointers;
+    using column_types = typename Columns::physical;
+    using writable_equivalent = NoEquivalentRow;
     static constexpr bool generated_set{false};
-    static constexpr bool has_strided_columns{Pointers::has_strided_columns};
+    static constexpr bool has_strided_columns{pointer_types::has_strided_columns};
     template <bool Const>
     using resolved_view_for = std::conditional_t<Const, ConstView, View>;
     template <bool Const>

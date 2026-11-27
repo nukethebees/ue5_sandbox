@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/math_types.h"
 #include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
@@ -22,13 +21,17 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::
-    ColumnPointers<LevelEntityRef, float, float, float, float, float, float, ::ioj::Team>;
+using Columns =
+    soa_storage_detail::SchemaColumns<LevelEntityRef,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      ::ioj::Team>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -43,23 +46,9 @@ struct Schema
                     source.teams());
     }
     auto entity_indices(this ColumnReceiver auto&& self) { return column_at<0>(self); }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 1>(self);
-    }
-    auto view_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 4>(self);
-    }
-    auto teams(this ColumnReceiver auto&& self) { return column_at<7>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.entity_indices(),
-                    source.view_locations(),
-                    source.view_directions(),
-                    source.teams());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::
-            ColumnTypes<ioj::sim::LevelEntityRef, Vector3f, Vector3f, ::ioj::Team>>;
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_directions(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto teams(this ColumnReceiver auto&& self) { return column_at<3>(self); }
 };
 
 /* **************************************** */

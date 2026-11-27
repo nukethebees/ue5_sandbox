@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f_view.h"
@@ -20,12 +19,15 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, float, float>;
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& starts_view{source.view_starts()};
@@ -37,18 +39,8 @@ struct Schema
                     ends_view.ys(),
                     ends_view.zs());
     }
-    auto view_starts(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 0>(self);
-    }
-    auto view_ends(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 3>(self);
-    }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.view_starts(), source.view_ends());
-    }
-    using row_types =
-        ioj::soa_storage_detail::RowTypes<column_types,
-                                          ioj::soa_storage_detail::ColumnTypes<Vector3f, Vector3f>>;
+    auto view_starts(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_ends(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */

@@ -38,7 +38,11 @@ void validate_source(Source const& source) {
     }
 }
 
-template <typename Self, typename Base, typename Rows = typename Base::soa_schema::row_types>
+template <typename Self,
+          typename Base,
+          typename Physical = typename Base::soa_schema::columns::physical,
+          typename Logical = typename Base::soa_schema::columns::logical,
+          typename Equivalent = typename Base::soa_schema::writable_equivalent>
 struct OwnerRowOperations;
 
 template <typename Self, typename... Ts>
@@ -62,9 +66,7 @@ auto append_row(Self& self, Ts... values) -> std::uint32_t {
 }
 
 template <typename Self, typename Base, typename... Ts, typename... Logical, typename Equivalent>
-struct OwnerRowOperations<Self,
-                          Base,
-                          RowTypes<ColumnTypes<Ts...>, ColumnTypes<Logical...>, Equivalent>>
+struct OwnerRowOperations<Self, Base, ColumnTypes<Ts...>, ColumnTypes<Logical...>, Equivalent>
     : Base {
     using implementation_type = OwnerRowOperations;
     using Base::Base;
@@ -72,7 +74,7 @@ struct OwnerRowOperations<Self,
         set_owner_row(static_cast<Self&>(*this), index, values...);
     }
     void set(std::uint32_t index, Logical... values)
-        requires (sizeof...(Logical) != 0)
+        requires (!std::is_same_v<ColumnTypes<Ts...>, ColumnTypes<Logical...>>)
     {
         set_owner_row(static_cast<Self&>(*this), index, values...);
     }
@@ -85,7 +87,7 @@ struct OwnerRowOperations<Self,
         return append_row(static_cast<Self&>(*this), values...);
     }
     auto add(Logical... values) -> std::uint32_t
-        requires (sizeof...(Logical) != 0)
+        requires (!std::is_same_v<ColumnTypes<Ts...>, ColumnTypes<Logical...>>)
     {
         return append_row(static_cast<Self&>(*this), values...);
     }

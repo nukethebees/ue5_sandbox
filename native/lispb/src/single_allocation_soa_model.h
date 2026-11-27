@@ -13,7 +13,6 @@ struct LoweringContext;
 struct PhysicalColumn {
     std::string name;
     CppTypeId type;
-    StringId member;
 };
 
 struct SingleAllocationModel {

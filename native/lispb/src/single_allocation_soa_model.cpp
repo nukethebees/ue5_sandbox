@@ -29,26 +29,22 @@ auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schem
     -> SingleAllocationModel {
     SingleAllocationModel model{schema, {}};
     std::set<std::string> names;
-    auto collect = [&](auto&& self,
-                       DeclarationHandle current,
-                       std::string const& prefix,
-                       StringId top) -> void {
+    auto collect = [&](auto&& self, DeclarationHandle current, std::string const& prefix) -> void {
         auto const local{ctx.for_declaration(current)};
         auto const& members{ctx.declarations.soa_members};
         for (auto member : ctx.declarations.items(ctx.declarations.soas.members[current])) {
             auto const name{prefix + ctx.text(members.name[member])};
-            auto const root_member{prefix.empty() ? members.name[member] : top};
             if (members.kind[member] == SoaMemberKind::nested) {
-                self(self, local.nested_declaration(member), name + "_", root_member);
+                self(self, local.nested_declaration(member), name + "_");
             } else {
                 if (!names.insert(name).second) {
                     throw std::invalid_argument{"Single-allocation column name collision: " + name};
                 }
-                model.columns.push_back({name, local.resolve(members.type[member]), root_member});
+                model.columns.push_back({name, local.resolve(members.type[member])});
             }
         }
     };
-    collect(collect, schema, "", {});
+    collect(collect, schema, "");
     return model;
 }
 

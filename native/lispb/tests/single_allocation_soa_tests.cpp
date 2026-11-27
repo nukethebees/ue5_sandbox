@@ -74,9 +74,9 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
     expect_contains_all(output,
                         {"equivalent_values(",
                          "func(value.x, value.y)",
-                         "logical_columns(",
+                         "NestedColumn<",
                          "source.view_points()",
-                         "RowTypes<"});
+                         "SchemaColumns<"});
 }
 
 auto schemas() -> std::string {
@@ -266,7 +266,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
                          ConflictingSoaModuleDeclaration,
-                         testing::Values("CompactView", "Pointers"));
+                         testing::Values("CompactView", "Pointers", "Columns"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(

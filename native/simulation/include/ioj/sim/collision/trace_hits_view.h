@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
 #include "ioj/sim/entities/entity_id.h"
@@ -23,13 +22,17 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::
-    ColumnPointers<float, float, float, EntityId, collision::StaticGeometryIndex, TraceHit>;
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      EntityId,
+                                      collision::StaticGeometryIndex,
+                                      TraceHit>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -40,24 +43,10 @@ struct Schema
                     source.static_geometry_indices(),
                     source.hits());
     }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 0>(self);
-    }
-    auto entities(this ColumnReceiver auto&& self) { return column_at<3>(self); }
-    auto static_geometry_indices(this ColumnReceiver auto&& self) { return column_at<4>(self); }
-    auto hits(this ColumnReceiver auto&& self) { return column_at<5>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.view_locations(),
-                    source.entities(),
-                    source.static_geometry_indices(),
-                    source.hits());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<Vector3f,
-                                             EntityId,
-                                             ioj::sim::collision::StaticGeometryIndex,
-                                             ioj::sim::TraceHit>>;
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto entities(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto static_geometry_indices(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto hits(this ColumnReceiver auto&& self) { return column_at<3>(self); }
 };
 
 /* **************************************** */

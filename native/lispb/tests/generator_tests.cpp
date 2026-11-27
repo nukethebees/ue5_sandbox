@@ -100,7 +100,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
          "Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)",
          "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>",
          "matrix_field(std::int32_t const row_index, std::int32_t const column_index)",
-         "ColumnPointers<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
+         "SchemaColumns<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
     EXPECT_FALSE(header.contains("CoreMinimal.h"));
 }
 

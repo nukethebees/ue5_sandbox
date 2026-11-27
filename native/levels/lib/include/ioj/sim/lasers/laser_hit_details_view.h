@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/math_types.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/column_types.h"
 #include "ioj/single_allocation/view.h"
@@ -21,13 +20,16 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers =
-    soa_storage_detail::ColumnPointers<float, float, float, float, float, float, LaserSource>;
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors3f::Schema>,
+                                      LaserSource>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
@@ -40,19 +42,9 @@ struct Schema
                     emission_directions_view.zs(),
                     source.sources());
     }
-    auto view_locations(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 0>(self);
-    }
-    auto view_emission_directions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::vectors3f::Schema, 3>(self);
-    }
-    auto sources(this ColumnReceiver auto&& self) { return column_at<6>(self); }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.view_locations(), source.view_emission_directions(), source.sources());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<Vector3f, Vector3f, ioj::sim::LaserSource>>;
+    auto view_locations(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_emission_directions(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto sources(this ColumnReceiver auto&& self) { return column_at<2>(self); }
 };
 
 /* **************************************** */

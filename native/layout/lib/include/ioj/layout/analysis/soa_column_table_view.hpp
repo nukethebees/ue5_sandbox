@@ -28,26 +28,27 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<AnalysisId,
-                                                    std::string_view,
-                                                    lispb::schema::TypeId,
-                                                    lispb::StringId,
-                                                    lispb::StringId,
-                                                    std::uint8_t,
-                                                    std::optional<ioj::layout::PhysicalFactId>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<std::uint64_t>,
-                                                    std::optional<ioj::layout::CacheLineTiling>>;
+using Columns = soa_storage_detail::SchemaColumns<AnalysisId,
+                                                  std::string_view,
+                                                  lispb::schema::TypeId,
+                                                  lispb::StringId,
+                                                  lispb::StringId,
+                                                  std::uint8_t,
+                                                  std::optional<ioj::layout::PhysicalFactId>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<std::uint64_t>,
+                                                  std::optional<ioj::layout::CacheLineTiling>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.parent(),

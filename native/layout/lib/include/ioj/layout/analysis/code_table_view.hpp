@@ -25,17 +25,18 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers =
-    soa_storage_detail::ColumnPointers<std::string_view,
-                                       std::uint8_t,
-                                       std::uint8_t,
-                                       std::optional<ioj::layout::EnumCodeValue>,
-                                       std::optional<lispb::codegen::PackedIntegerValue>>;
+using Columns =
+    soa_storage_detail::SchemaColumns<std::string_view,
+                                      std::uint8_t,
+                                      std::uint8_t,
+                                      std::optional<ioj::layout::EnumCodeValue>,
+                                      std::optional<lispb::codegen::PackedIntegerValue>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.name(),

@@ -47,12 +47,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<std::uint32_t>;
+using Columns = soa_storage_detail::SchemaColumns<std::uint32_t>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.count());
@@ -94,12 +95,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<PointerB*>;
+using Columns = soa_storage_detail::SchemaColumns<PointerB*>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.others());
@@ -131,12 +133,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<PointerA*>;
+using Columns = soa_storage_detail::SchemaColumns<PointerA*>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.others());
@@ -168,12 +171,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<MixedRecord*>;
+using Columns = soa_storage_detail::SchemaColumns<MixedRecord*>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.records());
@@ -209,12 +213,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<Pair, Node*>;
+using Columns = soa_storage_detail::SchemaColumns<Pair, Node*>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.pairs(), source.pointers());
@@ -247,12 +252,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+using Columns = soa_storage_detail::SchemaColumns<float, float, float>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys(), source.zs());
@@ -286,12 +292,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<OddBytes, OddBytes>;
+using Columns = soa_storage_detail::SchemaColumns<OddBytes, OddBytes>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.first(), source.second());
@@ -324,12 +331,15 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float, float, float, float, float>;
+using Columns =
+    soa_storage_detail::SchemaColumns<soa_storage_detail::NestedColumn<vectors::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors::Schema>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& starts_view{source.view_starts()};
@@ -341,12 +351,8 @@ struct Schema
                     ends_view.ys(),
                     ends_view.zs());
     }
-    auto view_starts(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::vectors::Schema, 0>(self);
-    }
-    auto view_ends(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::vectors::Schema, 3>(self);
-    }
+    auto view_starts(this ColumnReceiver auto&& self) { return column_at<0>(self); }
+    auto view_ends(this ColumnReceiver auto&& self) { return column_at<1>(self); }
 };
 
 /* **************************************** */
@@ -373,13 +379,16 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers =
-    soa_storage_detail::ColumnPointers<std::int32_t, float, float, float, float, float, float>;
+using Columns =
+    soa_storage_detail::SchemaColumns<std::int32_t,
+                                      soa_storage_detail::NestedColumn<vectors::Schema>,
+                                      soa_storage_detail::NestedColumn<vectors::Schema>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& positions_view{source.view_positions()};
@@ -393,12 +402,8 @@ struct Schema
                     velocities_view.zs());
     }
     auto values(this ColumnReceiver auto&& self) { return column_at<0>(self); }
-    auto view_positions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::vectors::Schema, 1>(self);
-    }
-    auto view_velocities(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::vectors::Schema, 4>(self);
-    }
+    auto view_positions(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto view_velocities(this ColumnReceiver auto&& self) { return column_at<2>(self); }
 };
 
 /* **************************************** */
@@ -425,23 +430,19 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<std::uint8_t,
-                                                    OddBytes,
-                                                    OddBytes,
-                                                    Aligned32,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    float,
-                                                    Aligned64,
-                                                    Aligned256>;
+using Columns =
+    soa_storage_detail::SchemaColumns<std::uint8_t,
+                                      soa_storage_detail::NestedColumn<odd_pairs::Schema>,
+                                      Aligned32,
+                                      soa_storage_detail::NestedColumn<vector_groups::Schema>,
+                                      Aligned64,
+                                      Aligned256>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& odd_view{source.view_odd()};
@@ -462,15 +463,11 @@ struct Schema
                     source.aligned256());
     }
     auto bytes(this ColumnReceiver auto&& self) { return column_at<0>(self); }
-    auto view_odd(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::odd_pairs::Schema, 1>(self);
-    }
-    auto aligned32(this ColumnReceiver auto&& self) { return column_at<3>(self); }
-    auto view_nested(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::vector_groups::Schema, 4>(self);
-    }
-    auto aligned64(this ColumnReceiver auto&& self) { return column_at<10>(self); }
-    auto aligned256(this ColumnReceiver auto&& self) { return column_at<11>(self); }
+    auto view_odd(this ColumnReceiver auto&& self) { return column_at<1>(self); }
+    auto aligned32(this ColumnReceiver auto&& self) { return column_at<2>(self); }
+    auto view_nested(this ColumnReceiver auto&& self) { return column_at<3>(self); }
+    auto aligned64(this ColumnReceiver auto&& self) { return column_at<4>(self); }
+    auto aligned256(this ColumnReceiver auto&& self) { return column_at<5>(self); }
 };
 
 /* **************************************** */
@@ -504,12 +501,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float>;
+using Columns = soa_storage_detail::SchemaColumns<float, float>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys());
@@ -522,11 +520,10 @@ struct Schema
         auto const& columns{self.view()};
         return equivalent_type{columns.xs()[index], columns.ys()[index]};
     }
+    using writable_equivalent = equivalent_type;
     static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
         return func(value.x, value.y);
     }
-    using row_types = ioj::soa_storage_detail::
-        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
@@ -576,12 +573,14 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, ApiMask, float, float>;
+using Columns = soa_storage_detail::
+    SchemaColumns<float, ApiMask, soa_storage_detail::NestedColumn<api_coordinates::Schema>>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& positions_view{source.view_positions()};
@@ -589,15 +588,7 @@ struct Schema
     }
     auto values(this ColumnReceiver auto&& self) { return column_at<0>(self); }
     auto masks(this ColumnReceiver auto&& self) { return column_at<1>(self); }
-    auto view_positions(this ColumnReceiver auto&& self) {
-        return column_at<ioj::native_soa_fixture::api_coordinates::Schema, 2>(self);
-    }
-    static decltype(auto) logical_columns(auto const& source, auto&& func) {
-        return func(source.values(), source.masks(), source.view_positions());
-    }
-    using row_types = ioj::soa_storage_detail::RowTypes<
-        column_types,
-        ioj::soa_storage_detail::ColumnTypes<float, ApiMask, ioj::native_soa_fixture::ApiPair>>;
+    auto view_positions(this ColumnReceiver auto&& self) { return column_at<2>(self); }
 };
 
 /* **************************************** */
@@ -632,12 +623,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float>;
+using Columns = soa_storage_detail::SchemaColumns<float, float>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.xs(), source.ys());
@@ -650,11 +642,10 @@ struct Schema
         auto const& columns{self.view()};
         return equivalent_type{columns.xs()[index], columns.ys()[index]};
     }
+    using writable_equivalent = equivalent_type;
     static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
         return func(value.x, value.y);
     }
-    using row_types = ioj::soa_storage_detail::
-        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
@@ -681,12 +672,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+using Columns = soa_storage_detail::SchemaColumns<float, float, float>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.horizontal(), source.vertical(), source.depth());
@@ -701,11 +693,10 @@ struct Schema
         return equivalent_type{
             columns.horizontal()[index], columns.vertical()[index], columns.depth()[index]};
     }
+    using writable_equivalent = equivalent_type;
     static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
         return func(value.x(), value.y(), value.z());
     }
-    using row_types = ioj::soa_storage_detail::
-        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */

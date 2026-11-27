@@ -22,12 +22,13 @@ using soa_storage_detail::column_at;
 using soa_storage_detail::ColumnReceiver;
 
 /* **************************************** */
-// Column pointers
+// Columns
 /* **************************************** */
-using Pointers = soa_storage_detail::ColumnPointers<float, float, float>;
+using Columns = soa_storage_detail::SchemaColumns<float, float, float>;
+using Pointers = Columns::pointers;
 
 struct Schema
-    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Pointers> {
+    : soa_storage_detail::ViewTypes<View, ConstView, CompactView, CompactConstView, Columns> {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         return func(source.pitches(), source.yaws(), source.rolls());
@@ -42,11 +43,10 @@ struct Schema
         return equivalent_type{
             columns.pitches()[index], columns.yaws()[index], columns.rolls()[index]};
     }
+    using writable_equivalent = equivalent_type;
     static decltype(auto) equivalent_values(equivalent_type const& value, auto&& func) {
         return func(value.pitch, value.yaw, value.roll);
     }
-    using row_types = ioj::soa_storage_detail::
-        RowTypes<column_types, ioj::soa_storage_detail::ColumnTypes<>, equivalent_type>;
 };
 
 /* **************************************** */
