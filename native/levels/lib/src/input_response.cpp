@@ -1,4 +1,4 @@
-#include "ioj/input/logical/response.h"
+#include "ioj/input/logical/flight_input.h"
 #include "ioj/vector_value_math.h"
 
 #include <algorithm>

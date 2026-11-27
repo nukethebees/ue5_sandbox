@@ -176,7 +176,7 @@ constexpr std::array stick_bindings{
 };
 }
 
-auto is_pause_button(FlightBindings const& bindings, PhysicalKey key) const -> bool {
+auto is_pause_button(FlightBindings const& bindings, PhysicalKey key) -> bool {
     return key != PhysicalKey::Unbound &&
            (bindings[FlightMapping::GeneralPauseGamepad] == key ||
             bindings[FlightMapping::GeneralPauseKeyboardMouse] == key);
