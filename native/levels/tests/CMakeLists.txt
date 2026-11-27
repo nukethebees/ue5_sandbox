@@ -4,6 +4,7 @@ ioj_stage_runtime_dependencies(native-levels-tests)
 target_sources(native-levels-tests
   PRIVATE
     input_response_tests.cpp
+    flight_input_tests.cpp
     session_tests.cpp
 )
 target_link_libraries(native-levels-tests
