@@ -240,10 +240,9 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
 
 class LogicalPlayerInput : public ::testing::Test {
   protected:
-    void map(auto event) {
-        batch_.clear();
-        batch_.push(event);
+    void map() {
         input_.map_until_dispatch(dispatch_, batch_, 0);
+        batch_.clear();
     }
     ControlsSettings settings_;
     PhysicalInputState physical_;
@@ -259,7 +258,10 @@ TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModi
     auto key = [&](PhysicalKey code,
                    ButtonState edge,
                    host::Modifiers modifiers = {},
-                   bool repeat = false) { map(PhysicalButton{code, modifiers, edge, repeat}); };
+                   bool repeat = false) {
+        batch_.button(code, modifiers, edge, repeat);
+        map();
+    };
     key(PhysicalKey::Tab, Pressed, shift);
     key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::Tab, Released);
@@ -309,24 +311,31 @@ TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
 
 TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     input_.synchronize(dispatch_, {InputContext::Observer}, {});
-    map(PhysicalPointerButton{{}, PhysicalKey::RightMouseButton, ButtonState::Pressed, 1});
-    map(PointerMotion{{}, {20.f, 10.f}});
-    map(WheelMotion{{}, 1.f});
-    map(PhysicalButton{PhysicalKey::D, {}, ButtonState::Pressed});
+    batch_.pointer_button({}, PhysicalKey::RightMouseButton, ButtonState::Pressed, 1);
+    map();
+    batch_.motion({}, {20.f, 10.f});
+    map();
+    batch_.wheel({}, 1.f);
+    map();
+    batch_.button(PhysicalKey::D, {}, ButtonState::Pressed);
+    map();
     EXPECT_TRUE(input_.state().held.observer_right());
     auto const step{input_.viewer_step(0.016)};
     ASSERT_TRUE(step);
     EXPECT_FLOAT_EQ(step->motion.speed, 150000.f);
     EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
-    map(WindowFocus::Lost);
+    batch_.order.push_back({PhysicalEventKind::FocusLost, 0});
+    map();
     EXPECT_FALSE(input_.relative_mouse());
     EXPECT_FALSE(input_.state().held.observer_right());
     EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
 
-    map(WindowFocus::Gained);
+    batch_.order.push_back({PhysicalEventKind::FocusGained, 0});
+    map();
     input_.synchronize(dispatch_, {InputContext::Menu}, {});
     dispatch_.begin_frame();
-    map(PhysicalButton{PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed});
+    batch_.button(PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed);
+    map();
     input_.repeat_navigation(dispatch_, 0.41);
     ASSERT_EQ(dispatch_.size(), 2u);
     EXPECT_FALSE(dispatch_.buttons().front().repeat);
@@ -415,7 +424,8 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
     using enum sim::player::PlayerInputKind;
     auto route = [&](InputContext context) { input_.synchronize(dispatch_, {context}, {}); };
     auto sample = [&](float value) {
-        map(PhysicalAxis{PhysicalKey::GamepadRightTriggerAxis, value});
+        batch_.axis(PhysicalKey::GamepadRightTriggerAxis, value);
+        map();
     };
     route(InputContext::Gameplay);
     sample(0.50f);
@@ -432,17 +442,22 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
     EXPECT_FALSE(input_.state().held.fire());
     sample(0.3f);
     sample(0.6f);
-    map(WindowFocus::Lost);
+    batch_.order.push_back({PhysicalEventKind::FocusLost, 0});
+    map();
     sample(0.7f);
-    map(WindowFocus::Gained);
+    batch_.order.push_back({PhysicalEventKind::FocusGained, 0});
+    map();
     sample(0.8f);
     EXPECT_FALSE(input_.state().held.fire());
     sample(0.39f);
     sample(0.6f);
-    map(PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Pressed, 1});
-    map(GamepadDisconnected{});
+    batch_.pointer_button({}, PhysicalKey::LeftMouseButton, ButtonState::Pressed, 1);
+    map();
+    batch_.order.push_back({PhysicalEventKind::Disconnect, 0});
+    map();
     EXPECT_TRUE(input_.state().held.fire());
-    map(PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Released, 1});
+    batch_.pointer_button({}, PhysicalKey::LeftMouseButton, ButtonState::Released, 1);
+    map();
     dispatch_.publish_ship(input_.state());
     EXPECT_TRUE(std::ranges::equal(dispatch_.ship_input().events,
                                    std::array{FirePressed,
@@ -457,7 +472,10 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
 
 TEST_F(LogicalPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
     input_.synchronize(dispatch_, {InputContext::Gameplay}, {});
-    auto sample = [&](float value) { map(PhysicalAxis{PhysicalKey::GamepadRightX, value}); };
+    auto sample = [&](float value) {
+        batch_.axis(PhysicalKey::GamepadRightX, value);
+        map();
+    };
     sample(-0.8f);
     settings_.bindings[FlightMapping::FlightFirePrimaryGamepad] = PhysicalKey::GamepadRightX;
     input_.refresh_bindings(dispatch_);

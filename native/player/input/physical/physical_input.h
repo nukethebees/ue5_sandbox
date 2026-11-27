@@ -22,32 +22,4 @@ struct PhysicalInputState {
     WindowFocus focus{WindowFocus::Gained};
 };
 
-struct PhysicalButton {
-    PhysicalKey key;
-    host::Modifiers modifiers{};
-    ButtonState state{};
-    bool repeat{};
-};
-struct PhysicalPointerButton {
-    Vector2f position;
-    PhysicalKey key;
-    ButtonState state;
-    std::uint8_t clicks;
-};
-struct PointerMotion {
-    Vector2f position;
-    Vector2f delta;
-};
-struct WheelMotion {
-    Vector2f position;
-    float steps;
-};
-struct PhysicalAxis {
-    PhysicalKey key;
-    float position;
-};
-struct TextInput {
-    std::string text;
-};
-struct GamepadDisconnected {};
 }

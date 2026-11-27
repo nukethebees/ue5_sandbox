@@ -195,7 +195,7 @@ void PhysicalInputSystem::collect(SDL_Event const& event) {
         }
 
         if (removed) {
-            events_.push(GamepadDisconnected{});
+            events_.order.push_back({PhysicalEventKind::Disconnect, 0});
         }
         return;
     }
@@ -205,59 +205,59 @@ void PhysicalInputSystem::collect(SDL_Event const& event) {
     }
     switch (event.type) {
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            events_.push(WindowFocus::Lost);
+            events_.order.push_back({PhysicalEventKind::FocusLost, 0});
             return;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
-            events_.push(WindowFocus::Gained);
+            events_.order.push_back({PhysicalEventKind::FocusGained, 0});
             return;
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
             auto const key{static_cast<PhysicalKey>(event.key.scancode)};
             if (is_keyboard_key(key)) {
-                events_.push(PhysicalButton{key,
-                                            modifiers(event.key.mod),
-                                            event.key.down ? Pressed : Released,
-                                            event.key.repeat});
+                events_.button(key,
+                               modifiers(event.key.mod),
+                               event.key.down ? Pressed : Released,
+                               event.key.repeat);
             }
             break;
         }
         case SDL_EVENT_TEXT_INPUT:
-            events_.push(TextInput{event.text.text});
+            events_.order.push_back({PhysicalEventKind::Text, events_.text.size()});
+            events_.text.emplace_back(event.text.text);
             return;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             auto const& button{event.button};
             auto const code{mouse_key(button.button)};
             if (code != PhysicalKey::Unbound) {
-                events_.push(PhysicalPointerButton{
-                    {button.x, button.y}, code, button.down ? Pressed : Released, button.clicks});
+                events_.pointer_button(
+                    {button.x, button.y}, code, button.down ? Pressed : Released, button.clicks);
             }
             break;
         }
         case SDL_EVENT_MOUSE_MOTION:
-            events_.push(PointerMotion{{event.motion.x, event.motion.y},
-                                       {event.motion.xrel, event.motion.yrel}});
+            events_.motion({event.motion.x, event.motion.y},
+                           {event.motion.xrel, event.motion.yrel});
             return;
         case SDL_EVENT_MOUSE_WHEEL:
-            events_.push(WheelMotion{
-                {event.wheel.mouse_x, event.wheel.mouse_y},
-                event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y});
+            events_.wheel({event.wheel.mouse_x, event.wheel.mouse_y},
+                          event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y
+                                                                          : event.wheel.y);
             return;
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
                 auto const code{pad_button(event.gbutton.button)};
                 if (code != PhysicalKey::Unbound) {
-                    events_.push(PhysicalButton{code, {}, event.gbutton.down ? Pressed : Released});
+                    events_.button(code, {}, event.gbutton.down ? Pressed : Released);
                 }
             }
             break;
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gaxis.which) {
                 auto const axis{event.gaxis.axis};
-                events_.push(PhysicalAxis{
-                    axis_keys[axis],
-                    axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value)});
+                events_.axis(axis_keys[axis],
+                             axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value));
             }
             break;
         default:

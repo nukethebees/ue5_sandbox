@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace ioj {
-class PhysicalInputBatch;
+struct PhysicalInputBatch;
 
 struct InputRoute {
     InputContext context{};
@@ -50,14 +50,22 @@ class LogicalInputSystem {
                        DigitalAction action,
                        ButtonState edge);
     void publish_transitions(InputDispatcher& output, std::size_t first);
-    void apply(InputDispatcher& output, PhysicalButton event);
-    void apply(InputDispatcher& output, PhysicalPointerButton event);
-    void apply(InputDispatcher& output, PhysicalAxis event);
-    void apply(InputDispatcher& output, PointerMotion event);
-    void apply(InputDispatcher& output, WheelMotion event);
-    void apply(InputDispatcher& output, TextInput const& event);
-    void apply(InputDispatcher& output, WindowFocus focus);
-    void apply(InputDispatcher& output, GamepadDisconnected);
+    void apply_button(InputDispatcher& output,
+                      PhysicalKey key,
+                      host::Modifiers event_modifiers,
+                      ButtonState state,
+                      bool repeat);
+    void apply_pointer_button(InputDispatcher& output,
+                              Vector2f position,
+                              PhysicalKey key,
+                              ButtonState state,
+                              std::uint8_t clicks);
+    void apply_axis(InputDispatcher& output, PhysicalKey axis_key, float axis_position);
+    void apply_motion(InputDispatcher& output, Vector2f position, Vector2f delta);
+    void apply_wheel(InputDispatcher& output, Vector2f position, float steps);
+    void apply_text(InputDispatcher& output, std::string const& text);
+    void apply_focus(InputDispatcher& output, WindowFocus focus);
+    void apply_disconnect(InputDispatcher& output);
     void release_context(InputDispatcher& output);
 
     ControlsSettings const& controls_;

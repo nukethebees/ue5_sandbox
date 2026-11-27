@@ -29,7 +29,7 @@ auto InputSystem::advance(double delta_seconds, InputReceiver& receiver) -> Wind
 
     auto const window{physical_.poll()};
     auto const& batch{physical_.events()};
-    auto const count{batch.size()};
+    auto const count{batch.order.size()};
     for (std::size_t cursor{}; cursor < count;) {
         auto const first{dispatch_.size()};
         cursor = logical_.map_until_dispatch(dispatch_, batch, cursor);

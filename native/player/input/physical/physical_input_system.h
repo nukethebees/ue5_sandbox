@@ -1,5 +1,6 @@
 #pragma once
 
+#include "player/input/physical/physical_input.h"
 #include "player/input/physical/physical_input_batch.h"
 #include <ioj/input/dispatch/player_menu.h>
 
