@@ -61,3 +61,7 @@ target_compile_definitions(native-simulation-tests
   PRIVATE
     IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
+
+if(IOJ_WITH_UNREAL)
+  target_sources(native-simulation PRIVATE support/authoring_spawn_observations.cpp)
+endif()

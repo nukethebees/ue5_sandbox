@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7AuthoringResult.h"
-#include <ioj/sim/levels/level_sim_init_data.h>
 
 #include <CoreMinimal.h>
 #include <HAL/PlatformProcess.h>
@@ -27,7 +26,7 @@ SANDBOXEDITOR_API auto launch_staged_level(FString const& level, bool exit_when_
 SANDBOXEDITOR_API auto refresh_staged_player() -> FProcHandle;
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<FString>;
-SANDBOXEDITOR_API auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
-                                                      USpaceGameLevelConfig const& resources)
-    -> S7AuthoringResult<sim::LevelSimInitData>;
+SANDBOXEDITOR_API auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
+                                                       USpaceGameLevelConfig const& resources)
+    -> S7AuthoringResult<void>;
 }

@@ -1,8 +1,8 @@
 #include "SandboxEditor/levels/S7EntityGeometryExport.h"
 
 #include <ioj/settings/entity_geometry_writer.h>
-#include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/levels/simulation_settings.h>
+#include <ioj/settings/settings.h>
+#include <ioj/sim/levels/level_validation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -94,10 +94,7 @@ auto export_entity_geometry(FString const& path) -> S7AuthoringResult<void> {
     geometry.player_right_socket =
         attachment(mesh->GetSocketTransform(Sockets::right, RTS_Component));
 
-    sim::LevelSimInitData preview;
-    preview.player.emplace();
-    sim::apply_settings(settings, preview);
-    if (auto valid{sim::validate_level_simulation_init_data(preview)}; !valid) {
+    if (auto valid{sim::validate_entity_geometry(settings)}; !valid) {
         return Result{std::unexpect, to_fstring(valid.error().front())};
     }
 

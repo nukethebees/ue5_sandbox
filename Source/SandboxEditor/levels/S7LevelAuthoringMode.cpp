@@ -7,8 +7,8 @@
 #include "SandboxEditor/levels/S7SceneActors.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/collision_grid_geometry.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/levels/simulation_settings.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>

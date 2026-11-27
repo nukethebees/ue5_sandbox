@@ -5,7 +5,8 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
-#include <ioj/sim/levels/level_simulation_builder.h>
+#include <ioj/levels/level_definition.h>
+#include <ioj/sim/levels/level_validation.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -29,17 +30,17 @@ inline constexpr TCHAR game_mode_class_path[]{
 
 }
 
-auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
-                                    USpaceGameLevelConfig const& resources)
-    -> S7AuthoringResult<sim::LevelSimInitData> {
-    using Result = S7AuthoringResult<sim::LevelSimInitData>;
+auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
+                                     USpaceGameLevelConfig const& resources)
+    -> S7AuthoringResult<void> {
+    using Result = S7AuthoringResult<void>;
     TArray<FString> errors;
     resources.get_validation_errors(errors, true, definition.settings().presentation);
     if (!errors.IsEmpty()) {
         return Result{std::unexpect, FString::Join(errors, TEXT("\n"))};
     }
 
-    auto build{sim::make_level_simulation_init_data(definition, {}, sim::LevelRunTiming{})};
+    auto build{sim::validate_playable_level(definition)};
     if (!build) {
         for (auto const& message : build.error()) {
             errors.Add(to_fstring(message));
@@ -47,7 +48,7 @@ auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
         return Result{std::unexpect, FString::Join(errors, TEXT("\n"))};
     }
 
-    return std::move(*build);
+    return {};
 }
 
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)

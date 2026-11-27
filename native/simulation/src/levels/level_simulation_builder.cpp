@@ -20,6 +20,19 @@ auto is_finite(Transform3d const& transform) -> bool {
 
 }
 
+auto validate_playable_level(levels::LevelDefinition const& definition)
+    -> LevelSimulationValidationResult {
+    return make_level_simulation_init_data(definition, {}, {}).transform([](auto&&) {});
+}
+
+auto validate_entity_geometry(settings::Settings const& settings)
+    -> LevelSimulationValidationResult {
+    LevelSimInitData preview;
+    preview.player.emplace();
+    apply_settings(settings, preview);
+    return validate_level_simulation_init_data(preview);
+}
+
 auto validate_level_simulation_init_data(LevelSimInitData const& data)
     -> LevelSimulationValidationResult {
     LevelSimulationBuildErrors errors;

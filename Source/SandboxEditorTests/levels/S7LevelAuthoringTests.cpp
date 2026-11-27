@@ -1,6 +1,6 @@
+#include "authoring_spawn_observations.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_writer.h>
-#include <ioj/sim/levels/level_sim.h>
 #include <SandboxEditor/levels/S7EntityGeometryExport.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
@@ -48,7 +48,6 @@
 #include <algorithm>
 #include <array>
 #include <expected>
-#include <memory_resource>
 #include <optional>
 
 namespace s7_level_authoring_tests {
@@ -714,26 +713,22 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
 
         auto& document{*fixture->document};
-        auto compiled{ioj::editor::compile_playable_s7_definition(fixture->definition,
-                                                                  *document.level_config)};
+        auto compiled{ioj::editor::validate_playable_s7_definition(fixture->definition,
+                                                                   *document.level_config)};
         if (!assert_success(
                 *TestRunner, TEXT("Compile composed level and expression references"), compiled)) {
             return;
         }
 
-        ioj::sim::LevelSim simulation{std::move(*compiled), *std::pmr::new_delete_resource()};
+        auto const observed{
+            ioj::sim::tests::observe_validated_level_spawns(fixture->definition, 0.2)};
 
-        TestRunner->TestEqual(TEXT("Only human capital spawns at time zero"),
-                              simulation.capital_ships().num_instances(),
-                              uint32{1});
-        TestRunner->TestEqual(TEXT("Spinner spawns through authored events"),
-                              simulation.spinners().num_instances(),
-                              uint32{1});
-        simulation.start();
-        simulation.advance(0.2);
-        TestRunner->TestEqual(TEXT("Delayed exported capital spawns"),
-                              simulation.capital_ships().num_instances(),
-                              uint32{2});
+        TestRunner->TestEqual(
+            TEXT("Only human capital spawns at time zero"), observed.initial_capitals, uint32{1});
+        TestRunner->TestEqual(
+            TEXT("Spinner spawns through authored events"), observed.initial_spinners, uint32{1});
+        TestRunner->TestEqual(
+            TEXT("Delayed exported capital spawns"), observed.capitals, uint32{2});
     }
 
     TEST_METHOD(ImportEditsTheBaselineWithoutCompoundingHumanTransforms)
@@ -1109,19 +1104,19 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              definition->player_entity_id() == ioj::levels::EntityId{"pilot"});
 
         auto compiled{
-            ioj::editor::compile_playable_s7_definition(*definition, *document.level_config)};
+            ioj::editor::validate_playable_s7_definition(*definition, *document.level_config)};
         if (!assert_success(*TestRunner, TEXT("Compile carrier-free level"), compiled)) {
             return;
         }
 
-        ioj::sim::LevelSim sim{std::move(*compiled), *std::pmr::new_delete_resource()};
-        auto const fighters{sim.fighters().entities()};
-        if (!TestRunner->TestEqual(
-                TEXT("Fighter starts without a carrier"), fighters.num(), uint32{1})) {
+        auto const observed{ioj::sim::tests::observe_validated_level_spawns(*definition, 0.)};
+        if (!TestRunner->TestEqual(TEXT("Fighter starts without a carrier"),
+                                   observed.fighter_teams.size(),
+                                   std::size_t{1})) {
             return;
         }
         TestRunner->TestTrue(TEXT("Spawned fighter has the authored team"),
-                             fighters.teams()[0] == ioj::Team::Red);
+                             observed.fighter_teams[0] == ioj::Team::Red);
         TestRunner->TestTrue(TEXT("Export drops fighter roll"),
                              definition->entity(ioj::levels::EntityId{"wing"}).rotation.roll ==
                                  0.0);

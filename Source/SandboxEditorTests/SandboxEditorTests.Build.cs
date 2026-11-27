@@ -1,3 +1,4 @@
+using System.IO;
 using UnrealBuildTool;
 
 public class SandboxEditorTests : ModuleRules
@@ -8,6 +9,8 @@ public class SandboxEditorTests : ModuleRules
         PrivatePCHHeaderFile = "Private/SandboxEditorTestsPCH.h";
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
+
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "..", "..", "native", "simulation", "tests", "support"));
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {

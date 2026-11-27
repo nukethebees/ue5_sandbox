@@ -3,6 +3,7 @@
 #include <ioj/duration.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
+#include <ioj/sim/levels/level_validation.h>
 
 #include <expected>
 #include <optional>
@@ -10,9 +11,6 @@
 #include <vector>
 
 namespace ioj::sim {
-using LevelSimulationBuildErrors = std::vector<std::string>;
-using LevelSimulationValidationResult = std::expected<void, LevelSimulationBuildErrors>;
-
 using LevelSimulationBuildResult = std::expected<LevelSimInitData, LevelSimulationBuildErrors>;
 
 [[nodiscard]] auto validate_level_simulation_init_data(LevelSimInitData const& data)

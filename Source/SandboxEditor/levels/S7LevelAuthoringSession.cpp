@@ -372,7 +372,7 @@ auto prepare_export(ULevel const& level, AS7LevelAuthoringDocument const& docume
                 "Import the editor-config.scm scene in the linked level script before exporting.")};
     }
 
-    auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
+    auto compiled{validate_playable_s7_definition(*definition, *document.level_config)};
     if (!compiled) {
         return Result{std::unexpect, std::move(compiled.error())};
     }
@@ -493,7 +493,7 @@ auto set_up_s7_level(ULevel& level, LevelSetup operation, FString source_path)
                           to_fstring(levels::format_diagnostics(definition.error()))};
         }
 
-        auto valid{compile_playable_s7_definition(*definition, *resources)};
+        auto valid{validate_playable_s7_definition(*definition, *resources)};
         if (!valid) {
             return Result{std::unexpect, std::move(valid.error())};
         }

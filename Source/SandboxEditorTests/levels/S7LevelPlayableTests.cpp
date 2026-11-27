@@ -209,7 +209,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         s7_level_playable_tests::assert_success(
             *TestRunner,
             TEXT("Compile Defend Capital with its exported geometry"),
-            editor::compile_playable_s7_definition(*definition, *(*document)->level_config));
+            editor::validate_playable_s7_definition(*definition, *(*document)->level_config));
     }
 
     bool authoring_was_active_{};
