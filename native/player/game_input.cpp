@@ -46,14 +46,6 @@ constexpr std::array repeating_actions{DigitalAction::MenuUp,
                                        DigitalAction::MenuDown,
                                        DigitalAction::MenuLeft,
                                        DigitalAction::MenuRight};
-constexpr std::array menu_actions{DigitalAction::MenuUp,
-                                  DigitalAction::MenuDown,
-                                  DigitalAction::MenuLeft,
-                                  DigitalAction::MenuRight,
-                                  DigitalAction::MenuNext,
-                                  DigitalAction::MenuPrevious,
-                                  DigitalAction::MenuAccept,
-                                  DigitalAction::MenuBack};
 constexpr std::array pointer_keys{PhysicalKey::LeftMouseButton,
                                   PhysicalKey::RightMouseButton,
                                   PhysicalKey::MiddleMouseButton,
@@ -65,6 +57,60 @@ constexpr EnumArray<float, input::ObserverSpeedPreset> observer_speeds{
 }
 
 namespace {
+auto menu_action(PhysicalKey key, bool shift) -> std::optional<DigitalAction> {
+    switch (key) {
+        case PhysicalKey::Up:
+        case PhysicalKey::GamepadDPadUp:
+        case PhysicalKey::GamepadLeftStickUp:
+            return DigitalAction::MenuUp;
+        case PhysicalKey::Down:
+        case PhysicalKey::GamepadDPadDown:
+        case PhysicalKey::GamepadLeftStickDown:
+            return DigitalAction::MenuDown;
+        case PhysicalKey::Left:
+        case PhysicalKey::GamepadDPadLeft:
+        case PhysicalKey::GamepadLeftStickLeft:
+            return DigitalAction::MenuLeft;
+        case PhysicalKey::Right:
+        case PhysicalKey::GamepadDPadRight:
+        case PhysicalKey::GamepadLeftStickRight:
+            return DigitalAction::MenuRight;
+        case PhysicalKey::Tab:
+            return shift ? DigitalAction::MenuPrevious : DigitalAction::MenuNext;
+        case PhysicalKey::Enter:
+        case PhysicalKey::SpaceBar:
+        case PhysicalKey::GamepadFaceButtonBottom:
+            return DigitalAction::MenuAccept;
+        case PhysicalKey::Escape:
+        case PhysicalKey::GamepadFaceButtonRight:
+            return DigitalAction::MenuBack;
+        default:
+            return {};
+    }
+}
+
+auto menu_command(DigitalAction action) -> std::optional<MenuCommand> {
+    switch (action) {
+        case DigitalAction::MenuUp:
+            return MenuCommand::Up;
+        case DigitalAction::MenuDown:
+            return MenuCommand::Down;
+        case DigitalAction::MenuLeft:
+            return MenuCommand::Left;
+        case DigitalAction::MenuRight:
+            return MenuCommand::Right;
+        case DigitalAction::MenuNext:
+            return MenuCommand::Next;
+        case DigitalAction::MenuPrevious:
+            return MenuCommand::Previous;
+        case DigitalAction::MenuAccept:
+            return MenuCommand::Accept;
+        case DigitalAction::MenuBack:
+            return MenuCommand::Back;
+        default:
+            return {};
+    }
+}
 auto observer_action(PhysicalKey key) -> std::optional<DigitalAction> {
     switch (key) {
         case PhysicalKey::D:
@@ -172,11 +218,8 @@ void GameInput::refresh_bindings(std::vector<host::InputEvent>& output) {
 }
 void GameInput::publish_transitions(std::vector<host::InputEvent>& output, std::size_t first) {
     for (auto const payload : std::span{state_.transitions}.subspan(first)) {
-        auto const menu{std::ranges::find(game_input_tables::menu_actions, payload.action)};
-        if (menu != game_input_tables::menu_actions.end()) {
-            auto const command{
-                static_cast<MenuCommand>(menu - game_input_tables::menu_actions.begin())};
-            output.emplace_back(host::MenuButton{command,
+        if (auto command{menu_command(payload.action)}) {
+            output.emplace_back(host::MenuButton{*command,
                                                  payload.state != ButtonState::Released,
                                                  payload.state == ButtonState::Repeated,
                                                  physical_.modifiers});
@@ -276,13 +319,12 @@ void GameInput::button(std::vector<host::InputEvent>& output,
         }
         return;
     }
-    auto const command{input::menu_command(
-        key.key,
-        route_.context == Context::Menu &&
-            (physical_.modifiers.left_shift() || physical_.modifiers.right_shift()))};
-    if (route_.context == Context::Menu && command) {
-        routed_button(
-            output, key, game_input_tables::menu_actions[std::to_underlying(*command)], edge);
+    auto const navigation{
+        menu_action(key.key,
+                    route_.context == Context::Menu &&
+                        (physical_.modifiers.left_shift() || physical_.modifiers.right_shift()))};
+    if (route_.context == Context::Menu && navigation) {
+        routed_button(output, key, *navigation, edge);
         return;
     }
     if (route_.context == Context::Observer) {
@@ -292,10 +334,11 @@ void GameInput::button(std::vector<host::InputEvent>& output,
         return;
     }
     if (route_.context == Context::Benchmark && !repeat) {
-        if (command) {
-            auto const action{*command == MenuCommand::Accept ? DigitalAction::BenchmarkActivate
-                              : *command == MenuCommand::Back ? DigitalAction::BenchmarkEnd
-                                                              : DigitalAction::BenchmarkNext};
+        if (navigation) {
+            auto const action{
+                *navigation == DigitalAction::MenuAccept ? DigitalAction::BenchmarkActivate
+                : *navigation == DigitalAction::MenuBack ? DigitalAction::BenchmarkEnd
+                                                         : DigitalAction::BenchmarkNext};
             routed_button(output, key, action, edge);
         } else if (flight_.is_pause_button(key)) {
             routed_button(output, key, DigitalAction::BenchmarkToggle, edge);
