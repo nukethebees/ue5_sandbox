@@ -317,7 +317,7 @@ auto Application::play(Window& window,
     std::vector<sim::player::PlayerInputKind> ship_events;
     auto synchronize_input = [&] {
         auto const menu{host::menu_status()};
-        input.synchronize(input_route(storage.get(), menu), menu);
+        input.synchronize(commands, input_route(storage.get(), menu), menu);
         devices.set_window_modes(input.relative_mouse(), input.editing_text());
     };
     bool end_selected{};
@@ -403,16 +403,17 @@ auto Application::play(Window& window,
         IojPlayer_BeginFrame();
         input.begin_frame();
         synchronize_input();
+        consume_input();
         SDL_Event event;
         bool close_requested{};
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
             if (auto physical{devices.translate(event)}) {
-                input.resolve(*physical);
-                input.append_commands(commands);
+                input.resolve(commands, *physical);
                 consume_input();
             }
             synchronize_input();
+            consume_input();
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                 case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -459,10 +460,10 @@ auto Application::play(Window& window,
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
         synchronize_input();
+        consume_input();
         auto const seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
         if (devices.focused()) {
-            input.repeat_navigation(seconds);
-            input.append_commands(commands);
+            input.repeat_navigation(commands, seconds);
         }
         input.append_frame_commands(seconds, commands);
         consume_input();
@@ -479,7 +480,7 @@ auto Application::play(Window& window,
             end_benchmark = false;
             continue;
         }
-        process_preferences(window, input, messages.preference_edits);
+        process_preferences(window, input, commands, messages.preference_edits);
         process_profile_actions(messages.profile_actions);
 
         if (messages.refresh_catalog) {
@@ -662,6 +663,7 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
 
 void Application::process_preferences(Window& window,
                                       GameInput& input,
+                                      std::vector<host::InputEvent>& commands,
                                       std::span<host::PreferenceEdit const> edits) {
     auto const count{edits.size()};
     for (std::size_t index{}; index < count; ++index) {
@@ -700,7 +702,7 @@ void Application::process_preferences(Window& window,
                 break;
             case GameSettingCategory::Controls:
                 settings_.apply(edit.values.controls);
-                input.refresh_bindings();
+                input.refresh_bindings(commands);
                 break;
             case GameSettingCategory::Gameplay:
             case GameSettingCategory::Accessibility:

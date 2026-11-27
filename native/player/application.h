@@ -1,6 +1,7 @@
 #pragma once
 
 #include "player/engine.h"
+#include <ioj/host/input.h>
 #include <ioj/host/unreal_messages.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/levels/level_definition.h>
@@ -43,6 +44,7 @@ class Application {
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window,
                              GameInput& input,
+                             std::vector<host::InputEvent>& commands,
                              std::span<host::PreferenceEdit const> edits);
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
         -> ApplicationResult;

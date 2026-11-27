@@ -74,21 +74,20 @@ class SdlPlayerInput : public ::testing::Test {
     void frame() {
         input_->begin_frame();
         auto synchronize = [&] {
-            input_->synchronize(host::tests::presentation.route, host::tests::presentation.menu);
+            input_->synchronize(
+                commands_, host::tests::presentation.route, host::tests::presentation.menu);
             devices_->set_window_modes(input_->relative_mouse(), input_->editing_text());
         };
         synchronize();
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             if (auto physical{devices_->translate(event)}) {
-                input_->resolve(*physical);
-                input_->append_commands(commands_);
+                input_->resolve(commands_, *physical);
                 consume();
             }
             synchronize();
         }
-        input_->repeat_navigation(0.016);
-        input_->append_commands(commands_);
+        input_->repeat_navigation(commands_, 0.016);
         input_->append_frame_commands(0.016, commands_);
         consume();
     }
@@ -224,16 +223,18 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     auto& view{host::tests::presentation};
     view.route = {input::Context::Observer};
     frame();
-    input_->resolve(input::PhysicalPointerButton{
-        {}, PhysicalKey::RightMouseButton, input::ButtonState::Pressed, 1});
-    input_->resolve(input::PointerMotion{{}, {20.f, 10.f}});
-    input_->resolve(input::WheelMotion{{}, 1.f});
-    input_->resolve(input::PhysicalButton{PhysicalKey::D, 0, {}, input::ButtonState::Pressed});
+    input_->resolve(commands_,
+                    input::PhysicalPointerButton{
+                        {}, PhysicalKey::RightMouseButton, input::ButtonState::Pressed, 1});
+    input_->resolve(commands_, input::PointerMotion{{}, {20.f, 10.f}});
+    input_->resolve(commands_, input::WheelMotion{{}, 1.f});
+    input_->resolve(commands_,
+                    input::PhysicalButton{PhysicalKey::D, 0, {}, input::ButtonState::Pressed});
     EXPECT_TRUE(input_->state().held.observer_right());
     EXPECT_EQ(input_->state().observer_speed, input::ObserverSpeedPreset::Fast);
     EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta],
               (Vector2f{20.f, -10.f}));
-    input_->resolve(input::FocusLost{});
+    input_->resolve(commands_, input::FocusLost{});
     EXPECT_FALSE(input_->relative_mouse());
     EXPECT_TRUE(input_->state().released.observer_right());
     EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta], Vector2f{});
@@ -241,11 +242,12 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     view.route = {input::Context::Menu};
     frame();
     input_->resolve(
+        commands_,
         input::PhysicalButton{PhysicalKey::GamepadDPadDown, 0, {}, input::ButtonState::Pressed});
-    input_->repeat_navigation(0.41);
-    input_->append_commands(commands_);
-    ASSERT_EQ(commands_.size(), 1u);
-    EXPECT_TRUE(std::get<host::MenuButton>(commands_.front()).repeat);
+    input_->repeat_navigation(commands_, 0.41);
+    ASSERT_EQ(commands_.size(), 2u);
+    EXPECT_FALSE(std::get<host::MenuButton>(commands_.front()).repeat);
+    EXPECT_TRUE(std::get<host::MenuButton>(commands_.back()).repeat);
 }
 
 TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {

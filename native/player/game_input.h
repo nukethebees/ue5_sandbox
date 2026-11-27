@@ -17,13 +17,6 @@ struct InputRoute {
     bool operator==(InputRoute const&) const = default;
 };
 
-using RoutedInput = std::variant<input::ActionTransition,
-                                 host::MenuButton,
-                                 host::MenuKey,
-                                 host::MenuPointer,
-                                 host::MenuAxis,
-                                 host::MenuText>;
-
 struct PhysicalInputState {
     std::vector<input::KeyCode> held;
     std::array<float, 6> gamepad_axes{};
@@ -34,15 +27,15 @@ class GameInput {
   public:
     explicit GameInput(ControlsSettings const& controls);
 
-    void synchronize(InputRoute route, host::MenuStatus menu);
-    void refresh_bindings();
+    void
+        synchronize(std::vector<host::InputEvent>& output, InputRoute route, host::MenuStatus menu);
+    void refresh_bindings(std::vector<host::InputEvent>& output);
     void begin_frame();
-    void resolve(input::PhysicalEvent const& event);
-    void repeat_navigation(double seconds);
+    void resolve(std::vector<host::InputEvent>& output, input::PhysicalEvent const& event);
+    void repeat_navigation(std::vector<host::InputEvent>& output, double seconds);
     auto relative_mouse() const -> bool;
     auto editing_text() const -> bool;
     auto state() const -> input::InputState const& { return state_; }
-    void append_commands(std::vector<host::InputEvent>& output) const;
     void append_frame_commands(double seconds, std::vector<host::InputEvent>& output) const;
   private:
     struct RoutedButton {
@@ -50,24 +43,29 @@ class GameInput {
         input::DigitalAction action;
     };
 
-    void button(input::KeyCode key, input::ButtonState edge, std::uint32_t character = {});
-    void routed_button(input::KeyCode key, input::DigitalAction action, input::ButtonState edge);
-    void publish_transitions(std::size_t first);
-    void apply(input::PhysicalButton event);
-    void apply(input::PhysicalPointerButton event);
-    void apply(input::PhysicalAxis event);
-    void apply(input::PointerMotion event);
-    void apply(input::WheelMotion event);
-    void apply(input::TextInput const& event);
-    void apply(input::FocusLost);
-    void apply(input::GamepadDisconnected);
-    void release_context();
+    void button(std::vector<host::InputEvent>& output,
+                input::KeyCode key,
+                input::ButtonState edge,
+                std::uint32_t character = {});
+    void routed_button(std::vector<host::InputEvent>& output,
+                       input::KeyCode key,
+                       input::DigitalAction action,
+                       input::ButtonState edge);
+    void publish_transitions(std::vector<host::InputEvent>& output, std::size_t first);
+    void apply(std::vector<host::InputEvent>& output, input::PhysicalButton event);
+    void apply(std::vector<host::InputEvent>& output, input::PhysicalPointerButton event);
+    void apply(std::vector<host::InputEvent>& output, input::PhysicalAxis event);
+    void apply(std::vector<host::InputEvent>& output, input::PointerMotion event);
+    void apply(std::vector<host::InputEvent>& output, input::WheelMotion event);
+    void apply(std::vector<host::InputEvent>& output, input::TextInput const& event);
+    void apply(std::vector<host::InputEvent>& output, input::FocusLost);
+    void apply(std::vector<host::InputEvent>& output, input::GamepadDisconnected);
+    void release_context(std::vector<host::InputEvent>& output);
 
     ControlsSettings const& controls_;
     PhysicalInputState physical_;
     input::InputState state_;
     input::FlightInputResolver flight_;
-    std::vector<RoutedInput> routed_;
     std::vector<RoutedButton> routed_buttons_;
     std::array<double, 8> repeat_delays_{};
     std::uint8_t pointer_capture_{};
