@@ -1,19 +1,20 @@
 #pragma once
 
+#include <ioj/input/menu_navigation.h>
 #include <ioj/settings/game_setting_category.h>
 
 #include <Misc/Optional.h>
 
 namespace ioj {
 enum class EMenuPage : uint8 {
-    SelectLevel,
-    DataArchive,
-    Video,
-    Gameplay,
-    Audio,
-    Controls,
-    Accessibility,
-    System,
+    SelectLevel = static_cast<uint8>(input::MainMenuItem::SelectLevel),
+    DataArchive = static_cast<uint8>(input::MainMenuItem::DataArchive),
+    Video = static_cast<uint8>(input::MainMenuItem::Video),
+    Gameplay = static_cast<uint8>(input::MainMenuItem::Gameplay),
+    Audio = static_cast<uint8>(input::MainMenuItem::Audio),
+    Controls = static_cast<uint8>(input::MainMenuItem::Controls),
+    Accessibility = static_cast<uint8>(input::MainMenuItem::Accessibility),
+    System = static_cast<uint8>(input::MainMenuItem::System),
 };
 
 inline auto settings_category(EMenuPage page) -> TOptional<GameSettingCategory> {
