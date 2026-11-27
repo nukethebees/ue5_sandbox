@@ -21,7 +21,7 @@
 
 | Member | Type | Enum values |
 | --- | --- | --- |
-| `:unlock-all-missions` | `bool` | |
+| `:unlock-all-levels` | `bool` | |
 | `:start-levels-paused` | `bool` | |
 | `:print-save-data` | `bool` | |
 | `:frame-log-footer` | `bool` | |

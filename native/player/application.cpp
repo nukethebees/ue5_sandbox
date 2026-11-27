@@ -366,7 +366,7 @@ void Application::publish_catalog() {
 
     catalog_.emplace(std::move(*loaded));
     auto const rows{bridge::make_catalog_rows(
-        *catalog_, profiles_.active_records(), settings_.application().unlock_all_missions)};
+        *catalog_, profiles_.active_records(), settings_.application().unlock_all_levels)};
     host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
 }
 

@@ -29,9 +29,9 @@ struct TypeReader<ApplicationSettings> : RecordReader<ApplicationSettings> {
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 4> field_names{
-        "unlock-all-missions", "start-levels-paused", "print-save-data", "frame-log-footer"};
+        "unlock-all-levels", "start-levels-paused", "print-save-data", "frame-log-footer"};
     static constexpr auto required{
-        required_fields<Field, field_names.size()>({Field::unlock_all_missions,
+        required_fields<Field, field_names.size()>({Field::unlock_all_levels,
                                                     Field::start_levels_paused,
                                                     Field::print_save_data,
                                                     Field::frame_log_footer})};

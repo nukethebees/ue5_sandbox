@@ -2,7 +2,7 @@
 
 (define app-settings
   (application
-    :unlock-all-missions #f
+    :unlock-all-levels #f
     :start-levels-paused #f
     :print-save-data #f
     :frame-log-footer #f))

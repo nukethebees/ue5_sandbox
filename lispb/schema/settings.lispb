@@ -77,7 +77,7 @@
   :header-include "ioj/settings/application_settings.h"
   :namespace ioj
   (record ApplicationSettings :generate-visitor true :generate-s7-reader true :s7-tag "application"
-    (member unlock_all_missions bool :initializer "" :required true)
+    (member unlock_all_levels bool :initializer "" :required true)
     (member start_levels_paused bool :initializer "" :required true)
     (member print_save_data bool :initializer "" :required true)
     (member frame_log_footer bool :initializer "" :required true)

@@ -17,7 +17,7 @@
 namespace ioj {
 struct ApplicationSettings {
     enum class Field : std::uint8_t {
-        unlock_all_missions,
+        unlock_all_levels,
         start_levels_paused,
         print_save_data,
         frame_log_footer,
@@ -28,8 +28,8 @@ struct ApplicationSettings {
         requires (std::same_as<std::remove_const_t<Self>, ApplicationSettings> &&
                   std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
-        if constexpr (Selected == Field::unlock_all_missions) {
-            return (self.unlock_all_missions);
+        if constexpr (Selected == Field::unlock_all_levels) {
+            return (self.unlock_all_levels);
         }
         if constexpr (Selected == Field::start_levels_paused) {
             return (self.start_levels_paused);
@@ -52,9 +52,8 @@ struct ApplicationSettings {
         requires std::same_as<std::remove_const_t<Self>, ApplicationSettings>
     {
         switch (field) {
-            case Field::unlock_all_missions:
-                return invoke_field<Field::unlock_all_missions>(self,
-                                                                std::forward<Visitor>(visitor));
+            case Field::unlock_all_levels:
+                return invoke_field<Field::unlock_all_levels>(self, std::forward<Visitor>(visitor));
             case Field::start_levels_paused:
                 return invoke_field<Field::start_levels_paused>(self,
                                                                 std::forward<Visitor>(visitor));
@@ -67,7 +66,7 @@ struct ApplicationSettings {
         std::unreachable();
     }
 
-    bool unlock_all_missions{};
+    bool unlock_all_levels{};
     bool start_levels_paused{};
     bool print_save_data{};
     bool frame_log_footer{};
@@ -79,7 +78,7 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<ApplicationSettings::Field, Name>{PackedStrings{
-    "unlock_all_missions\000start_levels_paused\000print_save_data\000frame_log_footer",
-    std::array<std::uint8_t, 5>{0, 20, 40, 56, 73}}};
+inline constexpr auto enum_strings<ApplicationSettings::Field, Name>{
+    PackedStrings{"unlock_all_levels\000start_levels_paused\000print_save_data\000frame_log_footer",
+                  std::array<std::uint8_t, 5>{0, 18, 38, 54, 71}}};
 } // namespace ioj
