@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/mission_init.h>
+#include <ioj/presentation/level_init.h>
 #include <ioj/settings/presentation.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
@@ -81,7 +81,8 @@ UCLASS(BlueprintType)
 class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     GENERATED_BODY()
   public:
-    auto get_visual_config(presentation::MissionInit const& mission) const -> FLevelVisualConfig {
+    auto get_visual_config(presentation::LevelPresentationSetup const& setup) const
+        -> FLevelVisualConfig {
         return {player_ship,
                 laser_projectiles,
                 capital_ships,
@@ -95,9 +96,9 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 turret_debug_targets,
                 turret_debug_entities,
                 entity_overlay,
-                mission.presentation,
-                mission.health_maximums,
-                mission.laser_reserve,
+                setup.presentation,
+                setup.health_maximums,
+                setup.laser_reserve,
                 sparks};
     }
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;

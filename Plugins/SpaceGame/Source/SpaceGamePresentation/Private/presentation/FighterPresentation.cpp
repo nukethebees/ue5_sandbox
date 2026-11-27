@@ -25,7 +25,7 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
+void FFighterPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
@@ -45,12 +45,12 @@ void FFighterPresentation::begin_play_presentation(presentation::MissionFrame co
     commit_visual_data(frame);
 }
 
-void FFighterPresentation::update_visual_data(presentation::MissionFrame const& frame) {
+void FFighterPresentation::update_visual_data(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
     update_ismc(frame);
 }
 
-void FFighterPresentation::commit_visual_data(presentation::MissionFrame const& frame) {
+void FFighterPresentation::commit_visual_data(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::commit_visual_data);
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
         draw_debug_shapes(frame);
@@ -70,7 +70,7 @@ void FFighterPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FFighterPresentation::update_ismc(presentation::MissionFrame const& frame) {
+void FFighterPresentation::update_ismc(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
     auto const& data{frame.fighters()};
@@ -116,7 +116,7 @@ void FFighterPresentation::update_ismc(presentation::MissionFrame const& frame) 
         });
 }
 
-void FFighterPresentation::draw_debug_shapes(presentation::MissionFrame const& frame) {
+void FFighterPresentation::draw_debug_shapes(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
     auto const& data{frame.fighters()};

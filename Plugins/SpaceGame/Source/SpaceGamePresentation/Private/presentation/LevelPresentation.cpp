@@ -13,7 +13,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       presentation::MissionFrame const& frame,
+                                       presentation::LevelFrame const& frame,
                                        FGameAudioFacade audio)
     : config_{resources.config}
     , audio_{audio}
@@ -71,7 +71,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation(frame.lasers, config.laser_instance_reserve);
 }
 
-void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& frame) {
+void FLevelPresentation::tick(float const dt, presentation::LevelFrame const& frame) {
     auto const completed_tick{frame.status.completed_tick};
     if (last_completed_tick_ == completed_tick) {
         sparks.commit(dt);

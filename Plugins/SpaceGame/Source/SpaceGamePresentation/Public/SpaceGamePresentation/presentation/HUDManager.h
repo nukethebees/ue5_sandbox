@@ -51,12 +51,12 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void configure(sim::HudSettings settings) { model_.configure(settings); }
     auto settings() const -> sim::HudSettings const& { return model_.settings(); }
 
-    void initialise(presentation::MissionFrame const& mission,
+    void initialise(presentation::LevelFrame const& level,
                     sim::EntityTypeRadii const& radii,
                     FLevelVisualConfig const& level_config,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
-    void advance(double dt, presentation::MissionFrame const& mission);
+    void advance(double dt, presentation::LevelFrame const& level);
 
     void register_hud(USimulationHudWidget& hud);
     void unregister_hud(USimulationHudWidget& hud);
@@ -83,9 +83,9 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         presentation::SoftTargetState soft_targets{};
     };
 
-    void update_entity_overlays(presentation::MissionFrame const& mission, float delta_seconds);
-    void update_entity_overlay_objective_roles(presentation::MissionFrame const& mission);
-    void update_entity_overlay(presentation::MissionFrame const& mission,
+    void update_entity_overlays(presentation::LevelFrame const& level, float delta_seconds);
+    void update_entity_overlay_objective_roles(presentation::LevelFrame const& level);
+    void update_entity_overlay(presentation::LevelFrame const& level,
                                FRegisteredHud& registration,
                                float delta_seconds,
                                bool render_world_target);
@@ -97,22 +97,21 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                FLinearColor neutral_color,
                                FLinearColor in_range_color,
                                FWorldSoftTargetCustomDataBuffer& custom_data);
-    void update_radars(presentation::MissionFrame const& mission);
-    void update_radar(presentation::MissionFrame const& mission, FRegisteredHud& registration);
+    void update_radars(presentation::LevelFrame const& level);
+    void update_radar(presentation::LevelFrame const& level, FRegisteredHud& registration);
 
     template <typename Hud>
-    void update_hud(presentation::MissionFrame const& mission,
+    void update_hud(presentation::LevelFrame const& level,
                     Hud& hud,
                     presentation::HudChanges const& changes);
-    void update_huds(presentation::MissionFrame const& mission,
+    void update_huds(presentation::LevelFrame const& level,
                      presentation::HudChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;
 #if WITH_EDITOR
-    void update_sampled_speed_hud(presentation::MissionFrame const& mission,
-                                  UShipHudWidget& hud) const;
+    void update_sampled_speed_hud(presentation::LevelFrame const& level, UShipHudWidget& hud) const;
 #endif
 
     presentation::HudModel model_;

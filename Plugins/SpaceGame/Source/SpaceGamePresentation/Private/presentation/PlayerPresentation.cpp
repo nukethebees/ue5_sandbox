@@ -14,7 +14,7 @@ namespace ioj {
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
                                          settings::PlayerPresentation const& settings,
-                                         presentation::MissionFrame const& frame)
+                                         presentation::LevelFrame const& frame)
     : resources_{MoveTemp(resources)}
     , last_tick_{frame.status.completed_tick} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
@@ -33,7 +33,7 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.space_dust->apply_settings(config.space_dust);
     tick(frame);
 }
-void FPlayerPresentation::tick(presentation::MissionFrame const& frame) {
+void FPlayerPresentation::tick(presentation::LevelFrame const& frame) {
     auto const& state{*frame.player};
     auto const action{state.flight.boost_brake_state};
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||

@@ -15,6 +15,7 @@
 #include <ioj/transform3d.h>
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace ioj::presentation {
@@ -25,21 +26,25 @@ struct PlayerSpawn {
     std::optional<std::int32_t> initial_health;
 };
 
-struct MissionInit {
-    std::string_view id;
-    std::string_view source_path;
+struct LevelPresentationSetup {
+    std::string source_path;
     levels::ControlContext control_context;
     levels::PresentationMode presentation_mode;
     levels::LaunchMode launch_mode;
-    settings::Presentation const& presentation;
-    sim::HudSettings const& hud;
-    starfield::Settings const& starfield;
+    settings::Presentation presentation;
+    sim::HudSettings hud;
+    starfield::Settings starfield;
     EntityOverlayHealthMaximums health_maximums;
     std::int32_t laser_reserve;
+    std::optional<PlayerSpawn> player{};
+    std::optional<Transform3d> camera{};
+};
+
+struct LevelInit {
+    LevelPresentationSetup const& setup;
+    std::string_view id;
     sim::collision::CollisionGridSpec grid;
     sim::EntityTypeRadii radii;
     sim::collision::world_aabbs::ConstView static_bounds;
-    std::optional<PlayerSpawn> player{};
-    std::optional<Transform3d> camera{};
 };
 }

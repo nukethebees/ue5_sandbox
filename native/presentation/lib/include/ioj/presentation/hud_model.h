@@ -4,7 +4,7 @@
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/presentation/entity_count_hud_data.h>
 #include <ioj/presentation/hud_changes.h>
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
@@ -20,12 +20,12 @@ class HudModel {
   public:
     void configure(sim::HudSettings settings) { settings_ = settings; }
     auto settings() const -> sim::HudSettings const& { return settings_; }
-    void initialise(MissionFrame const& frame);
+    void initialise(LevelFrame const& frame);
     void deactivate();
-    auto advance(double delta_seconds, MissionFrame const& frame) -> HudChanges;
-    auto tick(PeriodicTickCountdown8::counter_type num_ticks, MissionFrame const& frame)
+    auto advance(double delta_seconds, LevelFrame const& frame) -> HudChanges;
+    auto tick(PeriodicTickCountdown8::counter_type num_ticks, LevelFrame const& frame)
         -> HudChanges;
-    auto force_sample(MissionFrame const& frame) -> HudChanges;
+    auto force_sample(LevelFrame const& frame) -> HudChanges;
 
     auto active() const -> bool { return active_; }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }

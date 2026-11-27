@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -29,18 +29,17 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void ValidateOptionalAssets() const;
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::MissionFrame const& frame);
+    void begin_play_presentation(presentation::LevelFrame const& frame);
     void update_visual_data(presentation::FrameEvents const& events);
     void commit_visual_data();
-    void end_tick_presentation(presentation::MissionFrame const& frame);
+    void end_tick_presentation(presentation::LevelFrame const& frame);
 
     void configure_ismc();
-    void add_initial_visual_instances(presentation::MissionFrame const& frame);
-    void add_visual_instances(presentation::MissionFrame const& frame,
-                              int32 first_index,
-                              int32 count);
+    void add_initial_visual_instances(presentation::LevelFrame const& frame);
+    void
+        add_visual_instances(presentation::LevelFrame const& frame, int32 first_index, int32 count);
     void trigger_death_effects(presentation::FrameEvents const& events);
-    void validate_array_sizes(presentation::MissionFrame const& frame) const;
+    void validate_array_sizes(presentation::LevelFrame const& frame) const;
 
     FCapitalShipConfig const* actor_config{nullptr};
     settings::CapitalPresentation const* settings_{};

@@ -17,7 +17,7 @@ auto replace(T& current, T next) -> bool {
 }
 }
 
-void HudModel::initialise(MissionFrame const& frame) {
+void HudModel::initialise(LevelFrame const& frame) {
     deactivate();
     tick_loop_.initialise();
     std::array const periods{settings_.player_status_update_period,
@@ -40,7 +40,7 @@ void HudModel::deactivate() {
     player_status_data_ = {};
     player_flight_data_ = {};
 }
-auto HudModel::advance(double const delta_seconds, MissionFrame const& frame) -> HudChanges {
+auto HudModel::advance(double const delta_seconds, LevelFrame const& frame) -> HudChanges {
     HudChanges changes;
     if (!active()) {
         return changes;
@@ -55,7 +55,7 @@ auto HudModel::advance(double const delta_seconds, MissionFrame const& frame) ->
     }
     return changes;
 }
-auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks, MissionFrame const& frame)
+auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks, LevelFrame const& frame)
     -> HudChanges {
     assert(num_ticks >= 0);
     HudChanges changes;
@@ -77,7 +77,7 @@ auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks, Missio
     }
     return changes;
 }
-auto HudModel::force_sample(MissionFrame const& frame) -> HudChanges {
+auto HudModel::force_sample(LevelFrame const& frame) -> HudChanges {
     if (!active()) {
         return {};
     }

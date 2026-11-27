@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>

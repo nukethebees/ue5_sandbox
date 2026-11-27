@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -25,19 +25,19 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
   private:
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::MissionFrame const& frame);
+    void begin_play_presentation(presentation::LevelFrame const& frame);
     void update_visual_data(presentation::FrameEvents const& events);
-    void commit_visual_data(presentation::MissionFrame const& frame);
-    void end_tick_presentation(presentation::MissionFrame const& frame);
+    void commit_visual_data(presentation::LevelFrame const& frame);
+    void end_tick_presentation(presentation::LevelFrame const& frame);
 
-    void add_initial_visual_instances(presentation::MissionFrame const& frame);
-    void add_visual_instances(presentation::MissionFrame const& frame,
+    void add_initial_visual_instances(presentation::LevelFrame const& frame);
+    void add_visual_instances(presentation::LevelFrame const& frame,
                               TArray<FTransform> const& transforms,
                               int32 first_entity_index);
     void configure_ismc();
     void trigger_death_effects(presentation::FrameEvents const& events);
-    void draw_debugging_shapes(presentation::MissionFrame const& frame) const;
-    void validate_array_sizes(presentation::MissionFrame const& frame) const;
+    void draw_debugging_shapes(presentation::LevelFrame const& frame) const;
+    void validate_array_sizes(presentation::LevelFrame const& frame) const;
 
     FTurretConfig const* actor_config{nullptr};
     settings::TurretPresentation const* settings_{};

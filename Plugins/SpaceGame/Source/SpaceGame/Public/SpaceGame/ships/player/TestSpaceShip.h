@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/laser_firing_state.h>

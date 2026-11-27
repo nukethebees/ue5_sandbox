@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -22,15 +22,15 @@ struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
     void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
     void clear_runtime_state_presentation();
-    void begin_play_presentation(presentation::MissionFrame const& frame);
-    void update_visual_data(presentation::MissionFrame const& frame);
+    void begin_play_presentation(presentation::LevelFrame const& frame);
+    void update_visual_data(presentation::LevelFrame const& frame);
     void commit_visual_data();
-    void end_tick_presentation(presentation::MissionFrame const& frame);
+    void end_tick_presentation(presentation::LevelFrame const& frame);
 
     void configure_ismc();
-    void update_ismc_transforms(presentation::MissionFrame const& frame);
-    void update_ismc(presentation::MissionFrame const& frame);
-    void validate_array_sizes(presentation::MissionFrame const& frame) const;
+    void update_ismc_transforms(presentation::LevelFrame const& frame);
+    void update_ismc(presentation::LevelFrame const& frame);
+    void validate_array_sizes(presentation::LevelFrame const& frame) const;
 
     FTubeSpinnerConfig const* actor_config{nullptr};
 

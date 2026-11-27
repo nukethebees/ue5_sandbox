@@ -68,20 +68,20 @@ struct FrameEvents {
     InstanceChanges turret_changes;
 };
 
-struct MissionStatus {
+struct LevelStatus {
     sim::SimTick completed_tick{};
     sim::LevelState state{};
     std::optional<sim::SimTick::value_type> ticks_remaining{};
 };
 
 // All borrowed columns expire on return from the presentation call.
-struct MissionFrame {
+struct LevelFrame {
     auto const& capitals() const { return agents[0]; }
     auto const& fighters() const { return agents[1]; }
     auto const& turrets() const { return agents[2]; }
     auto const& spinners() const { return agents[3]; }
 
-    MissionStatus status;
+    LevelStatus status;
     std::array<AgentDisplayBatch, 4> agents;
     rotators3f::ConstView capital_rotations;
     vectors3f::ConstView fighter_aim;

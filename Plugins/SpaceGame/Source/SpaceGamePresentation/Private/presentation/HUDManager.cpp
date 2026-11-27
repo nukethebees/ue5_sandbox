@@ -33,12 +33,12 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleC
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
 namespace ioj {
-void FHUDManager::initialise(presentation::MissionFrame const& mission,
+void FHUDManager::initialise(presentation::LevelFrame const& level,
                              sim::EntityTypeRadii const& radii,
                              FLevelVisualConfig const& level_config,
                              UInstancedStaticMeshComponent* const soft_target_instances) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
-    model_.initialise(mission);
+    model_.initialise(level);
     entity_radii_ = radii;
     auto const& entity_overlay_settings{level_config.entity_overlay};
     entity_overlay_resources_ = entity_overlay_settings;
@@ -113,15 +113,15 @@ void FHUDManager::initialise(presentation::MissionFrame const& mission,
         synchronise_hud(*hud);
 #if WITH_EDITOR
         if (IsValid(ship_hud)) {
-            update_sampled_speed_hud(mission, *ship_hud);
+            update_sampled_speed_hud(level, *ship_hud);
         }
 #endif
     }
     for (auto& registration : registered_huds) {
         registration.soft_targets = {};
     }
-    update_entity_overlays(mission, 0.0f);
-    update_radars(mission);
+    update_entity_overlays(level, 0.0f);
+    update_radars(level);
 }
 void FHUDManager::deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::deactivate);
@@ -151,16 +151,16 @@ void FHUDManager::deactivate() {
     warned_multiple_world_target_views_ = false;
 }
 
-void FHUDManager::advance(double const dt, presentation::MissionFrame const& mission) {
+void FHUDManager::advance(double const dt, presentation::LevelFrame const& level) {
     if (!model_.active()) {
         return;
     }
-    auto const changes{sample_on_next_frame_ ? model_.force_sample(mission)
-                                             : model_.advance(dt, mission)};
+    auto const changes{sample_on_next_frame_ ? model_.force_sample(level)
+                                             : model_.advance(dt, level)};
     sample_on_next_frame_ = false;
-    update_huds(mission, changes);
-    update_entity_overlays(mission, static_cast<float>(dt));
-    update_radars(mission);
+    update_huds(level, changes);
+    update_entity_overlays(level, static_cast<float>(dt));
+    update_radars(level);
 }
 void FHUDManager::register_hud(USimulationHudWidget& hud) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::register_hud);
@@ -201,7 +201,7 @@ void FHUDManager::unregister_hud(USimulationHudWidget& hud) {
     registered_huds.RemoveAt(index);
 }
 
-void FHUDManager::update_entity_overlays(presentation::MissionFrame const& mission,
+void FHUDManager::update_entity_overlays(presentation::LevelFrame const& level,
                                          float const delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_overlays);
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
@@ -213,7 +213,7 @@ void FHUDManager::update_entity_overlays(presentation::MissionFrame const& missi
         return;
     }
 
-    update_entity_overlay_objective_roles(mission);
+    update_entity_overlay_objective_roles(level);
     if (!entity_overlay_settings_.enabled) {
         return;
     }
@@ -224,7 +224,7 @@ void FHUDManager::update_entity_overlays(presentation::MissionFrame const& missi
             ++ship_hud_count;
         }
         auto const render_world_target{!world_target_rendered && registration.ship_hud.IsValid()};
-        update_entity_overlay(mission, registration, delta_seconds, render_world_target);
+        update_entity_overlay(level, registration, delta_seconds, render_world_target);
         world_target_rendered |= render_world_target;
     }
     if (ship_hud_count > 1 && !warned_multiple_world_target_views_) {
@@ -236,13 +236,13 @@ void FHUDManager::update_entity_overlays(presentation::MissionFrame const& missi
     }
 }
 
-void FHUDManager::update_entity_overlay_objective_roles(presentation::MissionFrame const& mission) {
+void FHUDManager::update_entity_overlay_objective_roles(presentation::LevelFrame const& level) {
     // Generic expressions do not imply a unique defend/destroy presentation role.
     entity_overlay_objective_roles_.Init(ui::entity_overlay::ObjectiveRole::None,
-                                         presentation::display_entity_count(mission.agents));
+                                         presentation::display_entity_count(level.agents));
 }
 
-void FHUDManager::update_entity_overlay(presentation::MissionFrame const& mission,
+void FHUDManager::update_entity_overlay(presentation::LevelFrame const& level,
                                         FRegisteredHud& registration,
                                         float const delta_seconds,
                                         bool const render_world_target) {
@@ -276,11 +276,11 @@ void FHUDManager::update_entity_overlay(presentation::MissionFrame const& missio
     }
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
-    auto const& batches{mission.agents};
+    auto const& batches{level.agents};
     auto const& entity_radii{entity_radii_};
     ioj::presentation::SoftTargetResult soft_target;
-    if (auto const* player_ship{registration.ship_hud.IsValid() && mission.player ? &*mission.player
-                                                                                  : nullptr}) {
+    if (auto const* player_ship{registration.ship_hud.IsValid() && level.player ? &*level.player
+                                                                                : nullptr}) {
         auto const firing_transform{player_ship->middle_socket};
         auto const camera_transform{FRotationMatrix{camera_rotation}};
         soft_target =
@@ -459,7 +459,7 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
     custom_data.Append(instance_custom_data, soft_target_world::custom_data_count);
 }
 
-void FHUDManager::update_radars(presentation::MissionFrame const& mission) {
+void FHUDManager::update_radars(presentation::LevelFrame const& level) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_radars);
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxRadarVisibleCount, 0);
@@ -469,11 +469,11 @@ void FHUDManager::update_radars(presentation::MissionFrame const& mission) {
     }
 
     for (auto& registration : registered_huds) {
-        update_radar(mission, registration);
+        update_radar(level, registration);
     }
 }
 
-void FHUDManager::update_radar(presentation::MissionFrame const& mission,
+void FHUDManager::update_radar(presentation::LevelFrame const& level,
                                FRegisteredHud& registration) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::Collect);
     auto* const hud{registration.ship_hud.Get()};
@@ -486,7 +486,7 @@ void FHUDManager::update_radar(presentation::MissionFrame const& mission,
     }
 
     auto& frame{registration.radar_frame_store->next()};
-    auto const& player_ship{mission.player};
+    auto const& player_ship{level.player};
     if (!player_ship || !player_ship->status.health.is_alive()) {
         frame.instances.Reset();
         registration.radar_frame_store->publish();
@@ -494,7 +494,7 @@ void FHUDManager::update_radar(presentation::MissionFrame const& mission,
     }
 
     auto const result{presentation::collect_radar_instances(
-        mission.agents,
+        level.agents,
         std::span{entity_overlay_objective_roles_.GetData(),
                   static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
         radar_contact_colours_,
@@ -516,7 +516,7 @@ void FHUDManager::update_radar(presentation::MissionFrame const& mission,
                       static_cast<int64>(result.visible_count) * sizeof(ui::radar::Instance));
 }
 template <typename Hud>
-void FHUDManager::update_hud(presentation::MissionFrame const& mission,
+void FHUDManager::update_hud(presentation::LevelFrame const& level,
                              Hud& hud,
                              presentation::HudChanges const& changes) {
     if (changes.entity_counts) {
@@ -531,21 +531,21 @@ void FHUDManager::update_hud(presentation::MissionFrame const& mission,
         }
 #if WITH_EDITOR
         if (changes.sampled_speed) {
-            update_sampled_speed_hud(mission, hud);
+            update_sampled_speed_hud(level, hud);
         }
 #endif
     }
 }
-void FHUDManager::update_huds(presentation::MissionFrame const& mission,
+void FHUDManager::update_huds(presentation::LevelFrame const& level,
                               presentation::HudChanges const& changes) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_huds);
     for (auto const& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
         check(IsValid(hud));
         if (auto* const ship_hud{registration.ship_hud.Get()}) {
-            update_hud(mission, *ship_hud, changes);
+            update_hud(level, *ship_hud, changes);
         } else {
-            update_hud(mission, *hud, changes);
+            update_hud(level, *hud, changes);
         }
     }
 }
@@ -623,10 +623,10 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_crosshair_positions(near_screen_position, far_screen_position);
 }
 #if WITH_EDITOR
-void FHUDManager::update_sampled_speed_hud(presentation::MissionFrame const& mission,
+void FHUDManager::update_sampled_speed_hud(presentation::LevelFrame const& level,
                                            UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_sampled_speed_hud);
-    if (auto const data{mission.sampled_speed}) {
+    if (auto const data{level.sampled_speed}) {
         hud.update_sampled_speed(data->samples, data->oldest_index);
     }
 }

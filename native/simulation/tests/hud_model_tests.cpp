@@ -1,5 +1,5 @@
 #include "support/simulation_test_support.h"
-#include <ioj/bridge/mission_frame.h>
+#include <ioj/bridge/level_frame.h>
 #include <ioj/presentation/hud_model.h>
 #include <ioj/sim/levels/level_compilation.h>
 
@@ -20,7 +20,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
 
     auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
-    auto const frame = [&] { return bridge::mission_frame(simulation); };
+    auto const frame = [&] { return bridge::level_frame(simulation); };
     hud.initialise(frame());
 
     EXPECT_TRUE(hud.active());
@@ -48,7 +48,7 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
 
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
-    auto const frame = [&] { return bridge::mission_frame(simulation); };
+    auto const frame = [&] { return bridge::level_frame(simulation); };
     hud.initialise(frame());
     auto const victim{simulation.capital_ships().get_entities().entity_ids()[0]};
     harness.queue_kills(std::array{victim});
@@ -83,7 +83,7 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
     auto const& capitals{simulation.capital_ships()};
     auto const rival{capitals.get_entities().entity_ids()[2]};
     presentation::HudModel hud;
-    auto const frame = [&] { return bridge::mission_frame(simulation); };
+    auto const frame = [&] { return bridge::level_frame(simulation); };
     hud.initialise(frame());
     ASSERT_TRUE(hud.player_status_data());
     EXPECT_EQ(hud.player_status_data()->health.health.value(), 37);

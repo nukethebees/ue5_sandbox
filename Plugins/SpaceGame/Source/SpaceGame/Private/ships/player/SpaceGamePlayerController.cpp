@@ -741,7 +741,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     return_to_level_select_pending_ = true;
-    auto const preferred_level_id{orchestrator->has_level() ? orchestrator->mission_id()
+    auto const preferred_level_id{orchestrator->has_level() ? orchestrator->level_id()
                                                             : modal_ui_.completed_level_id()};
     if (!request_menu({levels::LevelId{preferred_level_id.IsNone()
                                            ? std::string{}

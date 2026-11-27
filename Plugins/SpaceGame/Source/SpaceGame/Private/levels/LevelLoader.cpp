@@ -151,9 +151,9 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
     FLevelLoadResult result{std::unexpect};
     auto& errors{result.error()};
     auto& world{request.world};
-    auto const& mission{request.mission};
+    auto const& setup{request.setup};
     auto const& config{request.config};
-    auto const has_player{mission.player.has_value()};
+    auto const has_player{setup.player.has_value()};
     auto const& visual{request.visual};
     if (!has_player && visual &&
         visual->playerless_control_context != levels::ControlContext::Observer &&
@@ -178,19 +178,19 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
         return result;
     }
 
-    FSpawnedActorTransaction transaction{1 + (mission.camera ? 1 : 0)};
+    FSpawnedActorTransaction transaction{1 + (setup.camera ? 1 : 0)};
     ATestSpaceShip* player{nullptr};
     if (has_player && visual) {
-        player = spawn_player(world, config, *mission.player, transaction, errors);
+        player = spawn_player(world, config, *setup.player, transaction, errors);
         if (!IsValid(player)) {
             return result;
         }
     }
 
-    if (visual && mission.camera) {
+    if (visual && setup.camera) {
         if (!spawn_initial_camera(world,
                                   visual->controller,
-                                  *mission.camera,
+                                  *setup.camera,
                                   transaction,
                                   errors,
                                   visual->playerless_control_context)) {

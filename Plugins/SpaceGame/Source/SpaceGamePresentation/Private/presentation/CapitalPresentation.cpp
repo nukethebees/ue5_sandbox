@@ -53,7 +53,7 @@ void FCapitalPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
 }
 
-void FCapitalPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
+void FCapitalPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::begin_play_presentation);
 
     auto* const world{instances->GetWorld()};
@@ -98,7 +98,7 @@ void FCapitalPresentation::commit_visual_data() {
     instances->MarkRenderStateDirty();
 }
 
-void FCapitalPresentation::end_tick_presentation(presentation::MissionFrame const& frame) {
+void FCapitalPresentation::end_tick_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::end_tick_presentation);
     validate_array_sizes(frame);
 }
@@ -112,13 +112,13 @@ void FCapitalPresentation::configure_ismc() {
                           });
 }
 
-void FCapitalPresentation::add_initial_visual_instances(presentation::MissionFrame const& frame) {
+void FCapitalPresentation::add_initial_visual_instances(presentation::LevelFrame const& frame) {
     auto const& entities{frame.capitals()};
     auto const n_to_add{static_cast<int32>(entities.num())};
     add_visual_instances(frame, 0, n_to_add);
 }
 
-void FCapitalPresentation::add_visual_instances(presentation::MissionFrame const& frame,
+void FCapitalPresentation::add_visual_instances(presentation::LevelFrame const& frame,
                                                 int32 const first_index,
                                                 int32 const n_to_add) {
     auto const& entities{frame.capitals()};
@@ -222,7 +222,7 @@ void FCapitalPresentation::trigger_death_effects(presentation::FrameEvents const
     }
 }
 
-void FCapitalPresentation::validate_array_sizes(presentation::MissionFrame const& frame) const {
+void FCapitalPresentation::validate_array_sizes(presentation::LevelFrame const& frame) const {
     fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(frame.capitals().num())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),

@@ -32,16 +32,16 @@ void FLevelPresentationHost::configure_collision_grid(
 void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
                                         FGameAudioFacade audio,
-                                        presentation::MissionInit const& mission,
-                                        presentation::MissionFrame const& frame) {
+                                        presentation::LevelInit const& level,
+                                        presentation::LevelFrame const& frame) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
     auto const resources{make_resources(config, MoveTemp(player))};
     presentation_.Emplace(resources, frame, audio);
-    components_.collision_grid->set_static_bounds(mission.static_bounds);
+    components_.collision_grid->set_static_bounds(level.static_bounds);
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.initialise(frame, mission.radii, config, components_.soft_targets);
+    hud_manager_.initialise(frame, level.radii, config, components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {
@@ -61,7 +61,7 @@ void FLevelPresentationHost::reset() {
     }
 }
 
-void FLevelPresentationHost::tick(double const dt, presentation::MissionFrame const& frame) {
+void FLevelPresentationHost::tick(double const dt, presentation::LevelFrame const& frame) {
     if (!presentation_.IsSet()) {
         return;
     }

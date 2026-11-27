@@ -5,7 +5,7 @@
 #include "SpaceGame/UnrealMessages.h"
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
-#include <ioj/host/mission_startup.h>
+#include <ioj/host/level_startup.h>
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/launch_options.h>
@@ -41,7 +41,7 @@
 namespace ioj {
 namespace {
 TWeakObjectPtr<ATestBatchOrchestrator> level_world;
-MissionStartup mission_status{MissionStartup::Pending};
+LevelStartup level_status{LevelStartup::Pending};
 }
 void attach_level_world(ATestBatchOrchestrator& actor) {
     check(!level_world.IsValid());
@@ -56,9 +56,9 @@ namespace host {
 auto level_world_ready() -> bool {
     return level_world.IsValid();
 }
-void open_mission() {
+void open_level() {
     level_world.Reset();
-    mission_status = MissionStartup::Pending;
+    level_status = LevelStartup::Pending;
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/GameRuntime"));
 }
@@ -68,16 +68,16 @@ void open_menu(std::string_view preferred_level_id, std::string_view error) {
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/MainMenu"));
 }
-auto bind_level(presentation::MissionInit const& mission, presentation::MissionFrame const& frame)
+auto initialize_level(presentation::LevelInit const& level, presentation::LevelFrame const& frame)
     -> bool {
-    auto result{level_world->prepare_level(mission)};
+    auto result{level_world->initialize_level(level, frame)};
     if (!result) {
         level_world->handle_level_start_failure(
-            result.error().format(to_fstring(mission.source_path)));
+            result.error().format(to_fstring(level.setup.source_path)));
         return false;
     }
 
-    return level_world->bind_level(mission, frame);
+    return true;
 }
 auto presents_level() -> bool {
     return level_world.IsValid() && level_world->has_level();
@@ -86,7 +86,7 @@ auto take_frame_delta_seconds() -> std::optional<double> {
     return level_world->take_frame_delta_seconds();
 }
 
-void present_level(double delta_seconds, presentation::MissionFrame const& frame) {
+void present_level(double delta_seconds, presentation::LevelFrame const& frame) {
     level_world->present_level(delta_seconds, frame);
 }
 void simulation_paused() {
@@ -101,15 +101,15 @@ void finish_level(profiles::CompletedLevel const& completed,
     }
 }
 }
-auto IojPlayer_MissionStartup() -> MissionStartup {
-    return mission_status;
+auto IojPlayer_LevelStartup() -> LevelStartup {
+    return level_status;
 }
-void report_mission_startup(MissionStartup status) {
-    mission_status = status;
+void report_level_startup(LevelStartup status) {
+    level_status = status;
 }
 void IojPlayer_Detach() {
     detach_player();
-    mission_status = MissionStartup::Pending;
+    level_status = LevelStartup::Pending;
 }
 
 auto IojPlayer_ApplyPreferences() -> bool {

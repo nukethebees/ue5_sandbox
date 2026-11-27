@@ -3,7 +3,7 @@
 #include "SpaceGame/UnrealMessages.h"
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include "settings/GameHost.h"
-#include <ioj/host/mission_startup.h>
+#include <ioj/host/level_startup.h>
 #endif
 #include <ioj/levels/launch_options.h>
 #include <ioj/profiles/level_score.h>
@@ -90,7 +90,7 @@ void ATestBatchOrchestrator::release_level() {
 
     presentation_host_.reset();
     status_.reset();
-    mission_id_ = NAME_None;
+    level_id_ = NAME_None;
     frame_delta_seconds_.reset();
     reset_level_input();
 }
@@ -155,10 +155,11 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& mission)
+auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& level,
+                                              presentation::LevelFrame const& frame)
     -> FLevelLoadResult {
-    presentation_mode_ = mission.presentation_mode;
-    auto const playerless_control_context{mission.control_context};
+    presentation_mode_ = level.setup.presentation_mode;
+    auto const playerless_control_context{level.setup.control_context};
     auto const fail{[](ELevelLoadErrorCode const code, FString message) -> FLevelLoadResult {
         FLevelLoadErrors errors;
         errors.errors.Add({.code = code, .message = MoveTemp(message)});
@@ -179,7 +180,7 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
                     TEXT("Level configuration is invalid"));
     }
 
-    presentation_host_.get_hud_manager().configure(mission.hud);
+    presentation_host_.get_hud_manager().configure(level.setup.hud);
 
     std::optional<FLevelVisualLoad> visual;
     if (is_presentation_enabled()) {
@@ -190,7 +191,7 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
                         TEXT("Authored level requires a space-game player controller"));
         }
 
-        if (!get_presentation_resources(mission).is_valid()) {
+        if (!get_presentation_resources(level).is_valid()) {
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Orchestrator simulation infrastructure is incomplete"));
         }
@@ -200,7 +201,7 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
 
     auto loaded{FLevelLoader::load({.world = *world,
                                     .config = *level_config,
-                                    .mission = mission,
+                                    .setup = level.setup,
                                     .player = player_ship,
                                     .visual = visual})};
     if (!loaded) {
@@ -208,7 +209,8 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
     }
 
     TArray<FString> messages;
-    level_config->get_validation_errors(messages, is_presentation_enabled(), mission.presentation);
+    level_config->get_validation_errors(
+        messages, is_presentation_enabled(), level.setup.presentation);
     if (!messages.IsEmpty()) {
         return fail(ELevelLoadErrorCode::InvalidLevelConfig, FString::Join(messages, TEXT("\n")));
     }
@@ -221,28 +223,21 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
 
     if (is_presentation_enabled()) {
         for (TActorIterator<AGpuStarfieldActor> actor{world}; actor; ++actor) {
-            actor->set_starfield_settings(mission.starfield);
+            actor->set_starfield_settings(level.setup.starfield);
         }
     }
 
-    auto const resources{get_presentation_resources(mission)};
+    auto const resources{get_presentation_resources(level)};
     if (is_presentation_enabled() && !resources.is_valid()) {
         return fail(ELevelLoadErrorCode::MissingInfrastructure,
                     TEXT("Level presentation resources are incomplete"));
     }
 
-    return {};
-}
-
-auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission,
-                                        presentation::MissionFrame const& frame) -> bool {
-    check(!status_);
-    auto const resources{get_presentation_resources(mission)};
     auto* const audio{GetGameInstance()->GetSubsystem<UGameAudio>()};
     check(audio);
     status_ = frame.status;
-    mission_id_ = FName{to_fstring(mission.id)};
-    grid_ = mission.grid;
+    level_id_ = FName{to_fstring(level.id)};
+    grid_ = level.grid;
     refresh_collision_grid_visualization();
     if (IsValid(player_ship) && frame.player) {
         player_ship->present_player(*frame.player);
@@ -250,13 +245,13 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
 
     if (is_presentation_enabled()) {
         presentation_host_.initialise(
-            resources.config, resources.player, audio->facade(), mission, frame);
+            resources.config, resources.player, audio->facade(), level, frame);
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {
             controller->activate_ship_control();
         }
-        if (mission.launch_mode == levels::LaunchMode::Paused) {
+        if (level.setup.launch_mode == levels::LaunchMode::Paused) {
             controller->show_initial_pause_menu();
         }
     }
@@ -264,21 +259,21 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
     if (!is_presentation_enabled()) {
         auto* controller{Cast<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (!IsValid(controller) || !controller->activate_run_controls()) {
-            handle_level_start_failure(TEXT("Failed to activate simulation-only run controls"));
-            return false;
+            return fail(ELevelLoadErrorCode::MissingInfrastructure,
+                        TEXT("Failed to activate simulation-only run controls"));
         }
     }
 
-    UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(mission.source_path));
+    UE_LOG(LogSandbox, Display, TEXT("Level ready: %s"), *to_fstring(level.setup.source_path));
     frame_delta_seconds_.reset();
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    report_mission_startup(MissionStartup::Ready);
+    report_level_startup(LevelStartup::Ready);
 #endif
-    return true;
+    return {};
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    report_mission_startup(MissionStartup::Failed);
+    report_level_startup(LevelStartup::Failed);
 #endif
     release_level();
     FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
@@ -317,10 +312,10 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 
     presentation_host_.configure_collision_grid(MoveTemp(settings));
 }
-auto ATestBatchOrchestrator::get_presentation_resources(
-    presentation::MissionInit const& mission) const -> FLevelPresentationResources {
+auto ATestBatchOrchestrator::get_presentation_resources(presentation::LevelInit const& level) const
+    -> FLevelPresentationResources {
     return presentation_host_.make_resources(
-        level_config->get_visual_config(mission),
+        level_config->get_visual_config(level.setup),
         IsValid(player_ship)
             ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
             : NullOpt);
@@ -338,7 +333,7 @@ auto ATestBatchOrchestrator::take_frame_delta_seconds() -> std::optional<double>
     return std::exchange(frame_delta_seconds_, std::nullopt);
 }
 void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
-                                           presentation::MissionFrame const& frame) {
+                                           presentation::LevelFrame const& frame) {
     check(status_);
     status_ = frame.status;
     if (IsValid(player_ship) && frame.player) {

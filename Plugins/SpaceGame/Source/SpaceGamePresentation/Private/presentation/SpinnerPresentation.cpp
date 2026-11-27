@@ -26,7 +26,7 @@ void FSpinnerPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FSpinnerPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
+void FSpinnerPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FSpinnerPresentation actor_config is nullptr."));
@@ -44,7 +44,7 @@ void FSpinnerPresentation::begin_play_presentation(presentation::MissionFrame co
     validate_array_sizes(frame);
 }
 
-void FSpinnerPresentation::update_visual_data(presentation::MissionFrame const& frame) {
+void FSpinnerPresentation::update_visual_data(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_visual_data);
     update_ismc(frame);
 }
@@ -54,7 +54,7 @@ void FSpinnerPresentation::commit_visual_data() {
     instances->MarkRenderStateDirty();
 }
 
-void FSpinnerPresentation::end_tick_presentation(presentation::MissionFrame const& frame) {
+void FSpinnerPresentation::end_tick_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::end_tick_presentation);
     validate_array_sizes(frame);
 }
@@ -63,7 +63,7 @@ void FSpinnerPresentation::configure_ismc() {
     batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
 
-void FSpinnerPresentation::update_ismc_transforms(presentation::MissionFrame const& frame) {
+void FSpinnerPresentation::update_ismc_transforms(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc_transforms);
 
     auto const& entities{frame.spinners()};
@@ -82,7 +82,7 @@ void FSpinnerPresentation::update_ismc_transforms(presentation::MissionFrame con
     }
 }
 
-void FSpinnerPresentation::update_ismc(presentation::MissionFrame const& frame) {
+void FSpinnerPresentation::update_ismc(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc);
 
     update_ismc_transforms(frame);
@@ -99,7 +99,7 @@ void FSpinnerPresentation::update_ismc(presentation::MissionFrame const& frame) 
         0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 
-void FSpinnerPresentation::validate_array_sizes(presentation::MissionFrame const& frame) const {
+void FSpinnerPresentation::validate_array_sizes(presentation::LevelFrame const& frame) const {
     fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(frame.spinners().num())),
         SANDBOX_NAMED_NUM(ismc_transforms),

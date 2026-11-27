@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/presentation/mission_frame.h>
-#include <ioj/presentation/mission_init.h>
+#include <ioj/presentation/level_frame.h>
+#include <ioj/presentation/level_init.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -34,10 +34,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ATestBatchOrchestrator();
 
     void PostLoad() override;
-    void present_level(time_type delta_seconds, presentation::MissionFrame const& frame);
-    auto prepare_level(presentation::MissionInit const& mission) -> FLevelLoadResult;
-    auto bind_level(presentation::MissionInit const& mission,
-                    presentation::MissionFrame const& frame) -> bool;
+    void present_level(time_type delta_seconds, presentation::LevelFrame const& frame);
+    auto initialize_level(presentation::LevelInit const& level,
+                          presentation::LevelFrame const& frame) -> FLevelLoadResult;
     auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
     void finish_level(profiles::CompletedLevel const& completed,
@@ -64,7 +63,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
 
     auto has_level() const -> bool { return status_.has_value(); }
-    auto mission_id() const -> FName { return mission_id_; }
+    auto level_id() const -> FName { return level_id_; }
 
     auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
         if (status_ && status_->ticks_remaining) {
@@ -78,10 +77,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
     void clear_player_ship();
-
-    /* **************************************** */
-    // Level loading
-    /* **************************************** */
 
     /* **************************************** */
     // Events, results, and presentation
@@ -111,7 +106,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     void bind_presentation_components();
     void refresh_collision_grid_visualization();
-    auto get_presentation_resources(presentation::MissionInit const& mission) const
+    auto get_presentation_resources(presentation::LevelInit const& level) const
         -> FLevelPresentationResources;
     /* **************************************** */
     // State
@@ -147,8 +142,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
-    std::optional<presentation::MissionStatus> status_;
-    FName mission_id_;
+    std::optional<presentation::LevelStatus> status_;
+    FName level_id_;
     sim::collision::CollisionGridSpec grid_{};
     std::optional<double> frame_delta_seconds_;
     levels::PresentationMode presentation_mode_{levels::PresentationMode::Visual};

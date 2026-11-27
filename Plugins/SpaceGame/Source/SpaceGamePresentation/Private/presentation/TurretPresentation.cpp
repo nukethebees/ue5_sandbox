@@ -43,7 +43,7 @@ void FTurretPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FTurretPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
+void FTurretPresentation::begin_play_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
@@ -96,7 +96,7 @@ void FTurretPresentation::update_visual_data(presentation::FrameEvents const& ev
     trigger_death_effects(events);
 }
 
-void FTurretPresentation::commit_visual_data(presentation::MissionFrame const& frame) {
+void FTurretPresentation::commit_visual_data(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
@@ -105,7 +105,7 @@ void FTurretPresentation::commit_visual_data(presentation::MissionFrame const& f
     }
 }
 
-void FTurretPresentation::end_tick_presentation(presentation::MissionFrame const& frame) {
+void FTurretPresentation::end_tick_presentation(presentation::LevelFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::end_tick_presentation);
     validate_array_sizes(frame);
 }
@@ -119,12 +119,12 @@ void FTurretPresentation::configure_ismc() {
                           });
 }
 
-void FTurretPresentation::add_initial_visual_instances(presentation::MissionFrame const& frame) {
+void FTurretPresentation::add_initial_visual_instances(presentation::LevelFrame const& frame) {
     add_visual_instances(frame, ismc_transforms, 0);
     validate_array_sizes(frame);
 }
 
-void FTurretPresentation::add_visual_instances(presentation::MissionFrame const& frame,
+void FTurretPresentation::add_visual_instances(presentation::LevelFrame const& frame,
                                                TArray<FTransform> const& transforms,
                                                int32 const first_entity_index) {
     auto const& entities{frame.turrets()};
@@ -185,7 +185,7 @@ void FTurretPresentation::trigger_death_effects(presentation::FrameEvents const&
     }
 }
 
-void FTurretPresentation::validate_array_sizes(presentation::MissionFrame const& frame) const {
+void FTurretPresentation::validate_array_sizes(presentation::LevelFrame const& frame) const {
     fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(frame.turrets().num())),
         SANDBOX_NAMED_NUM(ismc_transforms),
@@ -193,7 +193,7 @@ void FTurretPresentation::validate_array_sizes(presentation::MissionFrame const&
     });
 }
 
-void FTurretPresentation::draw_debugging_shapes(presentation::MissionFrame const& frame) const {
+void FTurretPresentation::draw_debugging_shapes(presentation::LevelFrame const& frame) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::draw_debugging_shapes);
 
     auto const& entities{frame.turrets()};

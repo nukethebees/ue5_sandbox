@@ -1,11 +1,13 @@
-#include <ioj/bridge/mission_frame.h>
+#include <ioj/bridge/level_frame.h>
 
+#include <ioj/levels/launch_options.h>
+#include <ioj/levels/level_definition.h>
 #include <ioj/presentation/observer_camera.h>
-#include <ioj/session/mission_launch_request.h>
 #include <ioj/sim/levels/level_sim.h>
 
 #include <algorithm>
 #include <cassert>
+#include <utility>
 #include <vector>
 
 namespace ioj::bridge {
@@ -60,28 +62,23 @@ auto player_frame(sim::player::Sim const& player, sim::LevelReadAccess const& vi
 }
 }
 
-auto mission_init(session::MissionLaunchRequest const& mission, sim::LevelSim const& level)
-    -> presentation::MissionInit {
-    auto const& definition{mission.definition};
+auto make_level_presentation_setup(levels::LevelDefinition const& definition,
+                                   std::string source_path,
+                                   levels::LaunchOptions const& options)
+    -> presentation::LevelPresentationSetup {
     auto const& settings{definition.settings()};
-    auto const& spatial{level.spatial_query_manager()};
-    auto const bounds{spatial.static_collision_bounds()};
-    presentation::MissionInit init{
-        .id = definition.metadata().id.value,
-        .source_path = mission.source_path,
-        .control_context = mission.options.control_context,
-        .presentation_mode = mission.options.presentation_mode,
-        .launch_mode = mission.options.launch_mode,
+    presentation::LevelPresentationSetup init{
+        .source_path = std::move(source_path),
+        .control_context = options.control_context,
+        .presentation_mode = options.presentation_mode,
+        .launch_mode = options.launch_mode,
         .presentation = settings.presentation,
         .hud = settings.hud,
         .starfield = settings.starfield,
         .health_maximums = {settings.capital_ships.max_health.get().value(),
                             settings.fighters.health.get().value(),
                             settings.turrets.max_health.get().value()},
-        .laser_reserve = settings.laser_projectiles.n_preallocated_instances.get(),
-        .grid = spatial.grid_spec(),
-        .radii = spatial.entity_type_radii(),
-        .static_bounds = bounds.resolve()};
+        .laser_reserve = settings.laser_projectiles.n_preallocated_instances.get()};
     if (!definition.player_entity_id().empty()) {
         auto const& spawn{definition.entity(definition.player_entity_id())};
         init.player.emplace(
@@ -104,8 +101,17 @@ auto mission_init(session::MissionLaunchRequest const& mission, sim::LevelSim co
     return init;
 }
 
-auto mission_frame(sim::LevelSim const& level)
-    -> presentation::MissionFrame {
+auto level_init(presentation::LevelPresentationSetup const& setup, sim::LevelSim const& level)
+    -> presentation::LevelInit {
+    auto const& spatial{level.spatial_query_manager()};
+    return {setup,
+            level.level_metadata().id.value,
+            spatial.grid_spec(),
+            spatial.entity_type_radii(),
+            spatial.static_collision_bounds().resolve()};
+}
+
+auto level_frame(sim::LevelSim const& level) -> presentation::LevelFrame {
     auto const view{level.read_access()};
     auto const capitals{view.capitals().get_entities()};
     auto const fighters{view.fighters().entities()};
@@ -115,8 +121,9 @@ auto mission_frame(sim::LevelSim const& level)
     auto const& health{view.entity_tables().health};
     auto const bounds{level.spatial_query_manager().entity_collision_bounds()};
     using enum sim::EntityType;
-    presentation::MissionFrame frame{
-        .status = {.completed_tick = level.clock().get_completed_ticks(), .state = level.state(),
+    presentation::LevelFrame frame{
+        .status = {.completed_tick = level.clock().get_completed_ticks(),
+                   .state = level.state(),
                    .ticks_remaining = level.run_ticks_remaining()},
         .agents = {{{CapitalShip,
                      capitals.entity_ids(),

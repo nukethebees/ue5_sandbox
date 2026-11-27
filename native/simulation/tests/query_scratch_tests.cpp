@@ -1,7 +1,7 @@
 #include "support/collision_agent_storage.h"
 #include "support/simulation_checks.h"
 #include "support/simulation_test_support.h"
-#include <ioj/bridge/mission_frame.h>
+#include <ioj/bridge/level_frame.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/memory/bump_resource.h>
 #include <ioj/presentation/hud_model.h>
@@ -75,12 +75,12 @@ TEST(LevelLifetime, DisconnectsHudAndReturnsOverflowBeforeReusingArena) {
     presentation::HudModel hud;
     {
         memory::BumpResource arena{4096, upstream};
-        for (unsigned mission{}; mission < 3; ++mission) {
+        for (unsigned run{}; run < 3; ++run) {
             SimulationScenario data{make_simulation_data(fixture)};
             add_player_spawn(data, make_player_spawn(fixture));
             {
                 LevelSim level{std::move(data).compile(), arena};
-                hud.initialise(bridge::mission_frame(level));
+                hud.initialise(bridge::level_frame(level));
                 ASSERT_TRUE(hud.active());
                 EXPECT_GT(upstream.outstanding.load(), 1u);
                 hud.deactivate();

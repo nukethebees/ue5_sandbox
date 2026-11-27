@@ -3,7 +3,7 @@ target_sources(native-presentation-bridge
   PRIVATE
     src/completed_level.cpp
     src/level_catalog.cpp
-    src/mission_frame.cpp
+    src/level_frame.cpp
 )
 target_include_directories(native-presentation-bridge
   PUBLIC

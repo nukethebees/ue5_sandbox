@@ -11,12 +11,12 @@
     (value Headless)
     (projections (cpp))))
 
-(module mission_startup
-  :header "native/player/include/ioj/host/mission_startup.h"
-  :header-include "ioj/host/mission_startup.h"
+(module level_startup
+  :header "native/player/include/ioj/host/level_startup.h"
+  :header-include "ioj/host/level_startup.h"
   :namespace ioj
-  (enum MissionStartup @native_uint8
-    :description "Reports whether the requested mission has reached simulation readiness."
+  (enum LevelStartup @native_uint8
+    :description "Reports whether the requested level has reached simulation readiness."
     :native-api true
     (value Pending)
     (value Ready)

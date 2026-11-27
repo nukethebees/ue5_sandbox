@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/level_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 
 #include <UObject/WeakObjectPtrTemplates.h>
@@ -23,8 +23,8 @@ struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
                         settings::PlayerPresentation const& settings,
-                        presentation::MissionFrame const& frame);
-    void tick(presentation::MissionFrame const& frame);
+                        presentation::LevelFrame const& frame);
+    void tick(presentation::LevelFrame const& frame);
   private:
     FPlayerPresentationResources resources_;
     sim::player::BoostBrakeState boost_brake_state_{sim::player::BoostBrakeState::None};
