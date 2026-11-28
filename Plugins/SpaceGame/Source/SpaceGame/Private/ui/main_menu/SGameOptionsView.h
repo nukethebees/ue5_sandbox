@@ -139,7 +139,6 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SScrollBox> controls_scroll_box_{};
     TArray<FControlsFocusTarget> controls_focus_targets_{};
     float pending_controls_scroll_offset_{};
-    bool display_prompt_visible_{};
     TMap<GameSetting, TFunction<void()>> setting_focus_;
 };
 

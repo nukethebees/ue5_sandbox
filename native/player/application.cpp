@@ -158,7 +158,7 @@ void Application::consume_replies() {
                 }
                 switch (event.kind) {
                     case host::PauseWidgetEventKind::Activate:
-                        if (!menu_.pause_blocked()) {
+                        if (!menu_.navigation_blocked()) {
                             choose_pause(event.item);
                         }
                         break;
@@ -168,7 +168,7 @@ void Application::consume_replies() {
                         }
                         break;
                     case host::PauseWidgetEventKind::ContentFocused:
-                        if (!menu_.pause_blocked()) {
+                        if (!menu_.navigation_blocked()) {
                             menu_.pause_sidebar = false;
                         }
                         break;
@@ -177,7 +177,7 @@ void Application::consume_replies() {
             }
             case Setting: {
                 auto const& change{incoming.settings[index]};
-                if (!menu_.pause_blocked() &&
+                if (!menu_.navigation_blocked() &&
                     settings_.view().set_setting(menu_.draft,
                                                  change.setting,
                                                  change.value,
@@ -255,7 +255,7 @@ void Application::consume_replies() {
 auto Application::route() const -> InputRoute {
     if (menu_.screen != MenuScreen::Closed || phase_ != PresentationPhase::Presenting) {
         return {InputContext::Menu,
-                menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()};
+                menu_.screen == MenuScreen::Pause && !menu_.navigation_blocked()};
     }
     return {storage_.get()->input_context()};
 }
@@ -280,7 +280,7 @@ void Application::handle_action(host::PlayerAction action) {
             endpoint_.present_pause({host::PauseCommandKind::Open, host::PauseMenuItem::Resume});
             break;
         case RequestResume:
-            if (menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()) {
+            if (menu_.screen == MenuScreen::Pause && !menu_.navigation_blocked()) {
                 choose_pause(host::PauseMenuItem::Resume);
             }
             break;
@@ -360,7 +360,7 @@ void Application::consume_commands() {
                         {menu_.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
                 } else if (menu_.screen == MenuScreen::Pause &&
                            (menu_.pause_sidebar || button.command == MenuCommand::Back) &&
-                           !menu_.pause_blocked()) {
+                           !menu_.navigation_blocked()) {
                     auto const before{menu_.pause_selection};
                     if (auto item{menu_.navigate_pause(button.command, button.repeat)}) {
                         choose_pause(*item);
@@ -478,10 +478,8 @@ void Application::apply_menu(MenuUpdate update) {
         }
         case Save:
         case Apply:
-            apply_preferences(false);
-            return;
         case KeepDisplay:
-            apply_preferences(true);
+            apply_preferences();
             return;
         case RevertDisplay:
             revert_display();
@@ -489,7 +487,7 @@ void Application::apply_menu(MenuUpdate update) {
         case Stay:
         case Discard: {
             bool const discard{target.control() == Discard};
-            menu_.set_prompt(OptionsPrompt::None);
+            menu_.set_transaction(SettingsTransaction::Editing);
             if (discard) {
                 menu_.draft.cancel();
             }
@@ -508,14 +506,19 @@ void Application::apply_menu(MenuUpdate update) {
             break;
     }
 }
-void Application::apply_preferences(bool keep_display) {
+
+/* **************************************** */
+// Preferences and display confirmation
+/* **************************************** */
+void Application::apply_preferences() {
     auto const category{settings_category(menu_.page)};
-    if (!category || menu_.saving || !menu_.draft.is_dirty()) {
+    if (!category || menu_.transaction == SettingsTransaction::Saving || !menu_.draft.is_dirty()) {
         return;
     }
     auto const& values{menu_.draft.pending()};
     auto const& applied{menu_.draft.applied()};
-    if (!keep_display && *category == GameSettingCategory::Video &&
+    if (menu_.transaction != SettingsTransaction::ConfirmDisplay &&
+        *category == GameSettingCategory::Video &&
         (values.video.window_mode != applied.video.window_mode ||
          values.video.resolution != applied.video.resolution)) {
         auto result{window_.preview({values.video.window_mode, values.video.resolution})};
@@ -524,12 +527,12 @@ void Application::apply_preferences(bool keep_display) {
             finish_leave(false);
         } else {
             menu_.display_deadline = std::chrono::steady_clock::now() + std::chrono::seconds{15};
-            menu_.set_prompt(OptionsPrompt::Display);
+            menu_.set_transaction(SettingsTransaction::ConfirmDisplay);
         }
         present_menu({menu_.focus, MenuOperation::Focus});
         return;
     }
-    menu_.saving = true;
+    menu_.set_transaction(SettingsTransaction::Saving);
     endpoint_.present_menu(menu_);
     if (*category == GameSettingCategory::Video || *category == GameSettingCategory::Audio) {
         endpoint_.apply_settings({host::PreferenceOperation::Save, *category, values});
@@ -541,7 +544,7 @@ void Application::revert_display() {
     auto result{window_.revert_preview()};
     if (result) {
         menu_.draft.cancel();
-        menu_.set_prompt(OptionsPrompt::None);
+        menu_.set_transaction(SettingsTransaction::Editing);
         finish_leave(false);
     } else {
         endpoint_.show_error(result.error());
@@ -575,8 +578,7 @@ void Application::finish_preferences(host::SettingsApplied reply) {
     if (result) {
         result = settings_.save_category(category, values, original);
     }
-    menu_.saving = false;
-    menu_.set_prompt(OptionsPrompt::None);
+    menu_.set_transaction(SettingsTransaction::Editing);
     if (!result) {
         if (category == GameSettingCategory::Video) {
             if (auto rollback{window_.revert_preview()}; !rollback) {
@@ -709,7 +711,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
     auto const deadline{previous + std::chrono::minutes{2}};
     while (result_ && !quit_requested_) {
         auto const now{std::chrono::steady_clock::now()};
-        if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
+        if (menu_.transaction == SettingsTransaction::ConfirmDisplay &&
             now >= menu_.display_deadline) {
             revert_display();
         }

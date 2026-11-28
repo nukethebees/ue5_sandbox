@@ -52,7 +52,7 @@ class Application {
     void finish_leave(bool accepted);
     void apply_menu(MenuUpdate update);
     void present_menu(MenuUpdate update);
-    void apply_preferences(bool keep_display);
+    void apply_preferences();
     void revert_display();
     void finish_preferences(host::SettingsApplied result);
     void publish_settings();

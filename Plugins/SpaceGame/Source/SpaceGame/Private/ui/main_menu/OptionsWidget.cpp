@@ -54,7 +54,8 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     }
 
     return SAssignNew(options_view_, SGameOptionsView)
-        .IsEnabled_Lambda([this] { return !unreal_endpoint().menu().saving; })
+        .IsEnabled_Lambda(
+            [] { return unreal_endpoint().menu().transaction != SettingsTransaction::Saving; })
         .Capabilities(&unreal_endpoint().capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())

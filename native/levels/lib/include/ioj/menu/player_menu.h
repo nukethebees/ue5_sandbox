@@ -41,7 +41,7 @@ enum class MenuControl {
     RevertDisplay
 };
 enum class MenuScreen { Main, Pause, Completion, Closed };
-enum class OptionsPrompt { None, Dirty, Display };
+enum class SettingsTransaction { Editing, ConfirmLeave, ConfirmDisplay, Saving };
 enum class ProfilePage { Browse, Create };
 enum class MenuOperation { Focus, Activate, RefreshSettings, BindingPrompt };
 
@@ -125,6 +125,7 @@ struct ControlBindingRow {
 };
 
 struct MenuPresentation {
+    auto navigation_blocked() const -> bool;
     auto binding_rows() const -> std::vector<ControlBindingRow>;
     auto display_seconds_remaining() const -> int;
     auto launch_speed() const -> std::string const&;
@@ -136,14 +137,13 @@ struct MenuPresentation {
     MenuScreen screen{MenuScreen::Main};
     MainMenuItem page{MainMenuItem::SelectLevel};
     MenuTarget focus{MainMenuItem::SelectLevel};
-    OptionsPrompt prompt{};
+    SettingsTransaction transaction{};
     GameSettingDevice device{GameSettingDevice::KeyboardMouse};
     levels::authoring::LevelCatalogCategory category{};
     std::string selected_level;
     std::string selected_profile;
     std::string selected_outcome;
     ProfilePage profile_page{};
-    bool saving{};
     std::chrono::steady_clock::time_point display_deadline{};
     std::string viewer_speed{"1.0"};
     std::string benchmark_speed{"10.0"};
@@ -154,7 +154,6 @@ struct MenuPresentation {
 struct PlayerMenu : MenuPresentation {
     explicit PlayerMenu(bool show_reset = false)
         : show_reset_profile{show_reset} {}
-    auto pause_blocked() const -> bool;
     auto pause_item() const -> host::PauseMenuItem;
     auto select_pause_item(host::PauseMenuItem item) -> bool;
     auto navigate_pause(MenuCommand command, bool repeat) -> std::optional<host::PauseMenuItem>;
@@ -162,7 +161,7 @@ struct PlayerMenu : MenuPresentation {
     void select_page(MainMenuItem item);
     auto leave_ready() -> bool;
     auto finish_main_leave(bool accepted) -> std::optional<MenuUpdate>;
-    void set_prompt(OptionsPrompt prompt);
+    void set_transaction(SettingsTransaction next);
     void select_profile_page(ProfilePage page);
     auto navigate(MenuCommand command,
                   bool repeat,

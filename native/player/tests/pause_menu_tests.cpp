@@ -34,9 +34,9 @@ TEST(PauseMenu, PausedLaunchPointerSelectionAndOptionsLeaveConfirmation) {
     EXPECT_TRUE(menu.draft.set_setting(GameSetting::MasterVolume, 0.4f));
     EXPECT_TRUE(menu.select_pause_item(Quit));
     EXPECT_FALSE(menu.leave_ready());
-    EXPECT_TRUE(menu.pause_blocked());
+    EXPECT_TRUE(menu.navigation_blocked());
     EXPECT_FALSE(menu.select_pause_item(Resume));
-    menu.set_prompt(OptionsPrompt::None);
+    menu.set_transaction(SettingsTransaction::Editing);
     EXPECT_EQ(menu.pause_selection, Quit);
     menu.draft.cancel();
     EXPECT_TRUE(menu.leave_ready());

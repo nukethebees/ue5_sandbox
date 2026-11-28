@@ -224,23 +224,27 @@ void SGameOptionsView::refresh() {
         return;
     }
 
-    dirty_prompt_->SetVisibility(unreal_endpoint().menu().prompt == OptionsPrompt::Dirty
+    dirty_prompt_->SetVisibility(unreal_endpoint().menu().transaction ==
+                                         SettingsTransaction::ConfirmLeave
                                      ? EVisibility::Visible
                                      : EVisibility::Collapsed);
     auto const category{settings_category(rendered_page_)};
     if (reset_button_.IsValid()) {
-        reset_button_->SetEnabled(category.has_value() &&
-                                  !unreal_endpoint().menu().draft.is_at_defaults(*category) &&
-                                  unreal_endpoint().menu().prompt != OptionsPrompt::Display);
+        reset_button_->SetEnabled(
+            category.has_value() && !unreal_endpoint().menu().draft.is_at_defaults(*category) &&
+            unreal_endpoint().menu().transaction != SettingsTransaction::ConfirmDisplay);
     }
     if (apply_button_.IsValid()) {
         apply_button_->SetEnabled(unreal_endpoint().menu().draft.is_dirty() &&
-                                  unreal_endpoint().menu().prompt != OptionsPrompt::Display);
+                                  unreal_endpoint().menu().transaction !=
+                                      SettingsTransaction::ConfirmDisplay);
     }
 
-    auto const display_visible{unreal_endpoint().menu().prompt == OptionsPrompt::Display};
-    if (display_visible != display_prompt_visible_) {
-        display_prompt_visible_ = display_visible;
+    auto const display_visible{unreal_endpoint().menu().transaction ==
+                               SettingsTransaction::ConfirmDisplay};
+    if (display_visible != display_prompt_->GetVisibility().IsVisible()) {
+        display_prompt_->SetVisibility(display_visible ? EVisibility::Visible
+                                                       : EVisibility::Collapsed);
         on_interaction_modal_changed_.ExecuteIfBound(display_visible);
         if (display_visible) {
             if (confirm_display_button_.IsValid()) {
@@ -249,10 +253,6 @@ void SGameOptionsView::refresh() {
         } else {
             restore_focus();
         }
-    }
-    if (display_prompt_.IsValid()) {
-        display_prompt_->SetVisibility(display_visible ? EVisibility::Visible
-                                                       : EVisibility::Collapsed);
     }
 }
 
@@ -638,7 +638,7 @@ auto SGameOptionsView::handle_deferred_controls_restore(double const current_tim
         controls_scroll_box_->SetScrollOffset(pending_controls_scroll_offset_);
     }
     auto const& menu{unreal_endpoint().menu()};
-    if (menu.page == MainMenuItem::Controls && menu.prompt == OptionsPrompt::None &&
+    if (menu.page == MainMenuItem::Controls && menu.transaction == SettingsTransaction::Editing &&
         menu.draft.binding_edit().prompt == BindingPrompt::Closed && controls_content_) {
         present({menu.focus, MenuOperation::Focus});
     }

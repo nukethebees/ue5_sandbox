@@ -86,16 +86,17 @@ auto MenuPresentation::binding_rows() const -> std::vector<ControlBindingRow> {
     return rows;
 }
 
-auto PlayerMenu::pause_blocked() const -> bool {
-    return prompt != OptionsPrompt::None || draft.binding_edit().prompt != BindingPrompt::Closed ||
-           saving;
+auto MenuPresentation::navigation_blocked() const -> bool {
+    return transaction != SettingsTransaction::Editing ||
+           draft.binding_edit().prompt != BindingPrompt::Closed ||
+           profile_page == ProfilePage::Create;
 }
 auto PlayerMenu::pause_item() const -> host::PauseMenuItem {
     return page == MainMenuItem::Controls ? host::PauseMenuItem::Controls
                                           : host::PauseMenuItem::Audio;
 }
 auto PlayerMenu::select_pause_item(host::PauseMenuItem item) -> bool {
-    if (screen != MenuScreen::Pause || pause_blocked() || item == pause_item() ||
+    if (screen != MenuScreen::Pause || navigation_blocked() || item == pause_item() ||
         (pause_sidebar && item == pause_selection)) {
         return false;
     }
@@ -105,7 +106,7 @@ auto PlayerMenu::select_pause_item(host::PauseMenuItem item) -> bool {
 }
 auto PlayerMenu::navigate_pause(MenuCommand command, bool repeat)
     -> std::optional<host::PauseMenuItem> {
-    if (pause_blocked()) {
+    if (navigation_blocked()) {
         return {};
     }
     using enum MenuCommand;
@@ -147,7 +148,7 @@ void PlayerMenu::open(MenuScreen next, bool content) {
     }
     category = levels::authoring::LevelCatalogCategory::Playable;
     pending_page.reset();
-    prompt = {};
+    transaction = {};
     profile_page = ProfilePage::Browse;
     draft.cancel();
 }
@@ -161,7 +162,7 @@ void PlayerMenu::select_page(MainMenuItem item) {
 
 auto PlayerMenu::leave_ready() -> bool {
     if (draft.is_dirty()) {
-        set_prompt(OptionsPrompt::Dirty);
+        set_transaction(SettingsTransaction::ConfirmLeave);
         return false;
     }
     return true;
@@ -185,19 +186,22 @@ auto MenuPresentation::display_seconds_remaining() const -> int {
             .count()));
 }
 
-void PlayerMenu::set_prompt(OptionsPrompt next) {
-    if (next == prompt) {
+void PlayerMenu::set_transaction(SettingsTransaction next) {
+    if (next == transaction) {
         return;
     }
-    if (next == OptionsPrompt::None) {
+    if (next == SettingsTransaction::Editing) {
         focus = return_focus;
     } else {
-        if (prompt == OptionsPrompt::None) {
+        if (transaction == SettingsTransaction::Editing) {
             return_focus = focus;
         }
-        focus = next == OptionsPrompt::Dirty ? MenuControl::Save : MenuControl::KeepDisplay;
+        if (next != SettingsTransaction::Saving) {
+            focus = next == SettingsTransaction::ConfirmLeave ? MenuControl::Save
+                                                              : MenuControl::KeepDisplay;
+        }
     }
-    prompt = next;
+    transaction = next;
 }
 
 void PlayerMenu::select_profile_page(ProfilePage next) {
@@ -217,10 +221,10 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
     if (screen == MenuScreen::Completion) {
         return {ReturnToLevels};
     }
-    if (prompt == OptionsPrompt::Dirty) {
+    if (transaction == SettingsTransaction::ConfirmLeave) {
         return {Save, Discard, Stay};
     }
-    if (prompt == OptionsPrompt::Display) {
+    if (transaction == SettingsTransaction::ConfirmDisplay) {
         return {KeepDisplay, RevertDisplay};
     }
     if (profile_page == ProfilePage::Create) {
@@ -290,7 +294,7 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
 }
 
 auto PlayerMenu::primary_target(PlayerSettingsView const& settings) const -> MenuTarget {
-    if (page == MainMenuItem::SelectLevel && prompt == OptionsPrompt::None) {
+    if (page == MainMenuItem::SelectLevel && transaction == SettingsTransaction::Editing) {
         return selected_level.empty() ? MenuTarget{category}
                                       : MenuTarget{MenuTarget::Kind::Level, selected_level};
     }
@@ -303,7 +307,7 @@ auto PlayerMenu::primary_target(PlayerSettingsView const& settings) const -> Men
 }
 
 auto PlayerMenu::edit_text(MenuControl control, std::string text) -> std::optional<MenuUpdate> {
-    if (screen == MenuScreen::Closed || saving) {
+    if (screen == MenuScreen::Closed || transaction == SettingsTransaction::Saving) {
         return {};
     }
     if (control == MenuControl::ProfileName && profile_page == ProfilePage::Create) {
@@ -335,7 +339,7 @@ auto PlayerMenu::activate(MenuTarget target,
                           PlayerSettingsView const& settings,
                           std::span<ScreenResolution const> resolutions)
     -> std::optional<MenuUpdate> {
-    if (saving || screen == MenuScreen::Closed) {
+    if (transaction == SettingsTransaction::Saving || screen == MenuScreen::Closed) {
         return {};
     }
     if (target.kind == MenuTarget::Kind::Binding) {
@@ -347,8 +351,7 @@ auto PlayerMenu::activate(MenuTarget target,
         return MenuUpdate{draft.binding_edit().mapping, MenuOperation::BindingPrompt};
     }
     if (target.kind == MenuTarget::Kind::Page) {
-        if (screen != MenuScreen::Main || prompt != OptionsPrompt::None || profile_page == ProfilePage::Create ||
-            draft.binding_edit().prompt != BindingPrompt::Closed) {
+        if (screen != MenuScreen::Main || navigation_blocked()) {
             return {};
         }
         auto const item{target.page()};
@@ -453,7 +456,7 @@ auto PlayerMenu::navigate(MenuCommand command,
                           std::span<ScreenResolution const> resolutions)
     -> std::optional<MenuUpdate> {
     using enum MenuCommand;
-    if (saving || screen == MenuScreen::Closed ||
+    if (transaction == SettingsTransaction::Saving || screen == MenuScreen::Closed ||
         (repeat && (command == Accept || command == Back))) {
         return {};
     }
@@ -468,10 +471,10 @@ auto PlayerMenu::navigate(MenuCommand command,
         return activate(focus, settings, resolutions);
     }
     if (command == Back) {
-        if (prompt == OptionsPrompt::Dirty) {
+        if (transaction == SettingsTransaction::ConfirmLeave) {
             return activate(MenuControl::Stay, settings, resolutions);
         }
-        if (prompt == OptionsPrompt::Display) {
+        if (transaction == SettingsTransaction::ConfirmDisplay) {
             return activate(MenuControl::RevertDisplay, settings, resolutions);
         }
         if (profile_page == ProfilePage::Create) {
@@ -540,7 +543,7 @@ auto PlayerMenu::navigate(MenuCommand command,
                 return select(MenuTarget{MenuTarget::Kind::Profile, selected_profile});
             }
         }
-        if (backward && screen == MenuScreen::Main && prompt == OptionsPrompt::None &&
+        if (backward && screen == MenuScreen::Main && transaction == SettingsTransaction::Editing &&
             profile_page == ProfilePage::Browse) {
             return select(page);
         }

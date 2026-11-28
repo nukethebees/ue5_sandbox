@@ -68,7 +68,7 @@ class SdlPlayerInput : public ::testing::Test {
         std::size_t cursor{};
         do {
             auto const route{menu_.screen == MenuScreen::Pause
-                                 ? InputRoute{InputContext::Menu, !menu_.pause_blocked()}
+                                 ? InputRoute{InputContext::Menu, !menu_.navigation_blocked()}
                                  : view.route};
             input_->synchronize(route, view.mode);
             cursor = input_->map_events(physical, cursor);
@@ -241,9 +241,9 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_TRUE(menu.draft.set_setting(GameSetting::MasterVolume, 0.4f));
     ASSERT_TRUE(menu.activate(MainMenuItem::Controls, settings, {}));
     EXPECT_EQ(menu.page, MainMenuItem::Audio);
-    EXPECT_EQ(menu.prompt, OptionsPrompt::Dirty);
+    EXPECT_EQ(menu.transaction, SettingsTransaction::ConfirmLeave);
     EXPECT_EQ(menu.focus, MenuTarget{MenuControl::Save});
-    menu.set_prompt(OptionsPrompt::None);
+    menu.set_transaction(SettingsTransaction::Editing);
     EXPECT_FALSE(menu.finish_main_leave(false));
     EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::Audio});
 }
