@@ -20,6 +20,7 @@ auto start_engine(Window& window, std::wstring const& arguments, LaunchDisplayMo
         return ApplicationResult{std::unexpect, std::format("UELibrary_InitW failed ({})", status)};
     }
 
+    IojPlayer_ReportEngineResult();
     if (mode != LaunchDisplayMode::Headless) {
         if (auto result{connect_unreal_window(window.sdl_window())}; !result) {
             if (auto shutdown{shutdown_engine(window)}; !shutdown) {
@@ -46,6 +47,7 @@ auto tick_engine() -> ApplicationResult {
         return ApplicationResult{std::unexpect, std::format("UELibrary_Tick failed ({})", status)};
     }
 
+    IojPlayer_ReportEngineResult();
     return {};
 }
 }

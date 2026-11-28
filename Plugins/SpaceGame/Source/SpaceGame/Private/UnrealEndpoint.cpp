@@ -33,7 +33,6 @@ auto unreal_endpoint() -> host::UnrealEndpoint& {
 }
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 namespace {
-std::optional<host::EngineStatus> reported_status;
 #if !UE_BUILD_SHIPPING
 FAutoConsoleCommand reset_profile_command{
     TEXT("spacegame_reset_test_profile"),
@@ -59,13 +58,15 @@ auto apply_preferences(host::ApplySettings const& edit) -> std::string {
     return {};
 }
 }
-void host::UnrealEndpoint::attach_level_world(ATestBatchOrchestrator& actor) {
+void host::UnrealEndpoint::level_world_ready(ATestBatchOrchestrator& actor) {
     check(!level_world_);
     level_world_ = &actor;
+    send(UnrealMessageKind::LevelWorldReady);
 }
 void host::UnrealEndpoint::release_world(ATestBatchOrchestrator& actor) {
     if (level_world_ == &actor) {
         level_world_ = nullptr;
+        send(UnrealMessageKind::LevelWorldReleased);
     }
 }
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
@@ -150,15 +151,17 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             case OpenMenu:
                 menu_error_ = messages.errors[index];
-                level_world_ = nullptr;
                 UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/MainMenu"));
                 break;
             case OpenLevel:
-                level_world_ = nullptr;
                 UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/GameRuntime"));
                 break;
             case InitializeLevel: {
                 auto const& init{messages.initializations[index]};
+                if (!level_world_) {
+                    level_initialized("Level world was released before initialization");
+                    break;
+                }
                 auto result{level_world_->initialize_level(init.level, init.frame)};
                 std::string error;
                 if (!result) {
@@ -209,14 +212,12 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
             }
         }
     }
-    host::EngineStatus const current_status{world && world->HasBegunPlay(),
-                                            level_world_ != nullptr,
-                                            level_world_ != nullptr && level_world_->has_level(),
-                                            IsEngineExitRequested(),
-                                            !!GIsCriticalError};
-    if (current_status != reported_status) {
-        reported_status = current_status;
-        engine_status(current_status);
+}
+void IojPlayer_ReportEngineResult() {
+    if (GIsCriticalError) {
+        unreal_endpoint().send(host::UnrealMessageKind::CriticalError);
+    } else if (IsEngineExitRequested()) {
+        unreal_endpoint().send(host::UnrealMessageKind::ExitRequested);
     }
 }
 void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessages& incoming) {
@@ -229,7 +230,6 @@ void IojPlayer_ReleaseMessages() {
 }
 void IojPlayer_Detach() {
     unreal_endpoint() = {};
-    reported_status.reset();
 }
 #endif
 }

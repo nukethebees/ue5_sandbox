@@ -14,6 +14,7 @@ extern "C" {
                                            host::UnrealMessages& incoming);
     IOJ_PLAYER_API void IojPlayer_ReleaseMessages();
     IOJ_PLAYER_API void IojPlayer_Detach();
+    IOJ_PLAYER_API void IojPlayer_ReportEngineResult();
     IOJ_PLAYER_API auto
         IojPlayer_InitializeWindow(int x, int y, int width, int height, bool activate) -> bool;
 }

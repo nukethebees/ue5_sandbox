@@ -17,9 +17,6 @@ LoadedLevel::LoadedLevel(sim::LevelSimInitData&& data,
     , presentation_setup{std::move(setup)} {}
 
 auto LoadedLevel::input_context() const -> InputContext {
-    if (presentation_setup) {
-        return InputContext::Menu;
-    }
     switch (control_context) {
         case levels::ControlContext::Observer:
             return InputContext::Observer;

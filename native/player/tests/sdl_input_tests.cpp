@@ -282,6 +282,13 @@ TEST_F(SdlPlayerInput, ReplyHandlesPreserveOrderAcrossPayloadTypesAndReset) {
     EXPECT_EQ(replies.edits[replies.order[1].index].value, "2");
     EXPECT_EQ(replies.order[2].kind, host::UnrealMessageKind::Hit);
     EXPECT_EQ(replies.hits[replies.order[2].index], MenuTarget{MenuControl::Launch});
+    unreal_.send(host::UnrealMessageKind::LevelWorldReady);
+    unreal_.level_initialized({});
+    auto const appended{unreal_.messages()};
+    ASSERT_EQ(appended.order.size(), 5u);
+    EXPECT_EQ(appended.order[3].kind, host::UnrealMessageKind::LevelWorldReady);
+    EXPECT_EQ(appended.order[4].kind, host::UnrealMessageKind::LevelInitialized);
+    EXPECT_TRUE(appended.level_results[appended.order[4].index].empty());
     unreal_.clear();
     EXPECT_TRUE(unreal_.messages().order.empty());
     unreal_.hit(MenuControl::Launch);

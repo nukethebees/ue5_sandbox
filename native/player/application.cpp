@@ -99,6 +99,7 @@ auto Application::run(std::wstring const& engine_command_line,
 
     return shutdown_result;
 }
+
 /* **************************************** */
 // Endpoint replies
 /* **************************************** */
@@ -109,11 +110,37 @@ void Application::consume_replies() {
         auto const [kind, index]{incoming.order[cursor]};
         using enum host::UnrealMessageKind;
         switch (kind) {
-            case Status:
-                engine_ = incoming.status[index];
-                if (engine_.failed) {
-                    result_ = std::unexpected{"Unreal reported a critical error"};
+            case MainMenuReady:
+                if (phase_ == PresentationPhase::Starting ||
+                    phase_ == PresentationPhase::Returning) {
+                    phase_ = PresentationPhase::MainMenu;
                 }
+                break;
+            case MainMenuFailed:
+                result_ =
+                    std::unexpected{"Unreal could not initialize the main menu. See the game log."};
+                break;
+            case LevelWorldReady:
+                if (phase_ == PresentationPhase::AwaitingWorld) {
+                    auto& level{*storage_.get()};
+                    phase_ = PresentationPhase::Initializing;
+                    endpoint_.initialize_level(
+                        {bridge::level_init(*level.presentation_setup, level.simulation),
+                         bridge::level_frame(level.simulation)});
+                }
+                break;
+            case LevelWorldReleased:
+                if (phase_ == PresentationPhase::Initializing ||
+                    phase_ == PresentationPhase::Presenting) {
+                    phase_ = PresentationPhase::Released;
+                    return_to_menu("Level world was released unexpectedly");
+                }
+                break;
+            case ExitRequested:
+                quit_requested_ = true;
+                break;
+            case CriticalError:
+                result_ = std::unexpected{"Unreal reported a critical error"};
                 break;
             case Hit:
                 if (auto update{menu_.activate(
@@ -177,8 +204,8 @@ void Application::consume_replies() {
                 profile_action(MenuControl::ResetProfile);
                 break;
             case SimulationMode:
-                if (auto* level{storage_.get()};
-                    level && !level->presentation_setup && menu_.screen != MenuScreen::Pause) {
+                if (auto* level{storage_.get()}; level && phase_ == PresentationPhase::Presenting &&
+                                                 menu_.screen != MenuScreen::Pause) {
                     level->set_simulation_mode(incoming.simulation_modes[index]);
                 }
                 break;
@@ -187,7 +214,8 @@ void Application::consume_replies() {
                 break;
             case LevelInitialized: {
                 auto* level{storage_.get()};
-                if (!level || !level->presentation_setup) {
+                if (!level || (phase_ != PresentationPhase::Initializing &&
+                               phase_ != PresentationPhase::AwaitingWorld)) {
                     break;
                 }
                 auto const& error{incoming.level_results[index]};
@@ -197,6 +225,7 @@ void Application::consume_replies() {
                     return_to_menu(error);
                     break;
                 }
+                phase_ = PresentationPhase::Presenting;
                 if (mode == levels::LaunchMode::Running) {
                     level->set_simulation_mode(mode);
                 } else if (level->control_context == levels::ControlContext::Player ||
@@ -219,19 +248,23 @@ void Application::consume_replies() {
     }
     endpoint_.release_replies();
 }
+
+/* **************************************** */
+// Input and menu navigation
+/* **************************************** */
 auto Application::route() const -> InputRoute {
-    auto const* level{storage_.get()};
-    if (menu_.screen != MenuScreen::Closed || !level) {
-        return {InputContext::Menu, menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()};
+    if (menu_.screen != MenuScreen::Closed || phase_ != PresentationPhase::Presenting) {
+        return {InputContext::Menu,
+                menu_.screen == MenuScreen::Pause && !menu_.pause_blocked()};
     }
-    return {level->input_context()};
+    return {storage_.get()->input_context()};
 }
 void Application::present_menu(MenuUpdate update) {
     endpoint_.present_menu(menu_, std::move(update));
 }
 void Application::handle_action(host::PlayerAction action) {
     auto* level{storage_.get()};
-    if (!level || level->presentation_setup) {
+    if (!level || phase_ != PresentationPhase::Presenting) {
         return;
     }
     using enum host::PlayerAction;
@@ -629,11 +662,23 @@ void Application::return_to_menu(std::string error) {
     unload_level(sim::RunEndReason::WorldEnd, false);
     menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
     endpoint_.present_menu(menu_);
+    phase_ = PresentationPhase::Returning;
     endpoint_.open_menu(std::move(error));
 }
+
+/* **************************************** */
+// Game loop
+/* **************************************** */
 auto Application::play(std::filesystem::path const& level_path) -> ApplicationResult {
     consume_replies();
-    if (!engine_.ready) {
+    if (!result_) {
+        return result_;
+    }
+    if (quit_requested_) {
+        return exit_when_ready_ ? ApplicationResult{std::unexpect, "Engine exited before readiness"}
+                                : ApplicationResult{};
+    }
+    if (phase_ != PresentationPhase::MainMenu) {
         return std::unexpected{"Unreal did not initialize a playable world. See the game log."};
     }
     for (auto category : {GameSettingCategory::Video, GameSettingCategory::Audio}) {
@@ -658,7 +703,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
     consume_replies();
     auto previous{std::chrono::steady_clock::now()};
     auto const deadline{previous + std::chrono::minutes{2}};
-    while (result_ && !quit_requested_ && !engine_.exit_requested) {
+    while (result_ && !quit_requested_) {
         auto const now{std::chrono::steady_clock::now()};
         if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
             now >= menu_.display_deadline) {
@@ -666,7 +711,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
         }
         process_input(std::min(
             0.1, std::chrono::duration<double>{now - std::exchange(previous, now)}.count()));
-        if (!result_ || quit_requested_ || engine_.exit_requested) {
+        if (!result_ || quit_requested_) {
             break;
         }
         if (exit_when_ready_) {
@@ -687,15 +732,11 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
             continue;
         }
         auto& simulation{level->simulation};
-        if (level->presentation_setup && engine_.world_ready) {
-            endpoint_.initialize_level({bridge::level_init(*level->presentation_setup, simulation),
-                                        bridge::level_frame(simulation)});
-            consume_replies();
-            if (exit_when_ready_ && result_ && engine_.presents_level) {
+        if (phase_ == PresentationPhase::Presenting && !quit_requested_) {
+            if (exit_when_ready_) {
                 std::println("Ready: {}", path_to_utf8(level_path));
                 return {};
             }
-        } else if (engine_.presents_level && !level->presentation_setup) {
             simulation.append_player_input(input_.ship_input());
             auto const seconds{level->elapsed_seconds()};
             simulation.advance(seconds);
@@ -709,7 +750,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
             level->update_pause(menu_.screen == MenuScreen::Pause);
         }
         if (auto* current{storage_.get()};
-            current && !current->presentation_setup &&
+            current && phase_ == PresentationPhase::Presenting &&
             current->simulation.state() == sim::LevelState::Stopped) {
             unload_level(sim::RunEndReason::LevelCompleted, true);
         }
@@ -724,6 +765,9 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
     return {};
 }
 
+/* **************************************** */
+// Catalog and profiles
+/* **************************************** */
 void Application::publish_catalog() {
     auto const& scripts_directory{scripts_directory_};
     available_levels_.clear();
@@ -819,6 +863,9 @@ void Application::publish_profiles() {
     endpoint_.publish();
 }
 
+/* **************************************** */
+// Level lifecycle
+/* **************************************** */
 auto Application::launch_level(std::filesystem::path const& path) -> ApplicationResult {
     auto definition{levels::authoring::DefinitionReader::for_level(path).read_level_file(path)};
     if (!definition) {
@@ -857,6 +904,7 @@ auto Application::launch_level(levels::LevelDefinition const& definition,
         bridge::make_level_presentation_setup(definition, std::move(source_path), options));
     menu_.open(MenuScreen::Closed);
     endpoint_.present_menu(menu_);
+    phase_ = PresentationPhase::AwaitingWorld;
     endpoint_.send(host::NativeMessageKind::OpenLevel);
     return {};
 }
@@ -880,7 +928,8 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         }
     }
 
-    if (engine_.presents_level) {
+    if (phase_ == PresentationPhase::Presenting) {
+        phase_ = PresentationPhase::Released;
         if (show_results) {
             menu_.open(MenuScreen::Completion);
         }

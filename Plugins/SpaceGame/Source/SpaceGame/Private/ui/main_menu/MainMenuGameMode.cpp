@@ -3,9 +3,12 @@
 #include "SpaceGame/ships/player/SpaceGamePlayerController.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Engine/GameInstance.h>
+#include <Engine/World.h>
 #include <UObject/ConstructorHelpers.h>
 
 namespace ioj {
@@ -22,6 +25,14 @@ AMainMenuGameMode::AMainMenuGameMode() {
 
 void AMainMenuGameMode::StartPlay() {
     Super::StartPlay();
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    auto* const player{Cast<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
+    if (IsValid(player) && IsValid(player->main_menu())) {
+        unreal_endpoint().send(host::UnrealMessageKind::MainMenuReady);
+    } else {
+        unreal_endpoint().send(host::UnrealMessageKind::MainMenuFailed);
+    }
+#endif
 
     auto* const game_instance{GetGameInstance()};
     auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};

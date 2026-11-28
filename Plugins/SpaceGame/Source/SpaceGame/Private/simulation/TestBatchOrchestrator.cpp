@@ -64,11 +64,15 @@ void ATestBatchOrchestrator::PostLoad() {
     bind_presentation_components();
     refresh_collision_grid_visualization();
 }
-void ATestBatchOrchestrator::BeginPlay() {
-    Super::BeginPlay();
-
+void ATestBatchOrchestrator::report_world_ready() {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    unreal_endpoint().attach_level_world(*this);
+    if (!HasActorBegunPlay() || !IsValid(level_config) ||
+        !IsValid(Cast<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController()))) {
+        unreal_endpoint().level_initialized(
+            "Level world is missing its configuration or player controller");
+        return;
+    }
+    unreal_endpoint().level_world_ready(*this);
 #endif
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {

@@ -31,6 +31,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ATestBatchOrchestrator();
 
     void PostLoad() override;
+    void report_world_ready();
     void present_level(time_type delta_seconds, presentation::LevelFrame const& frame);
     auto initialize_level(presentation::LevelInit const& level,
                           presentation::LevelFrame const& frame) -> FLevelLoadResult;
@@ -73,7 +74,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Actor lifecycle
     /* **************************************** */
-    void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;
 
 #if WITH_EDITOR

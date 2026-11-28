@@ -28,6 +28,16 @@ class Application {
     auto run(std::wstring const& engine_command_line, std::filesystem::path const& level_path)
         -> ApplicationResult;
   private:
+    enum class PresentationPhase {
+        Starting,
+        MainMenu,
+        AwaitingWorld,
+        Initializing,
+        Presenting,
+        Released,
+        Returning
+    };
+
     struct AvailableLevel {
         levels::LevelDefinition definition;
         std::filesystem::path source_path;
@@ -64,7 +74,7 @@ class Application {
     profiles::SaveGameBrowser profile_browser_;
     host::NativeEndpoint endpoint_;
     InputSystem input_;
-    host::EngineStatus engine_{};
+    PresentationPhase phase_{PresentationPhase::Starting};
     std::filesystem::path scripts_directory_;
     std::vector<AvailableLevel> available_levels_;
     ApplicationResult result_{};

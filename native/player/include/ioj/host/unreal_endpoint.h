@@ -17,7 +17,7 @@ struct UnrealEndpoint {
     auto capabilities() const -> SystemCapabilities const& { return capabilities_; }
     auto resolutions() const -> std::span<ScreenResolution const> { return resolutions_; }
     auto launch_error() const -> std::string_view { return menu_error_; }
-    void attach_level_world(ATestBatchOrchestrator& actor);
+    void level_world_ready(ATestBatchOrchestrator& actor);
     void release_world(ATestBatchOrchestrator& actor);
     void receive(NativeMessages const& messages);
     auto messages() const -> UnrealMessages {
@@ -65,10 +65,6 @@ struct UnrealEndpoint {
     void pause_presented(std::uint8_t value) {
         outgoing_.order.push_back({UnrealMessageKind::PausePresented, outgoing_.pause_results.size()});
         outgoing_.pause_results.push_back(std::move(value));
-    }
-    void engine_status(EngineStatus value) {
-        outgoing_.order.push_back({UnrealMessageKind::Status, outgoing_.status.size()});
-        outgoing_.status.push_back(std::move(value));
     }
     void send(UnrealMessageKind kind) { outgoing_.order.push_back({kind, 0}); }
 

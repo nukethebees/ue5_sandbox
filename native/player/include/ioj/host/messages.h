@@ -64,14 +64,6 @@ struct MenuTextEdit {
     MenuControl control;
     std::string value;
 };
-struct EngineStatus {
-    bool ready;
-    bool world_ready;
-    bool presents_level;
-    bool exit_requested;
-    bool failed;
-    bool operator==(EngineStatus const&) const = default;
-};
 enum class NativeMessageKind {
     Key,
     Text,
@@ -159,7 +151,12 @@ enum class UnrealMessageKind {
     Applied,
     LevelInitialized,
     PausePresented,
-    Status,
+    MainMenuReady,
+    MainMenuFailed,
+    LevelWorldReady,
+    LevelWorldReleased,
+    ExitRequested,
+    CriticalError,
     RefreshCatalog,
     RefreshProfiles,
     ResetTestProfile
@@ -180,8 +177,7 @@ struct UnrealMessageColumns {
                          self.simulation_modes,
                          self.settings_results,
                          self.level_results,
-                         self.pause_results,
-                         self.status);
+                         self.pause_results);
     }
 
     Column<UnrealMessageHandle> order;
@@ -194,7 +190,6 @@ struct UnrealMessageColumns {
     Column<SettingsApplied> settings_results;
     Column<std::string> level_results;
     Column<std::uint8_t> pause_results;
-    Column<EngineStatus> status;
 };
 using UnrealMessages = UnrealMessageColumns<MessageSpan>;
 }
