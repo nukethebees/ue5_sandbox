@@ -6,7 +6,6 @@
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
-#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -182,9 +181,3 @@ auto FPlayerModalUi::resume_context(levels::ControlContext const fallback) const
 }
 
 } // namespace ioj
-
-namespace ioj {
-auto FPlayerModalUi::completed_level_id() const -> FName {
-    return IsValid(completion_menu_) ? completion_menu_->completion().level_id : NAME_None;
-}
-}
