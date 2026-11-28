@@ -319,8 +319,7 @@ void GameSettingsEditState::propose_binding(PhysicalKey key) {
         edit.prompt = BindingPrompt::Unsupported;
         return;
     }
-    edit.conflicts = binding_conflicts(edit.mapping, key);
-    if (!edit.conflicts.empty()) {
+    if (!binding_conflicts(edit.mapping, key).empty()) {
         edit.prompt = BindingPrompt::Conflict;
         edit.selected = BindingChoice::Replace;
         return;

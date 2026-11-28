@@ -299,11 +299,8 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     } else if (update.target.kind == MenuTarget::Kind::Mapping) {
         auto const mapping{update.target.mapping()};
         if (activate) {
-            auto const rows{unreal_endpoint().menu().binding_rows()};
-            auto const row{std::ranges::find_if(
-                rows, [&](auto const& item) { return item.control.mapping == mapping; })};
-            check(row != rows.end());
-            open_binding_management(*row);
+            on_interaction_modal_changed_.ExecuteIfBound(true);
+            present_binding_prompt();
         } else {
             restore_controls_focus(MenuTarget{mapping});
         }
@@ -658,12 +655,6 @@ auto SGameOptionsView::build_binding_button(ControlBindingRow const& binding)
     return result;
 }
 
-void SGameOptionsView::open_binding_management(ControlBindingRow const& binding) {
-    managed_binding_ = &binding.control;
-    on_interaction_modal_changed_.ExecuteIfBound(true);
-    present_binding_prompt();
-}
-
 void SGameOptionsView::present_binding_prompt() {
     auto const& edit{unreal_endpoint().menu().draft.binding_edit()};
     auto const managing{edit.prompt == BindingPrompt::Manage};
@@ -675,7 +666,6 @@ void SGameOptionsView::present_binding_prompt() {
     capture_prompt_->SetVisibility(capturing ? EVisibility::Visible : EVisibility::Collapsed);
     conflict_prompt_->SetVisibility(conflicts ? EVisibility::Visible : EVisibility::Collapsed);
     if (edit.prompt == BindingPrompt::Closed) {
-        managed_binding_ = nullptr;
         on_interaction_modal_changed_.ExecuteIfBound(false);
         request_controls_rebuild();
         refresh();
@@ -1030,12 +1020,17 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
-        if (!managed_binding_) {
+        auto const& edit{unreal_endpoint().menu().draft.binding_edit()};
+        if (edit.prompt != BindingPrompt::Manage) {
             return FText::GetEmpty();
         }
-        auto const& binding{*managed_binding_};
-        auto const key_text{
-            binding_label(unreal_endpoint().menu().draft.pending().controls.bindings[binding.mapping])};
+        auto const controls{flight_controls()};
+        auto const found{
+            std::ranges::find(controls, edit.mapping, &FlightControlDescriptor::mapping)};
+        check(found != controls.end());
+        auto const& binding{*found};
+        auto const key_text{binding_label(
+            unreal_endpoint().menu().draft.pending().controls.bindings[binding.mapping])};
         return FText::Format(
             NSLOCTEXT("OptionsMenu", "BindingManagementPrompt", "{0}\n\nCurrent binding: {1}"),
             FText::FromString(to_fstring(binding.label)),
@@ -1081,9 +1076,11 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
     auto title{TAttribute<FText>::CreateLambda([this] {
         auto const& edit{unreal_endpoint().menu().draft.binding_edit()};
         auto const captured_input{binding_label(edit.candidate)};
+        auto const conflicts{
+            unreal_endpoint().menu().draft.binding_conflicts(edit.mapping, edit.candidate)};
         TArray<FText> conflicting_controls;
         for (auto const& control : flight_controls()) {
-            if (std::ranges::contains(edit.conflicts, control.mapping)) {
+            if (std::ranges::contains(conflicts, control.mapping)) {
                 conflicting_controls.Add(FText::FromString(to_fstring(control.label)));
             }
         }

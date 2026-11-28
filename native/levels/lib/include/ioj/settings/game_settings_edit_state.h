@@ -31,7 +31,6 @@ struct BindingEdit {
     PhysicalKey candidate{};
     BindingPrompt prompt{};
     BindingChoice selected{};
-    std::vector<FlightMapping> conflicts{};
 };
 
 class GameSettingsEditState {

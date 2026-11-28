@@ -82,7 +82,6 @@ class SGameOptionsView final : public SCompoundWidget {
     auto handle_deferred_controls_restore(double current_time, float delta_time)
         -> EActiveTimerReturnType;
     auto build_binding_button(ControlBindingRow const& binding) -> TSharedRef<SWidget>;
-    void open_binding_management(ControlBindingRow const& binding);
 
     /* **************************************** */
     // Settings and prompts
@@ -138,7 +137,6 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SWidget> conflict_prompt_{};
     TSharedPtr<SVerticalBox> controls_content_{};
     TSharedPtr<SScrollBox> controls_scroll_box_{};
-    FlightControlDescriptor const* managed_binding_{};
     TArray<FControlsFocusTarget> controls_focus_targets_{};
     float pending_controls_scroll_offset_{};
     bool display_prompt_visible_{};
