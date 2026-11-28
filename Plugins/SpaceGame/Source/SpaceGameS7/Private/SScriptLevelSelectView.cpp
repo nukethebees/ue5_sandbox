@@ -55,16 +55,17 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     selected_level_can_launch_ = state.can_launch;
     auto const playerless{category_ != LevelCatalogCategory::Playable};
     if (playerless) {
-        auto const speed_text{FText::FromString(to_fstring(menu_presentation().launch_speed()))};
+        auto const speed_text{
+            FText::FromString(to_fstring(unreal_endpoint().menu().launch_speed()))};
         if (!battle_speed_input_->GetText().EqualTo(speed_text)) {
             battle_speed_input_->SetText(speed_text);
         }
 
-        auto const duration{FText::FromString(to_fstring(menu_presentation().duration))};
+        auto const duration{FText::FromString(to_fstring(unreal_endpoint().menu().duration))};
         if (!battle_duration_input_->GetText().EqualTo(duration)) {
             battle_duration_input_->SetText(duration);
         }
-        simulation_only_->SetIsChecked(menu_presentation().simulation_only
+        simulation_only_->SetIsChecked(unreal_endpoint().menu().simulation_only
                                            ? ECheckBoxState::Checked
                                            : ECheckBoxState::Unchecked);
     }
@@ -78,7 +79,7 @@ auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
                                              FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -110,7 +111,7 @@ void SScriptLevelSelectView::present(MenuUpdate const& update) {
                 slate.SetKeyboardFocus(battle_duration_input_);
                 break;
             case MenuControl::SimulationOnly:
-                simulation_only_->SetIsChecked(menu_presentation().simulation_only
+                simulation_only_->SetIsChecked(unreal_endpoint().menu().simulation_only
                                                    ? ECheckBoxState::Checked
                                                    : ECheckBoxState::Unchecked);
                 slate.SetKeyboardFocus(simulation_only_);
@@ -347,39 +348,39 @@ auto SScriptLevelSelectView::launch_text() const -> FText {
 
 auto SScriptLevelSelectView::handle_category_selected(LevelCatalogCategory const category)
     -> FReply {
-    hit_menu_control(category);
+    unreal_endpoint().hit(category);
     return FReply::Handled();
 }
 
 auto SScriptLevelSelectView::handle_level_selected(int32 const button_index) -> FReply {
-    hit_menu_control(MenuTarget{MenuTarget::Kind::Level, level_ids_[button_index]});
+    unreal_endpoint().hit(MenuTarget{MenuTarget::Kind::Level, level_ids_[button_index]});
     return FReply::Handled();
 }
 
 auto SScriptLevelSelectView::request_launch() -> FReply {
-    hit_menu_control(MenuControl::Launch);
+    unreal_endpoint().hit(MenuControl::Launch);
     return FReply::Handled();
 }
 
 void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
     auto value{to_string(text.ToString())};
-    if (value != menu_presentation().launch_speed()) {
-        edit_menu_text(MenuControl::BattleSpeed, std::move(value));
+    if (value != unreal_endpoint().menu().launch_speed()) {
+        unreal_endpoint().edit_text({MenuControl::BattleSpeed, std::move(value)});
     }
 }
 void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
     auto value{to_string(text.ToString())};
-    if (value != menu_presentation().duration) {
-        edit_menu_text(MenuControl::BattleDuration, std::move(value));
+    if (value != unreal_endpoint().menu().duration) {
+        unreal_endpoint().edit_text({MenuControl::BattleDuration, std::move(value)});
     }
 }
 void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState state) {
-    if ((state == ECheckBoxState::Checked) != menu_presentation().simulation_only) {
-        hit_menu_control(MenuControl::SimulationOnly);
+    if ((state == ECheckBoxState::Checked) != unreal_endpoint().menu().simulation_only) {
+        unreal_endpoint().hit(MenuControl::SimulationOnly);
     }
 }
 void SScriptLevelSelectView::update_launch_availability() {
-    auto const& menu{menu_presentation()};
+    auto const& menu{unreal_endpoint().menu()};
     auto const playerless{category_ != LevelCatalogCategory::Playable};
     battle_speed_error_->SetVisibility(
         playerless && !menu.speed_value() ? EVisibility::HitTestInvisible : EVisibility::Collapsed);

@@ -3,7 +3,7 @@
 #include "SScriptLevelSelectView.h"
 #include <ioj/levels/launch_options.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -157,7 +157,7 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
     if (view_.IsValid()) {
-        view_->present({menu_presentation().focus, MenuOperation::Focus});
+        view_->present({unreal_endpoint().menu().focus, MenuOperation::Focus});
     }
 
     return FReply::Handled();
@@ -187,7 +187,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
     catalog_directory_.Reset();
     catalog_error_.Reset();
 
-    request_level_catalog();
+    unreal_endpoint().send(host::UnrealMessageKind::RefreshCatalog);
 }
 
 void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView const& catalog) {
@@ -222,7 +222,7 @@ void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView co
     catalog_directory_ = to_fstring(catalog.directory);
     catalog_error_ = to_fstring(catalog.error);
 
-    if (auto error{launch_error()}; !error.empty()) {
+    if (auto error{unreal_endpoint().launch_error()}; !error.empty()) {
         auto launch_error{to_fstring(error)};
         catalog_error_ = catalog_error_.IsEmpty()
                            ? MoveTemp(launch_error)
@@ -235,7 +235,7 @@ void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView co
 void UScriptLevelSelectWidget::rebuild_catalog() {
     level_entry_indices_.Reset();
     view_state_ = FLevelSelectViewState{};
-    view_state_.category = menu_presentation().category;
+    view_state_.category = unreal_endpoint().menu().category;
 
     if (view_state_.category == LevelCatalogCategory::Playable) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
@@ -278,7 +278,7 @@ void UScriptLevelSelectWidget::rebuild_catalog() {
             }
 
             auto const id{entry ? entry.id.value : to_string(entry.path)};
-            if (id == menu_presentation().selected_level) {
+            if (id == unreal_endpoint().menu().selected_level) {
                 preferred_button_index = level_entry_indices_.Num();
             }
             view_state_.rows.Add(FLevelSelectViewRow{
@@ -383,9 +383,9 @@ void UScriptLevelSelectWidget::rebuild_catalog() {
     }
 
     publish_catalog();
-    if (view_ && menu_presentation().focus.is_row() &&
-        menu_presentation().page == MainMenuItem::SelectLevel) {
-        view_->present({menu_presentation().focus, MenuOperation::Focus});
+    if (view_ && unreal_endpoint().menu().focus.is_row() &&
+        unreal_endpoint().menu().page == MainMenuItem::SelectLevel) {
+        view_->present({unreal_endpoint().menu().focus, MenuOperation::Focus});
     }
 }
 
@@ -415,7 +415,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
         if (entry.unlocked) {
             view_state_.can_launch = true;
-            if (player_settings().application.start_levels_paused) {
+            if (unreal_endpoint().settings().application.start_levels_paused) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }

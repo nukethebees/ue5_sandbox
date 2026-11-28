@@ -1,7 +1,6 @@
-#include "SpaceGame/UnrealMessages.h"
+#include "SpaceGame/UnrealEndpoint.h"
 
-#include "settings/GameHost.h"
-#include "UnrealEndpoint.h"
+#include "input/HostInput.h"
 #include <ioj/host/game_host_api.h>
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
@@ -28,69 +27,19 @@
 #endif
 
 namespace ioj {
-namespace {
-host::UnrealEndpoint endpoint;
-MenuPresentation menu;
-PlayerSettingsView settings_view;
-KeyboardLayout keyboard;
-SystemCapabilities capabilities;
-std::vector<ScreenResolution> resolutions;
-std::string menu_error;
+auto unreal_endpoint() -> host::UnrealEndpoint& {
+    static host::UnrealEndpoint endpoint;
+    return endpoint;
 }
-
-auto menu_presentation() -> MenuPresentation const& {
-    return menu;
-}
-auto player_settings() -> PlayerSettingsView const& {
-    return settings_view;
-}
-auto system_capabilities() -> SystemCapabilities const& {
-    return capabilities;
-}
-auto keyboard_layout() -> KeyboardLayout const& {
-    return keyboard;
-}
-auto supported_resolutions() -> std::span<ScreenResolution const> {
-    return resolutions;
-}
-auto launch_error() -> std::string_view {
-    return menu_error;
-}
-void hit_menu_control(MenuTarget target) {
-    endpoint.hit(std::move(target));
-}
-void edit_menu_text(MenuControl control, std::string value) {
-    endpoint.edit_text({control, std::move(value)});
-}
-void edit_setting(GameSetting setting, GameSettingValue value) {
-    endpoint.edit_setting({setting, std::move(value)});
-}
-void request_level_catalog() {
-    endpoint.send(host::UnrealMessageKind::RefreshCatalog);
-}
-void request_profile_refresh() {
-    endpoint.send(host::UnrealMessageKind::RefreshProfiles);
-}
-void report_pause_interaction(host::PauseWidgetEvent event) {
-    endpoint.pause_interaction(event);
-}
-void request_player_action(host::PlayerAction action) {
-    endpoint.player_action(action);
-}
-void request_simulation_mode(levels::LaunchMode mode) {
-    endpoint.request_simulation_mode(mode);
-}
-
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 namespace {
-TWeakObjectPtr<ATestBatchOrchestrator> level_world;
 std::optional<host::EngineStatus> reported_status;
 #if !UE_BUILD_SHIPPING
 FAutoConsoleCommand reset_profile_command{
     TEXT("spacegame_reset_test_profile"),
     TEXT("Replaces the dedicated Test Profile and activates it."),
     FConsoleCommandDelegate::CreateLambda(
-        [] { endpoint.send(host::UnrealMessageKind::ResetTestProfile); })};
+        [] { unreal_endpoint().send(host::UnrealMessageKind::ResetTestProfile); })};
 #endif
 
 auto apply_preferences(host::ApplySettings const& edit) -> std::string {
@@ -110,16 +59,15 @@ auto apply_preferences(host::ApplySettings const& edit) -> std::string {
     return {};
 }
 }
-void attach_level_world(ATestBatchOrchestrator& actor) {
-    check(!level_world.IsValid());
-    level_world = &actor;
+void host::UnrealEndpoint::attach_level_world(ATestBatchOrchestrator& actor) {
+    check(!level_world_);
+    level_world_ = &actor;
 }
-void detach_level_world(ATestBatchOrchestrator& actor) {
-    if (level_world.Get(true) == &actor) {
-        level_world.Reset();
+void host::UnrealEndpoint::release_world(ATestBatchOrchestrator& actor) {
+    if (level_world_ == &actor) {
+        level_world_ = nullptr;
     }
 }
-
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     auto* const viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
     auto* const world{viewport ? viewport->GetWorld() : nullptr};
@@ -139,7 +87,7 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             case Menu: {
                 auto const& message{messages.menus[index]};
-                menu = message.state;
+                menu_ = message.state;
                 if (player && message.update) {
                     player->present_menu(*message.update);
                 }
@@ -167,22 +115,22 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             }
             case Keyboard:
-                keyboard = messages.keyboards[index].get();
+                keyboard_ = messages.keyboards[index].get();
                 break;
             case Capabilities:
-                capabilities = messages.capabilities[index].get();
+                capabilities_ = messages.capabilities[index].get();
                 break;
             case Settings: {
                 auto const& update{messages.settings[index]};
-                settings_view = update.values;
-                resolutions.assign(update.resolutions.begin(), update.resolutions.end());
+                settings_ = update.values;
+                resolutions_.assign(update.resolutions.begin(), update.resolutions.end());
                 break;
             }
             case Catalog:
                 if (auto* main{player ? player->main_menu() : nullptr}) {
                     if (auto* widget{main->level_select()}) {
                         widget->present_catalog(messages.catalogs[index]);
-                        menu_error.clear();
+                        menu_error_.clear();
                     }
                 }
                 break;
@@ -201,23 +149,23 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 }
                 break;
             case OpenMenu:
-                menu_error = messages.errors[index];
-                level_world.Reset();
+                menu_error_ = messages.errors[index];
+                level_world_ = nullptr;
                 UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/MainMenu"));
                 break;
             case OpenLevel:
-                level_world.Reset();
+                level_world_ = nullptr;
                 UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/GameRuntime"));
                 break;
             case InitializeLevel: {
                 auto const& init{messages.initializations[index]};
-                auto result{level_world->initialize_level(init.level, init.frame)};
+                auto result{level_world_->initialize_level(init.level, init.frame)};
                 std::string error;
                 if (!result) {
                     auto const message{
                         result.error().format(to_fstring(init.level.setup.source_path))};
                     UE_LOG(LogTemp, Error, TEXT("%s"), *message);
-                    level_world->release_level();
+                    level_world_->release_level();
                     error = to_string(message);
                 }
                 level_initialized(std::move(error));
@@ -225,16 +173,16 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
             }
             case Frame: {
                 auto const& frame{messages.frames[index]};
-                level_world->present_level(frame.seconds, frame.frame);
+                level_world_->present_level(frame.seconds, frame.frame);
                 break;
             }
             case SimulationPaused:
-                level_world->on_simulation_paused.Broadcast();
+                level_world_->on_simulation_paused.Broadcast();
                 break;
             case Finish: {
                 auto const& result{messages.completions[index]};
-                if (level_world.IsValid() && level_world->has_level()) {
-                    level_world->finish_level(
+                if (level_world_ && level_world_->has_level()) {
+                    level_world_->finish_level(
                         result.level, result.scored, result.new_best, result.show_results);
                 }
                 break;
@@ -255,8 +203,8 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
         }
     }
     host::EngineStatus const current_status{world && world->HasBegunPlay(),
-                                            level_world.IsValid(),
-                                            level_world.IsValid() && level_world->has_level(),
+                                            level_world_ != nullptr,
+                                            level_world_ != nullptr && level_world_->has_level(),
                                             IsEngineExitRequested(),
                                             !!GIsCriticalError};
     if (current_status != reported_status) {
@@ -265,20 +213,16 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     }
 }
 void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessages& incoming) {
+    auto& endpoint{unreal_endpoint()};
     endpoint.receive(outgoing);
     incoming = endpoint.messages();
 }
 void IojPlayer_ReleaseMessages() {
-    endpoint.clear();
+    unreal_endpoint().clear();
 }
 void IojPlayer_Detach() {
-    endpoint = {};
+    unreal_endpoint() = {};
     reported_status.reset();
-    level_world.Reset();
-    menu = {};
-    settings_view = {};
-    resolutions.clear();
-    menu_error.clear();
 }
 #endif
 }

@@ -1,5 +1,5 @@
 #include "player/input/input_system.h"
-#include "UnrealEndpoint.h"
+#include <ioj/host/unreal_endpoint.h>
 #include <ioj/menu/player_menu.h>
 
 #include <gtest/gtest.h>

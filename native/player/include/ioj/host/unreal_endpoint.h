@@ -1,12 +1,24 @@
 #pragma once
 
 #include <ioj/host/messages.h>
+#include <ioj/system_capabilities.h>
 
 #include <utility>
 #include <vector>
 
+namespace ioj {
+class ATestBatchOrchestrator;
+}
 namespace ioj::host {
 struct UnrealEndpoint {
+    auto menu() const -> MenuPresentation const& { return menu_; }
+    auto settings() const -> PlayerSettingsView const& { return settings_; }
+    auto keyboard() const -> KeyboardLayout const& { return keyboard_; }
+    auto capabilities() const -> SystemCapabilities const& { return capabilities_; }
+    auto resolutions() const -> std::span<ScreenResolution const> { return resolutions_; }
+    auto launch_error() const -> std::string_view { return menu_error_; }
+    void attach_level_world(ATestBatchOrchestrator& actor);
+    void release_world(ATestBatchOrchestrator& actor);
     void receive(NativeMessages const& messages);
     auto messages() const -> UnrealMessages {
         return outgoing_.with_columns(
@@ -62,5 +74,12 @@ struct UnrealEndpoint {
 
   private:
     UnrealMessageColumns<std::vector> outgoing_;
+    MenuPresentation menu_;
+    PlayerSettingsView settings_;
+    KeyboardLayout keyboard_;
+    SystemCapabilities capabilities_;
+    std::vector<ScreenResolution> resolutions_;
+    std::string menu_error_;
+    ATestBatchOrchestrator* level_world_{};
 };
 }

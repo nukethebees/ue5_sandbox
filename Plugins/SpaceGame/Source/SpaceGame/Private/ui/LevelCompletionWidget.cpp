@@ -3,7 +3,7 @@
 #include "SLevelCompletionView.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -75,7 +75,7 @@ void ULevelCompletionWidget::ReleaseSlateResources(bool const release_children) 
 }
 
 void ULevelCompletionWidget::request_return_to_level_select() {
-    hit_menu_control(MenuControl::ReturnToLevels);
+    unreal_endpoint().hit(MenuControl::ReturnToLevels);
 }
 
 void ULevelCompletionWidget::refresh_view() {

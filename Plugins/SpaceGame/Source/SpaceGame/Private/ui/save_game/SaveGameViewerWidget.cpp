@@ -1,6 +1,6 @@
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
-#include "SpaceGame/UnrealMessages.h"
+#include "SpaceGame/UnrealEndpoint.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
@@ -57,7 +57,7 @@ void USaveGameViewerWidget::NativeOnInitialized() {
         fallback_style_ = default_theme->compile();
     }
 
-    request_profile_refresh();
+    unreal_endpoint().send(host::UnrealMessageKind::RefreshProfiles);
 }
 
 auto USaveGameViewerWidget::RebuildWidget() -> TSharedRef<SWidget> {
@@ -79,7 +79,7 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
                                                   FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -183,7 +183,7 @@ void USaveGameViewerWidget::present_profiles(presentation::ProfileView const& br
                       FText::AsNumber(profile_count));
 
     for (int32 index{}; index < profile_count; ++index) {
-        if (profiles[index].profile_id == menu_presentation().selected_profile) {
+        if (profiles[index].profile_id == unreal_endpoint().menu().selected_profile) {
             view_state_.selected_profile_index = index;
             show_profile(profiles[index], browser.active_profile_id);
             break;
@@ -218,7 +218,7 @@ void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView con
     }
 
     for (int32 index{}; index < outcome_count; ++index) {
-        if (report.outcomes[index].outcome_id == menu_presentation().selected_outcome) {
+        if (report.outcomes[index].outcome_id == unreal_endpoint().menu().selected_outcome) {
             view_state_.selected_outcome_index = index;
             show_outcome(report.outcomes[index]);
             break;

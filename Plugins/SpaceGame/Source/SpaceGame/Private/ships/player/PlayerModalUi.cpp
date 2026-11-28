@@ -6,7 +6,7 @@
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>

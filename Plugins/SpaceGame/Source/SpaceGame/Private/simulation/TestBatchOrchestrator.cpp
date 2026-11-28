@@ -1,9 +1,6 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
-#include "SpaceGame/UnrealMessages.h"
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include "settings/GameHost.h"
-#endif
+#include "SpaceGame/UnrealEndpoint.h"
 #include <ioj/levels/launch_options.h>
 #include <ioj/profiles/level_score.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
@@ -71,13 +68,13 @@ void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    attach_level_world(*this);
+    unreal_endpoint().attach_level_world(*this);
 #endif
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     release_level();
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    detach_level_world(*this);
+    unreal_endpoint().release_world(*this);
 #endif
     Super::EndPlay(end_play_reason);
 }
@@ -96,11 +93,11 @@ void ATestBatchOrchestrator::start_simulation() {
         return;
     }
 
-    request_simulation_mode(levels::LaunchMode::Running);
+    unreal_endpoint().request_simulation_mode(levels::LaunchMode::Running);
 }
 void ATestBatchOrchestrator::pause_simulation() {
     if (status_) {
-        request_simulation_mode(levels::LaunchMode::Paused);
+        unreal_endpoint().request_simulation_mode(levels::LaunchMode::Paused);
     }
 }
 

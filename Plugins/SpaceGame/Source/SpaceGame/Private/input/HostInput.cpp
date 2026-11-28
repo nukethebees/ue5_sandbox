@@ -1,6 +1,7 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include "settings/GameHost.h"
-#include <SpaceGame/UnrealMessages.h>
+#include "input/HostInput.h"
+
+#include <SpaceGame/UnrealEndpoint.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -22,7 +23,7 @@ auto slate_key(PhysicalKey key) -> FKey {
         return EKeys::Enter;
     }
     if (is_keyboard_key(key)) {
-        auto const label{to_fstring(keyboard_layout().label(key))};
+        auto const label{to_fstring(unreal_endpoint().keyboard().label(key))};
         if (label.Len() == 1) {
             auto const logical{FInputKeyManager::Get().GetKeyFromCodes(0, label[0])};
             if (logical.IsValid()) {

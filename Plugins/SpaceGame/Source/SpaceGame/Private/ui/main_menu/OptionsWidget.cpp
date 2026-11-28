@@ -2,7 +2,7 @@
 
 #include "SGameOptionsView.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -54,8 +54,8 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     }
 
     return SAssignNew(options_view_, SGameOptionsView)
-        .IsEnabled_Lambda([this] { return !menu_presentation().saving; })
-        .Capabilities(&system_capabilities())
+        .IsEnabled_Lambda([this] { return !unreal_endpoint().menu().saving; })
+        .Capabilities(&unreal_endpoint().capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
         .Page_UObject(this, &ThisClass::page)
@@ -87,7 +87,7 @@ void UOptionsWidget::show_page(MainMenuItem page) {
 }
 
 auto UOptionsWidget::page() const -> MainMenuItem {
-    return menu_presentation().page;
+    return unreal_endpoint().menu().page;
 }
 void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {

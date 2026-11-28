@@ -6,7 +6,7 @@
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -66,8 +66,8 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .LevelContent()[level_content]
             .ArchiveContent()[archive_content]
             .OptionsContent()[options_content]
-            .OnItem(
-                FOnMainMenuItem::CreateLambda([](MainMenuItem item) { hit_menu_control(item); }))
+            .OnItem(FOnMainMenuItem::CreateLambda(
+                [](MainMenuItem item) { unreal_endpoint().hit(item); }))
             .OnRestoreFocus(FSimpleDelegate::CreateUObject(this, &ThisClass::restore_focus))};
 
     return result;
@@ -151,9 +151,9 @@ void UMainMenuWidget::present(MenuUpdate const& update) {
         } else {
             focus_item(item);
         }
-    } else if (menu_presentation().page == MainMenuItem::SelectLevel && level_select_widget_) {
+    } else if (unreal_endpoint().menu().page == MainMenuItem::SelectLevel && level_select_widget_) {
         level_select_widget_->present(update);
-    } else if (menu_presentation().page == MainMenuItem::DataArchive && save_game_viewer_) {
+    } else if (unreal_endpoint().menu().page == MainMenuItem::DataArchive && save_game_viewer_) {
         save_game_viewer_->present(update);
     } else if (options_widget_) {
         options_widget_->present(update);
@@ -175,7 +175,7 @@ void UMainMenuWidget::show_page(MainMenuItem page) {
 }
 
 void UMainMenuWidget::restore_focus() {
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
 }
 
 void UMainMenuWidget::handle_page_modal_changed(bool const visible) {

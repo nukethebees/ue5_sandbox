@@ -1,6 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
-#include "SpaceGame/UnrealMessages.h"
+#include "SpaceGame/UnrealEndpoint.h"
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 

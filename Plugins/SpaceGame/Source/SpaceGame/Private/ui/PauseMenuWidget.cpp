@@ -4,7 +4,7 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -97,7 +97,7 @@ auto UPauseMenuWidget::button_for(host::PauseMenuItem item) const -> UMenuButton
 }
 
 void UPauseMenuWidget::send_event(host::PauseWidgetEvent event) {
-    report_pause_interaction(event);
+    unreal_endpoint().pause_interaction(event);
 }
 
 void UPauseMenuWidget::present(host::PauseCommand command) {
@@ -111,7 +111,7 @@ void UPauseMenuWidget::present(host::PauseCommand command) {
             options_widget->show_page(command.item == host::PauseMenuItem::Audio
                                           ? MainMenuItem::Audio
                                           : MainMenuItem::Controls);
-            options_widget->present({menu_presentation().focus, MenuOperation::Focus});
+            options_widget->present({unreal_endpoint().menu().focus, MenuOperation::Focus});
             set_navigation_enabled(!options_modal_visible_);
             break;
         case Finish:

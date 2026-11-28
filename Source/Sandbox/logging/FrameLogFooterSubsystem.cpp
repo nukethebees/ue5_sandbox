@@ -1,7 +1,7 @@
 #include "Sandbox/logging/FrameLogFooterSubsystem.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 
 #include "Misc/CoreDelegates.h"
 #include <Subsystems/SubsystemCollection.h>
@@ -13,7 +13,7 @@ void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) 
 #if !defined(UE_LIBRARY_ENABLED) || !UE_LIBRARY_ENABLED
     return;
 #else
-    if (!player_settings().application.frame_log_footer) {
+    if (!unreal_endpoint().settings().application.frame_log_footer) {
         return;
     }
 

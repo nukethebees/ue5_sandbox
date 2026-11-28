@@ -8,7 +8,7 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -274,7 +274,7 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
     return true;
 }
 void ASpaceGamePlayerController::present_menu(MenuUpdate const& update) {
-    switch (menu_presentation().screen) {
+    switch (unreal_endpoint().menu().screen) {
         case MenuScreen::Main:
             if (auto* main{modal_ui_.main_menu()}) {
                 main->present(update);

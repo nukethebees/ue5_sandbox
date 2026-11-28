@@ -3,7 +3,7 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
@@ -196,9 +196,9 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
                               : FRunHudState{};
     });
     created_widget->pause_requested.AddLambda(
-        [] { request_player_action(host::PlayerAction::ToggleBenchmark); });
+        [] { unreal_endpoint().player_action(host::PlayerAction::ToggleBenchmark); });
     created_widget->end_requested.AddLambda(
-        [] { request_player_action(host::PlayerAction::EndBenchmark); });
+        [] { unreal_endpoint().player_action(host::PlayerAction::EndBenchmark); });
     created_widget->AddToPlayerScreen(100);
     created_widget->select_button(false);
     return true;

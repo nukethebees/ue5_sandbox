@@ -8,7 +8,7 @@ target_sources(native-player-input-tests
     ../input/physical/physical_input_system.cpp
     ../loaded_level.cpp
 )
-target_include_directories(native-player-input-tests PRIVATE ../.. ../include ../../../Plugins/SpaceGame/Source/SpaceGame/Private)
+target_include_directories(native-player-input-tests PRIVATE ../.. ../include)
 target_compile_definitions(native-player-input-tests PRIVATE IOJ_PLAYER_EXPORTS SDL_MAIN_HANDLED)
 target_link_libraries(native-player-input-tests PRIVATE native-presentation-interface native-levels native-simulation sbx-mimalloc SDL3::SDL3-static GTest::gtest_main)
 ioj_enable_warnings(native-player-input-tests)

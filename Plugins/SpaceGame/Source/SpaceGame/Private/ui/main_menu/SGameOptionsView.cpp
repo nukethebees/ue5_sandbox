@@ -4,7 +4,7 @@
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
-#include "SpaceGame/UnrealMessages.h"
+#include "SpaceGame/UnrealEndpoint.h"
 #include <ioj/input/logical/flight_controls.h>
 #include <ioj/system_capabilities.h>
 
@@ -44,8 +44,8 @@ auto setting_descriptors(GameSettingCategory const category)
 auto setting_options(GameSetting const setting) -> TArray<FGameSettingOption> {
     auto const provider{game_setting_descriptor(setting).options_provider};
 
-    auto const choices{player_settings().choices(
-        menu_presentation().draft.pending(), provider, supported_resolutions())};
+    auto const choices{unreal_endpoint().settings().choices(
+        unreal_endpoint().menu().draft.pending(), provider, unreal_endpoint().resolutions())};
     TArray<FGameSettingOption> result;
     result.Reserve(static_cast<int32>(choices.size()));
     for (auto const& choice : choices) {
@@ -60,7 +60,7 @@ auto setting_options(GameSetting const setting) -> TArray<FGameSettingOption> {
 }
 
 auto binding_label(PhysicalKey key) -> FText {
-    return FText::FromString(to_fstring(keyboard_layout().label(key)));
+    return FText::FromString(to_fstring(unreal_endpoint().keyboard().label(key)));
 }
 
 struct FSimdFeatureDisplay {
@@ -220,21 +220,21 @@ void SGameOptionsView::refresh() {
         return;
     }
 
-    dirty_prompt_->SetVisibility(menu_presentation().prompt == OptionsPrompt::Dirty
+    dirty_prompt_->SetVisibility(unreal_endpoint().menu().prompt == OptionsPrompt::Dirty
                                      ? EVisibility::Visible
                                      : EVisibility::Collapsed);
     auto const category{settings_category(page_.Get())};
     if (reset_button_.IsValid()) {
         reset_button_->SetEnabled(category.has_value() &&
-                                  !menu_presentation().draft.is_at_defaults(*category) &&
-                                  menu_presentation().prompt != OptionsPrompt::Display);
+                                  !unreal_endpoint().menu().draft.is_at_defaults(*category) &&
+                                  unreal_endpoint().menu().prompt != OptionsPrompt::Display);
     }
     if (apply_button_.IsValid()) {
-        apply_button_->SetEnabled(menu_presentation().draft.is_dirty() &&
-                                  menu_presentation().prompt != OptionsPrompt::Display);
+        apply_button_->SetEnabled(unreal_endpoint().menu().draft.is_dirty() &&
+                                  unreal_endpoint().menu().prompt != OptionsPrompt::Display);
     }
 
-    auto const display_visible{menu_presentation().prompt == OptionsPrompt::Display};
+    auto const display_visible{unreal_endpoint().menu().prompt == OptionsPrompt::Display};
     if (display_visible != display_prompt_visible_) {
         display_prompt_visible_ = display_visible;
         on_interaction_modal_changed_.ExecuteIfBound(display_visible);
@@ -258,7 +258,7 @@ void SGameOptionsView::refresh_controls() {
 }
 
 void SGameOptionsView::focus_content() {
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
 }
 
 /* **************************************** */
@@ -299,7 +299,7 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     } else if (update.target.kind == MenuTarget::Kind::Mapping) {
         auto const mapping{update.target.mapping()};
         if (activate) {
-            auto const rows{menu_presentation().binding_rows()};
+            auto const rows{unreal_endpoint().menu().binding_rows()};
             auto const row{std::ranges::find_if(
                 rows, [&](auto const& item) { return item.control.mapping == mapping; })};
             check(row != rows.end());
@@ -396,7 +396,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                               "Reset response settings and bindings for both devices.");
                       })
                       .OnClicked_Lambda([]() {
-                          hit_menu_control(MenuControl::ResetCategory);
+                          unreal_endpoint().hit(MenuControl::ResetCategory);
                           return FReply::Handled();
                       })] +
              SHorizontalBox::Slot()
@@ -405,7 +405,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                                   .Audio(audio_)
                                   .Text(NSLOCTEXT("OptionsMenu", "Save", "Save"))
                                   .OnClicked_Lambda([]() {
-                                      hit_menu_control(MenuControl::Apply);
+                                      unreal_endpoint().hit(MenuControl::Apply);
                                       return FReply::Handled();
                                   })]];
 }
@@ -539,20 +539,20 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
              [SAssignNew(keyboard_mouse_button, SGameButton)
                   .Style(&style_->button(EGameButtonStyle::Secondary))
                   .Audio(audio_)
-                  .Selected(menu_presentation().device == GameSettingDevice::KeyboardMouse)
+                  .Selected(unreal_endpoint().menu().device == GameSettingDevice::KeyboardMouse)
                   .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseDevice", "Keyboard & Mouse"))
                   .OnClicked_Lambda([] {
-                      hit_menu_control(GameSettingDevice::KeyboardMouse);
+                      unreal_endpoint().hit(GameSettingDevice::KeyboardMouse);
                       return FReply::Handled();
                   })] +
          SHorizontalBox::Slot().FillWidth(
              1.0f)[SAssignNew(controller_button, SGameButton)
                        .Style(&style_->button(EGameButtonStyle::Secondary))
                        .Audio(audio_)
-                       .Selected(menu_presentation().device == GameSettingDevice::Controller)
+                       .Selected(unreal_endpoint().menu().device == GameSettingDevice::Controller)
                        .Text(NSLOCTEXT("OptionsMenu", "ControllerDevice", "Controller"))
                        .OnClicked_Lambda([] {
-                           hit_menu_control(GameSettingDevice::Controller);
+                           unreal_endpoint().hit(GameSettingDevice::Controller);
                            return FReply::Handled();
                        })]];
     add_section(NSLOCTEXT("OptionsMenu", "InputDeviceSection", "Input Device"), device_rows);
@@ -562,9 +562,9 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
                             controller_button.ToSharedRef());
 
     add_setting_sections(GameSettingDevice::Shared);
-    add_setting_sections(menu_presentation().device);
+    add_setting_sections(unreal_endpoint().menu().device);
 
-    auto const bindings{menu_presentation().binding_rows()};
+    auto const bindings{unreal_endpoint().menu().binding_rows()};
     std::optional<BindingGroup> binding_category;
     TSharedPtr<SVerticalBox> binding_rows;
     auto const flush_binding_category = [&] {
@@ -637,7 +637,7 @@ auto SGameOptionsView::handle_deferred_controls_restore(double const current_tim
     if (controls_scroll_box_.IsValid()) {
         controls_scroll_box_->SetScrollOffset(pending_controls_scroll_offset_);
     }
-    auto const& menu{menu_presentation()};
+    auto const& menu{unreal_endpoint().menu()};
     if (menu.page == MainMenuItem::Controls && menu.prompt == OptionsPrompt::None &&
         menu.draft.binding_edit().prompt == BindingPrompt::Closed && controls_content_) {
         present({menu.focus, MenuOperation::Focus});
@@ -653,7 +653,7 @@ auto SGameOptionsView::build_binding_button(ControlBindingRow const& binding)
                     .Audio(audio_)
                     .Text_Lambda([key = binding.current_key] { return binding_label(key); })
                     .OnClicked_Lambda([mapping = binding.control.mapping] {
-                        hit_menu_control(mapping);
+                        unreal_endpoint().hit(mapping);
                         return FReply::Handled();
                     })};
     register_controls_focus(binding.control.mapping, button.ToSharedRef());
@@ -667,7 +667,7 @@ void SGameOptionsView::open_binding_management(ControlBindingRow const& binding)
 }
 
 void SGameOptionsView::present_binding_prompt() {
-    auto const& edit{menu_presentation().draft.binding_edit()};
+    auto const& edit{unreal_endpoint().menu().draft.binding_edit()};
     auto const managing{edit.prompt == BindingPrompt::Manage};
     auto const capturing{edit.prompt == BindingPrompt::Capture ||
                          edit.prompt == BindingPrompt::Unsupported};
@@ -710,14 +710,15 @@ void SGameOptionsView::present_binding_prompt() {
 auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor)
     -> TSharedRef<SWidget> {
     auto available{TAttribute<bool>::CreateLambda([setting = descriptor.id] {
-        return player_settings().is_available(menu_presentation().draft.pending(), setting);
+        return unreal_endpoint().settings().is_available(unreal_endpoint().menu().draft.pending(),
+                                                         setting);
     })};
 
     switch (descriptor.control_kind) {
         case SettingControlKind::Toggle: {
             TSharedPtr<SSettingsToggle> control;
             auto checked{TAttribute<bool>::CreateLambda([setting = descriptor.id] {
-                auto const value{menu_presentation().draft.value(setting)};
+                auto const value{unreal_endpoint().menu().draft.value(setting)};
                 auto const* const typed{std::get_if<bool>(&value)};
                 return typed != nullptr && *typed;
             })};
@@ -730,8 +731,8 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
                          .ControlEnabled(available)
                          .OnCheckStateChanged_Lambda(
                              [setting = descriptor.id](ECheckBoxState const state) {
-                                 edit_setting(setting,
-                                              GameSettingValue{state == ECheckBoxState::Checked});
+                                 unreal_endpoint().edit_setting(
+                                     {setting, GameSettingValue{state == ECheckBoxState::Checked}});
                              })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
@@ -747,7 +748,7 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
             }
 
             auto selected{TAttribute<int32>::CreateLambda([setting = descriptor.id, options] {
-                auto const value{menu_presentation().draft.value(setting)};
+                auto const value{unreal_endpoint().menu().draft.value(setting)};
                 return options.IndexOfByPredicate(
                     [&value](FGameSettingOption const& option) { return option.value == value; });
             })};
@@ -759,12 +760,12 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
                          .Options(MoveTemp(labels))
                          .SelectedIndex(selected)
                          .ControlEnabled(available)
-                         .OnSelectionChanged_Lambda(
-                             [setting = descriptor.id, options](int32 const index) {
-                                 if (options.IsValidIndex(index)) {
-                                     edit_setting(setting, options[index].value);
-                                 }
-                             })};
+                         .OnSelectionChanged_Lambda([setting = descriptor.id,
+                                                     options](int32 const index) {
+                             if (options.IsValidIndex(index)) {
+                                 unreal_endpoint().edit_setting({setting, options[index].value});
+                             }
+                         })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
             return row;
@@ -772,7 +773,7 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
         case SettingControlKind::FloatRange: {
             TSharedPtr<SSettingsSlider> control;
             auto value{TAttribute<float>::CreateLambda([setting = descriptor.id] {
-                auto const current{menu_presentation().draft.value(setting)};
+                auto const current{unreal_endpoint().menu().draft.value(setting)};
                 auto const* const typed{std::get_if<float>(&current)};
                 return typed != nullptr ? *typed : 0.0f;
             })};
@@ -791,7 +792,7 @@ auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor
                          .Step(static_cast<float>(descriptor.step))
                          .ControlEnabled(available)
                          .OnValueChanged_Lambda([setting = descriptor.id](float const next) {
-                             edit_setting(setting, GameSettingValue{next});
+                             unreal_endpoint().edit_setting({setting, GameSettingValue{next}});
                          })};
 
             setting_focus_.Add(descriptor.id, [control] { control->focus(); });
@@ -936,7 +937,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                          .Audio(audio_)
                          .Text(NSLOCTEXT("OptionsMenu", "PromptSave", "Save"))
                          .OnClicked_Lambda([]() {
-                             hit_menu_control(MenuControl::Save);
+                             unreal_endpoint().hit(MenuControl::Save);
                              return FReply::Handled();
                          })};
     auto dirty_discard{SAssignNew(dirty_discard_button_, SGameButton)
@@ -944,7 +945,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                            .Audio(audio_)
                            .Text(NSLOCTEXT("OptionsMenu", "PromptDiscard", "Discard"))
                            .OnClicked_Lambda([]() {
-                               hit_menu_control(MenuControl::Discard);
+                               unreal_endpoint().hit(MenuControl::Discard);
                                return FReply::Handled();
                            })};
     auto dirty_stay{SAssignNew(dirty_stay_button_, SGameButton)
@@ -952,7 +953,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                         .Audio(audio_)
                         .Text(NSLOCTEXT("OptionsMenu", "PromptStay", "Stay"))
                         .OnClicked_Lambda([]() {
-                            hit_menu_control(MenuControl::Stay);
+                            unreal_endpoint().hit(MenuControl::Stay);
                             return FReply::Handled();
                         })};
     return build_modal(
@@ -968,7 +969,7 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
                      .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "KeepChanges", "Keep Changes"))
                      .OnClicked_Lambda([]() {
-                         hit_menu_control(MenuControl::KeepDisplay);
+                         unreal_endpoint().hit(MenuControl::KeepDisplay);
                          return FReply::Handled();
                      })};
     auto revert{SAssignNew(revert_display_button_, SGameButton)
@@ -976,11 +977,11 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "RevertChanges", "Revert"))
                     .OnClicked_Lambda([]() {
-                        hit_menu_control(MenuControl::RevertDisplay);
+                        unreal_endpoint().hit(MenuControl::RevertDisplay);
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([] {
-        auto const seconds{menu_presentation().display_seconds_remaining()};
+        auto const seconds{unreal_endpoint().menu().display_seconds_remaining()};
         return FText::Format(NSLOCTEXT("OptionsMenu",
                                        "DisplayConfirmation",
                                        "Keep these display settings? Reverting in {0} seconds."),
@@ -995,7 +996,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "ChangeBinding", "Change"))
                     .OnClicked_Lambda([] {
-                        hit_menu_control(BindingChoice::Change);
+                        unreal_endpoint().hit(BindingChoice::Change);
                         return FReply::Handled();
                     })};
     auto clear{SAssignNew(binding_clear_button_, SGameButton)
@@ -1003,11 +1004,11 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ClearBinding", "Clear"))
                    .Enabled_Lambda([] {
-                       return menu_presentation().draft.binding_action_available(
+                       return unreal_endpoint().menu().draft.binding_action_available(
                            BindingChoice::Clear);
                    })
                    .OnClicked_Lambda([] {
-                       hit_menu_control(BindingChoice::Clear);
+                       unreal_endpoint().hit(BindingChoice::Clear);
                        return FReply::Handled();
                    })};
     auto reset{SAssignNew(binding_reset_button_, SGameButton)
@@ -1015,11 +1016,11 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
                    .Enabled_Lambda([] {
-                       return menu_presentation().draft.binding_action_available(
+                       return unreal_endpoint().menu().draft.binding_action_available(
                            BindingChoice::Reset);
                    })
                    .OnClicked_Lambda([] {
-                       hit_menu_control(BindingChoice::Reset);
+                       unreal_endpoint().hit(BindingChoice::Reset);
                        return FReply::Handled();
                    })};
     auto cancel{SAssignNew(binding_cancel_button_, SGameButton)
@@ -1027,7 +1028,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelBindingManagement", "Cancel"))
                     .OnClicked_Lambda([] {
-                        hit_menu_control(BindingChoice::Cancel);
+                        unreal_endpoint().hit(BindingChoice::Cancel);
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
@@ -1036,7 +1037,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
         }
         auto const& binding{*managed_binding_};
         auto const key_text{
-            binding_label(menu_presentation().draft.pending().controls.bindings[binding.mapping])};
+            binding_label(unreal_endpoint().menu().draft.pending().controls.bindings[binding.mapping])};
         return FText::Format(
             NSLOCTEXT("OptionsMenu", "BindingManagementPrompt", "{0}\n\nCurrent binding: {1}"),
             FText::FromString(to_fstring(binding.label)),
@@ -1047,11 +1048,11 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
 
 auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
     auto title{TAttribute<FText>::CreateLambda([] {
-        if (menu_presentation().draft.binding_edit().prompt == BindingPrompt::Unsupported) {
+        if (unreal_endpoint().menu().draft.binding_edit().prompt == BindingPrompt::Unsupported) {
             return NSLOCTEXT(
                 "OptionsMenu", "UnsupportedBinding", "Choose a supported input for this control.");
         }
-        return menu_presentation().device == GameSettingDevice::Controller
+        return unreal_endpoint().menu().device == GameSettingDevice::Controller
                  ? NSLOCTEXT("OptionsMenu",
                              "CaptureControllerBindingPrompt",
                              "Press a controller input. Press Back to cancel.")
@@ -1068,7 +1069,7 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                      .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "ReplaceBinding", "Replace"))
                      .OnClicked_Lambda([] {
-                         hit_menu_control(BindingChoice::Replace);
+                         unreal_endpoint().hit(BindingChoice::Replace);
                          return FReply::Handled();
                      })};
     auto cancel{SAssignNew(conflict_cancel_button_, SGameButton)
@@ -1076,11 +1077,11 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                     .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelBinding", "Cancel"))
                     .OnClicked_Lambda([] {
-                        hit_menu_control(BindingChoice::Cancel);
+                        unreal_endpoint().hit(BindingChoice::Cancel);
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
-        auto const& edit{menu_presentation().draft.binding_edit()};
+        auto const& edit{unreal_endpoint().menu().draft.binding_edit()};
         auto const captured_input{binding_label(edit.candidate)};
         TArray<FText> conflicting_controls;
         for (auto const& control : flight_controls()) {
@@ -1143,7 +1144,7 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
 // Formatting and focus helpers
 /* **************************************** */
 auto SGameOptionsView::setting_float(GameSetting const setting) const -> float {
-    auto const value{menu_presentation().draft.value(setting)};
+    auto const value{unreal_endpoint().menu().draft.value(setting)};
     auto const* const typed{std::get_if<float>(&value)};
     return typed != nullptr ? *typed : 0.0f;
 }
@@ -1185,7 +1186,7 @@ void SGameOptionsView::restore_controls_focus(MenuTarget const& identity) {
 }
 
 void SGameOptionsView::restore_focus() {
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
 }
 
 } // namespace ioj

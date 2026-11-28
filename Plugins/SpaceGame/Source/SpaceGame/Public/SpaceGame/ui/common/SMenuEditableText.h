@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 
 #include <Widgets/Input/SEditableText.h>
 
@@ -13,7 +13,7 @@ class SMenuEditableText final : public SEditableText {
     }
     auto OnMouseButtonDown(FGeometry const& geometry, FPointerEvent const& event)
         -> FReply override {
-        hit_menu_control(field_);
+        unreal_endpoint().hit(field_);
         return SEditableText::OnMouseButtonDown(geometry, event);
     }
   private:

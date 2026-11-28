@@ -3,7 +3,7 @@
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
 #include <SpaceGame/ui/common/SMenuEditableText.h>
-#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGame/UnrealEndpoint.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -108,7 +108,7 @@ auto SSaveGameViewerView::OnFocusReceived(FGeometry const& geometry, FFocusEvent
     -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    present({menu_presentation().focus, MenuOperation::Focus});
+    present({unreal_endpoint().menu().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -339,24 +339,22 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
     auto const input{
         SNew(SBorder)
             .BorderImage(&style_->chrome().frame_border)
-            .Padding(FMargin{
-                1.0f})[SNew(SBorder)
-                           .BorderImage(&style_->chrome().body_background)
-                           .Padding(FMargin{
-                               12.0f,
-                               8.0f})[SAssignNew(profile_name_input_,
-                                                 SMenuEditableText,
-                                                 MenuControl::ProfileName)
-                                          .HintText(NSLOCTEXT(
-                                              "SaveGameViewer", "ProfileNameHint", "Record name"))
-                                          .Font(style_->text(EGameTextStyle::Body).Font)
-                                          .ColorAndOpacity(style_->palette().text_primary)
-                                          .OnTextChanged_Lambda([](FText const& text) {
-                                              edit_menu_text(MenuControl::ProfileName,
-                                                             to_string(text.ToString()));
-                                          })
-                                          .OnTextCommitted(
-                                              this, &SSaveGameViewerView::handle_name_committed)]]};
+            .Padding(FMargin{1.0f})
+                [SNew(SBorder)
+                     .BorderImage(&style_->chrome().body_background)
+                     .Padding(FMargin{12.0f, 8.0f})
+                         [SAssignNew(
+                              profile_name_input_, SMenuEditableText, MenuControl::ProfileName)
+                              .HintText(
+                                  NSLOCTEXT("SaveGameViewer", "ProfileNameHint", "Record name"))
+                              .Font(style_->text(EGameTextStyle::Body).Font)
+                              .ColorAndOpacity(style_->palette().text_primary)
+                              .OnTextChanged_Lambda([](FText const& text) {
+                                  unreal_endpoint().edit_text(
+                                      {MenuControl::ProfileName, to_string(text.ToString())});
+                              })
+                              .OnTextCommitted(this,
+                                               &SSaveGameViewerView::handle_name_committed)]]};
 
     auto const prompt{SNew(SBox).WidthOverride(
         560.0f)[SNew(SBorder)
@@ -422,22 +420,22 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
 // Actions and view updates
 /* **************************************** */
 auto SSaveGameViewerView::handle_profile(FString profile_id) -> FReply {
-    hit_menu_control(MenuTarget{MenuTarget::Kind::Profile, to_string(profile_id)});
+    unreal_endpoint().hit(MenuTarget{MenuTarget::Kind::Profile, to_string(profile_id)});
     return FReply::Handled();
 }
 
 auto SSaveGameViewerView::handle_outcome(FString outcome_id) -> FReply {
-    hit_menu_control(MenuTarget{MenuTarget::Kind::Outcome, to_string(outcome_id)});
+    unreal_endpoint().hit(MenuTarget{MenuTarget::Kind::Outcome, to_string(outcome_id)});
     return FReply::Handled();
 }
 
 auto SSaveGameViewerView::handle_action(MenuControl control) -> FReply {
-    hit_menu_control(control);
+    unreal_endpoint().hit(control);
     return FReply::Handled();
 }
 
 auto SSaveGameViewerView::handle_confirm_create() -> FReply {
-    hit_menu_control(MenuControl::ConfirmCreate);
+    unreal_endpoint().hit(MenuControl::ConfirmCreate);
     return FReply::Handled();
 }
 
