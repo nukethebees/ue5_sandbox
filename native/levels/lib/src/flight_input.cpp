@@ -187,8 +187,8 @@ void update_turn(FlightInputState const& flight,
                  LogicalInputState& state,
                  ControlsSettings const& controls) {
     auto& turn{state.axes_2d[Axis2DAction::FlightTurn]};
-    if (state.pointer_steering) {
-        auto direction{*state.pointer_steering};
+    if (state.held.hold_to_steer()) {
+        auto direction{state.pointer_steering};
         direction.x() += flight.keyboard_turn.x();
         direction.y() += flight.keyboard_turn.y();
         auto const scale{std::max(1.0, size(direction))};
@@ -219,12 +219,8 @@ void resolve_digital(FlightInputState& flight,
         held.set(action, down);
         auto const active{flight.keyboard_mouse_held.get(action) ||
                           flight.gamepad_held.get(action)};
-        if (action == DigitalAction::HoldToSteer && active != state.pointer_steering.has_value()) {
-            if (active) {
-                state.pointer_steering.emplace();
-            } else {
-                state.pointer_steering.reset();
-            }
+        if (action == DigitalAction::HoldToSteer && active != state.held.hold_to_steer()) {
+            state.pointer_steering = {};
         }
         state.button(action, active ? ButtonState::Pressed : ButtonState::Released);
     }
@@ -251,12 +247,12 @@ void FlightInputState::pointer(LogicalInputState& state,
                                ControlsSettings const& controls) {
     for (auto key : {PhysicalKey::MouseX, PhysicalKey::MouseY}) {
         auto const motion{key == PhysicalKey::MouseX ? delta.x() : delta.y()};
-        if (state.pointer_steering) {
+        if (state.held.hold_to_steer()) {
             for (auto const binding : flight_binding_details::pointer_bindings) {
                 if (controls.bindings[binding.mapping] == key) {
                     auto& component{binding.component == FlightAxis::Yaw
-                                        ? state.pointer_steering->x()
-                                        : state.pointer_steering->y()};
+                                        ? state.pointer_steering.x()
+                                        : state.pointer_steering.y()};
                     component += apply_response(
                         motion, InputResponse::TurnPointerDelta, FlightAxis::None, controls);
                 }
@@ -301,7 +297,7 @@ void FlightInputState::reset(LogicalInputState& state) {
         state.button(binding.action, ButtonState::Released);
     }
     *this = {};
-    state.pointer_steering.reset();
+    state.pointer_steering = {};
     state.axes_1d[Axis1DAction::Accelerate] = {};
     state.axes_2d[Axis2DAction::FlightTurn] = {};
 }

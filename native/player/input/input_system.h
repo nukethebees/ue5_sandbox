@@ -24,9 +24,7 @@ struct ObserverInputState {
 
 struct MenuButton {
     MenuCommand command;
-    bool down;
     bool repeat;
-    host::Modifiers modifiers;
 };
 
 struct InputCommand {
@@ -60,7 +58,9 @@ class InputSystem {
     void clear_commands() { commands_.clear(); }
     auto keyboard() const -> KeyboardLayout const& { return devices_.keyboard(); }
     auto ship_input() -> sim::player::PlayerInputFrame;
-    auto steering() const -> std::optional<Vector2d> { return state_.pointer_steering; }
+    auto steering() const -> std::optional<Vector2d> {
+        return state_.held.hold_to_steer() ? std::optional{state_.pointer_steering} : std::nullopt;
+    }
 
     void synchronize(InputRoute route, MenuInputMode mode);
     void refresh_bindings();
@@ -70,7 +70,7 @@ class InputSystem {
     auto relative_mouse() const -> bool;
     auto editing_text() const -> bool;
     auto state() const -> LogicalInputState const& { return state_; }
-    auto viewer_step(double seconds) const -> std::optional<host::ViewerStep>;
+    void publish_viewer_step(double seconds);
   private:
     struct RoutedButton {
         PhysicalKey key;

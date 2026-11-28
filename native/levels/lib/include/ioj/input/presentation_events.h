@@ -37,7 +37,6 @@ struct ViewerMotion {
     float yaw;
     float pitch;
     float speed;
-    bool looking;
 };
 
 struct MenuKey {

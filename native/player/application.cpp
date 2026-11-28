@@ -315,9 +315,6 @@ void Application::consume_commands() {
                 break;
             case InputCommand::Kind::Navigation: {
                 auto const button{command.button};
-                if (!button.down) {
-                    break;
-                }
                 if (menu_.draft.binding_edit().prompt != BindingPrompt::Closed) {
                     menu_.draft.navigate_binding(button.command, button.repeat);
                     present_menu(
@@ -389,9 +386,7 @@ void Application::process_input(double seconds) {
     }
     input_.repeat_navigation(seconds);
     consume_commands();
-    if (auto step{input_.viewer_step(seconds)}) {
-        endpoint_.step_viewer(*step);
-    }
+    input_.publish_viewer_step(seconds);
     if (route().context == InputContext::Gameplay) {
         endpoint_.present_steering(input_.steering());
     }

@@ -5,7 +5,6 @@
 #include <ioj/input/physical/button_state.h>
 #include <ioj/vector.h>
 
-#include <optional>
 #include <vector>
 
 namespace ioj {
@@ -19,7 +18,7 @@ struct LogicalInputState {
     void begin_frame();
 
     std::vector<ActionTransition> transitions;
-    std::optional<Vector2d> pointer_steering;
+    Vector2d pointer_steering{};
     EnumArray<Vector2f, Axis2DAction> axes_2d;
     EnumArray<float, Axis1DAction> axes_1d;
     DigitalActions held;

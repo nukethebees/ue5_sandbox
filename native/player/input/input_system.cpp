@@ -195,8 +195,9 @@ void InputSystem::refresh_bindings() {
 void InputSystem::publish_transitions(std::size_t first) {
     for (auto const payload : std::span{state_.transitions}.subspan(first)) {
         if (auto command{menu_command(payload.action)}) {
-            commands_.emplace_back(MenuButton{
-                *command, payload.state != ButtonState::Released, false, physical_.modifiers});
+            if (payload.state == ButtonState::Pressed) {
+                commands_.emplace_back(MenuButton{*command, false});
+            }
             continue;
         }
         if (payload.state == ButtonState::Pressed) {
@@ -292,7 +293,7 @@ void InputSystem::button(PhysicalKey key, ButtonState edge, bool repeat) {
         if (source != routed_buttons_.end() && (!repeat || route_.context == InputContext::Menu)) {
             if (repeat) {
                 if (auto command{menu_command(source->action)}) {
-                    commands_.emplace_back(MenuButton{*command, true, true, physical_.modifiers});
+                    commands_.emplace_back(MenuButton{*command, true});
                 }
             } else {
                 routed_button(key, source->action, edge);
@@ -376,9 +377,8 @@ auto InputSystem::map_events(PhysicalInputBatch const& events, std::size_t first
         auto const routing_change{std::ranges::any_of(commands, [](InputCommand const& command) {
             switch (command.kind) {
                 case InputCommand::Kind::Capture:
-                    return true;
                 case InputCommand::Kind::Navigation:
-                    return command.button.down;
+                    return true;
                 case InputCommand::Kind::Action:
                     return command.action != host::PlayerAction::BenchmarkNext &&
                            command.action != host::PlayerAction::ToggleBenchmark;
@@ -585,28 +585,26 @@ void InputSystem::repeat_navigation(double seconds) {
             if (delay <= 0.) {
                 auto const command{menu_command(digital_action_repeatable_navigation_values[i])};
                 assert(command);
-                commands_.emplace_back(MenuButton{*command, true, true, physical_.modifiers});
+                commands_.emplace_back(MenuButton{*command, true});
                 delay = 0.1;
             }
         }
     }
 }
-auto InputSystem::viewer_step(double seconds) const -> std::optional<host::ViewerStep> {
+void InputSystem::publish_viewer_step(double seconds) {
     if (route_.context == InputContext::Observer) {
         auto const& held{state_.held};
         auto const look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         auto const speed{game_input_tables::observer_speeds[observer_.speed] *
                          (held.observer_fast() ? 4.f : 1.f)};
-        return host::ViewerStep{{float(held.observer_right() - held.observer_left()),
-                                 float(held.observer_forward() - held.observer_backward()),
-                                 float(held.observer_up() - held.observer_down()),
-                                 look.x() * 0.1f,
-                                 look.y() * 0.1f,
-                                 speed,
-                                 observer_.look == ObserverLookMode::Camera},
-                                seconds};
+        endpoint_.step_viewer({{float(held.observer_right() - held.observer_left()),
+                                float(held.observer_forward() - held.observer_backward()),
+                                float(held.observer_up() - held.observer_down()),
+                                look.x() * 0.1f,
+                                look.y() * 0.1f,
+                                speed},
+                               seconds});
     }
-    return {};
 }
 auto InputSystem::ship_input() -> sim::player::PlayerInputFrame {
     using enum sim::player::PlayerInputKind;

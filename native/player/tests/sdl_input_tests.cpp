@@ -29,7 +29,6 @@ static_assert(!is_keyboard_key(PhysicalKey::GamepadLeftX));
 struct Presentation {
     InputRoute route;
     MenuInputMode mode{};
-    Modifiers modifiers;
     std::vector<MenuCommand> commands;
     std::vector<PhysicalKey> keys;
     std::vector<PointerAction> pointer;
@@ -85,13 +84,12 @@ class SdlPlayerInput : public ::testing::Test {
                         }
                         break;
                     case InputCommand::Kind::Navigation:
-                        if (command.button.down && menu_.screen == MenuScreen::Pause) {
+                        if (menu_.screen == MenuScreen::Pause) {
                             menu_.navigate_pause(command.button.command, command.button.repeat);
                             pause_commands_.push_back(
                                 {host::PauseCommandKind::Select, menu_.pause_selection});
-                        } else if (command.button.down) {
+                        } else {
                             view.commands.push_back(command.button.command);
-                            view.modifiers = command.button.modifiers;
                         }
                         break;
                     case InputCommand::Kind::Capture:
@@ -131,9 +129,11 @@ class SdlPlayerInput : public ::testing::Test {
             }
             unreal_.clear();
         } while (cursor < physical.order.size());
-        if (auto step{input_->viewer_step(0.016)}) {
-            view.motion = step->motion;
+        input_->publish_viewer_step(0.016);
+        for (auto const& step : endpoint_.messages().viewer_steps) {
+            view.motion = step.motion;
         }
+        endpoint_.clear();
     }
     void key_event(SDL_Keycode key,
                    SDL_Scancode scancode,
@@ -175,25 +175,12 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
               SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
     frame();
     EXPECT_EQ(view.commands.back(), MenuCommand::Previous);
-    host::Modifiers expected;
-    expected.set_right_shift(true);
-    expected.set_left_control(true);
-    expected.set_right_alt(true);
-    expected.set_left_command(true);
-    expected.set_caps_lock(true);
-    EXPECT_EQ(view.modifiers, expected);
     key_event(SDLK_TAB, SDL_SCANCODE_TAB, SDL_KMOD_NONE, false);
     key_event(SDLK_TAB,
               SDL_SCANCODE_TAB,
               SDL_KMOD_LSHIFT | SDL_KMOD_RCTRL | SDL_KMOD_LALT | SDL_KMOD_RGUI);
     frame();
     EXPECT_EQ(view.commands.back(), MenuCommand::Previous);
-    expected = {};
-    expected.set_left_shift(true);
-    expected.set_right_control(true);
-    expected.set_left_alt(true);
-    expected.set_right_command(true);
-    EXPECT_EQ(view.modifiers, expected);
 
     view.route = {InputContext::Gameplay, false};
     key_event(SDLK_Z, SDL_SCANCODE_W);
@@ -301,7 +288,7 @@ TEST_F(SdlPlayerInput, ReplyHandlesPreserveOrderAcrossPayloadTypesAndReset) {
     EXPECT_EQ(unreal_.messages().order.front().index, 0u);
 }
 
-TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifiers) {
+TEST_F(LogicalPlayerInput, MenuCommandsPublishOwnedPressesAndRepeats) {
     using enum ButtonState;
     host::Modifiers shift{};
     shift.set_left_shift(true);
@@ -323,23 +310,29 @@ TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModi
     input_->repeat_navigation(0.41);
     input_->synchronize({InputContext::Gameplay}, {});
 
-    ASSERT_EQ(input_->commands().size(), 6u);
+    ASSERT_EQ(input_->commands().size(), 4u);
     auto const& transitions{input_->state().transitions};
     ASSERT_EQ(transitions.size(), 4u);
-    std::size_t transition_index{};
-    for (std::size_t i{}; i < input_->commands().size(); ++i) {
+    for (std::size_t i{}; i < 4; ++i) {
         auto const& button{input_->commands()[i].button};
-        EXPECT_EQ(button.command, i < 3 ? MenuCommand::Previous : MenuCommand::Down);
-        EXPECT_EQ(button.down, i != 2 && i != 5);
-        EXPECT_EQ(button.repeat, i == 1 || i == 4);
-        EXPECT_EQ(button.modifiers.left_shift(), i == 0);
-        if (!button.repeat) {
-            auto const transition{transitions[transition_index++]};
-            EXPECT_EQ(transition.action,
-                      i < 3 ? DigitalAction::MenuPrevious : DigitalAction::MenuDown);
-            EXPECT_EQ(transition.state, button.down ? Pressed : Released);
-        }
+        EXPECT_EQ(button.command, i < 2 ? MenuCommand::Previous : MenuCommand::Down);
+        EXPECT_EQ(button.repeat, i == 1 || i == 3);
+        EXPECT_EQ(transitions[i].action,
+                  i < 2 ? DigitalAction::MenuPrevious : DigitalAction::MenuDown);
+        EXPECT_EQ(transitions[i].state, i % 2 == 0 ? Pressed : Released);
     }
+
+    input_->synchronize({InputContext::Menu}, MenuInputMode::TextEntry);
+    key(PhysicalKey::Left, Pressed, shift);
+    key(PhysicalKey::Left, Pressed, shift, true);
+    key(PhysicalKey::Left, Released);
+    auto const raw{endpoint_.messages().keys};
+    ASSERT_EQ(raw.size(), 3u);
+    EXPECT_TRUE(raw[0].down);
+    EXPECT_FALSE(raw[0].repeat);
+    EXPECT_EQ(raw[0].modifiers, shift);
+    EXPECT_TRUE(raw[1].repeat);
+    EXPECT_FALSE(raw[2].down);
 }
 
 TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
@@ -370,9 +363,10 @@ TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     batch_.button(PhysicalKey::D, {}, ButtonState::Pressed);
     map();
     EXPECT_TRUE(input_->state().held.observer_right());
-    auto const step{input_->viewer_step(0.016)};
-    ASSERT_TRUE(step);
-    EXPECT_FLOAT_EQ(step->motion.speed, 150000.f);
+    input_->publish_viewer_step(0.016);
+    auto const steps{endpoint_.messages().viewer_steps};
+    ASSERT_EQ(steps.size(), 1u);
+    EXPECT_FLOAT_EQ(steps.front().motion.speed, 150000.f);
     EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
     batch_.order.push_back({PhysicalEventKind::FocusLost, 0});
     map();
@@ -436,7 +430,7 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     ASSERT_TRUE(SDL_PushEvent(&event));
     frame();
     ASSERT_TRUE(view.motion);
-    EXPECT_TRUE(view.motion->looking);
+    EXPECT_TRUE(input_->relative_mouse());
     EXPECT_EQ(view.pointer.size(), 2u);
 
     settings_.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::MiddleMouseButton;
