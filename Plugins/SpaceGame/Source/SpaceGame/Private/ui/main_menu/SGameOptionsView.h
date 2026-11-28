@@ -30,6 +30,7 @@ struct FControlsFocusTarget {
 DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
 
 class SGameOptionsView final : public SCompoundWidget {
+    enum class PendingRebuild { None, PreserveScroll, ResetScroll };
     friend struct ::SlateGenerated::ioj::SGameOptionsViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SGameOptionsView)
@@ -75,7 +76,7 @@ class SGameOptionsView final : public SCompoundWidget {
     // Control bindings
     /* **************************************** */
     void rebuild_controls_page(bool reset_scroll = false);
-    void request_controls_rebuild(bool reset_scroll = false);
+    void request_controls_rebuild(PendingRebuild request = PendingRebuild::PreserveScroll);
     auto handle_deferred_controls_rebuild(double current_time, float delta_time)
         -> EActiveTimerReturnType;
     auto handle_deferred_controls_restore(double current_time, float delta_time)
@@ -111,6 +112,7 @@ class SGameOptionsView final : public SCompoundWidget {
     SystemCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
+    PendingRebuild pending_rebuild_{};
     TAttribute<MainMenuItem> page_;
 
     FOnOptionsInteractionModalChanged on_interaction_modal_changed_{};
@@ -139,8 +141,6 @@ class SGameOptionsView final : public SCompoundWidget {
     FlightControlDescriptor const* managed_binding_{};
     TArray<FControlsFocusTarget> controls_focus_targets_{};
     float pending_controls_scroll_offset_{};
-    bool pending_controls_reset_scroll_{};
-    bool controls_rebuild_pending_{};
     bool display_prompt_visible_{};
     TMap<GameSetting, TFunction<void()>> setting_focus_;
 };

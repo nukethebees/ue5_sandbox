@@ -292,7 +292,7 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     } else if (update.target.kind == MenuTarget::Kind::Device) {
         auto const device{update.target.device()};
         if (activate) {
-            request_controls_rebuild(true);
+            request_controls_rebuild(PendingRebuild::ResetScroll);
         } else {
             restore_controls_focus(MenuTarget{device});
         }
@@ -605,12 +605,11 @@ void SGameOptionsView::rebuild_controls_page(bool const reset_scroll) {
                             this, &SGameOptionsView::handle_deferred_controls_restore));
 }
 
-void SGameOptionsView::request_controls_rebuild(bool const reset_scroll) {
-    pending_controls_reset_scroll_ = reset_scroll;
-    if (controls_rebuild_pending_) {
+void SGameOptionsView::request_controls_rebuild(PendingRebuild request) {
+    auto const previous{std::exchange(pending_rebuild_, std::max(request, pending_rebuild_))};
+    if (previous != PendingRebuild::None) {
         return;
     }
-    controls_rebuild_pending_ = true;
     RegisterActiveTimer(0.0f,
                         FWidgetActiveTimerDelegate::CreateSP(
                             this, &SGameOptionsView::handle_deferred_controls_rebuild));
@@ -621,9 +620,8 @@ auto SGameOptionsView::handle_deferred_controls_rebuild(double const current_tim
     -> EActiveTimerReturnType {
     static_cast<void>(current_time);
     static_cast<void>(delta_time);
-    controls_rebuild_pending_ = false;
-    auto const reset_scroll{pending_controls_reset_scroll_};
-    pending_controls_reset_scroll_ = false;
+    auto const reset_scroll{std::exchange(pending_rebuild_, PendingRebuild::None) ==
+                            PendingRebuild::ResetScroll};
     rebuild_controls_page(reset_scroll);
     refresh();
     return EActiveTimerReturnType::Stop;
