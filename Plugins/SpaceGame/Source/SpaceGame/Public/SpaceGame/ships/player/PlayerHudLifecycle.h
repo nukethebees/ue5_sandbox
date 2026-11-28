@@ -31,7 +31,6 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     void update_run_controls();
     void hide_for_modal();
     void restore_after_modal();
-    void cancel_restore();
     void set_observer_speed(float speed);
     void set_mouse_steering(TOptional<FVector2D> displacement);
     auto get_hud() const -> USimulationHudWidget const* { return hud_widget_; }
@@ -42,8 +41,7 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     TObjectPtr<USimulationHudWidget> hud_widget_{nullptr};
     UPROPERTY(Transient)
     TObjectPtr<UBenchmarkHudWidget> benchmark_hud_widget_{nullptr};
-    bool restore_pending_{false};
-    ESlateVisibility visibility_before_modal_{ESlateVisibility::Visible};
+    TOptional<ESlateVisibility> visibility_before_modal_;
 };
 
 } // namespace ioj

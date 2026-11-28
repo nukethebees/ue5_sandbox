@@ -34,7 +34,7 @@ ASpaceGamePlayerController::ASpaceGamePlayerController() {
 void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
-    begin_play_finished_ = true;
+    lifecycle_ = Lifecycle::Playing;
     if (!is_gameplay_mode()) {
         initialise_main_menu();
         return;
@@ -52,12 +52,12 @@ void ASpaceGamePlayerController::initialise_gameplay() {
     }
 }
 void ASpaceGamePlayerController::show_main_menu() {
-    if (ending_play_) {
+    if (lifecycle_ == Lifecycle::Ending) {
         return;
     }
 
     mode_ = EPlayerControllerMode::MainMenu;
-    if (begin_play_finished_) {
+    if (lifecycle_ == Lifecycle::Playing) {
         initialise_main_menu();
     }
 }
@@ -75,7 +75,7 @@ void ASpaceGamePlayerController::initialise_main_menu() {
     SetActorTickEnabled(false);
 }
 void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
-    ending_play_ = true;
+    lifecycle_ = Lifecycle::Ending;
     modal_ui_.detach_callbacks(*this);
     unbind_orchestrator_events();
     detach_ship();
@@ -121,7 +121,7 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
-    if (!begin_play_finished_ || !can_activate_gameplay_control() ||
+    if (lifecycle_ != Lifecycle::Playing || !can_activate_gameplay_control() ||
         !IsValid(Cast<Pawn>(GetPawn()))) {
         return;
     }
@@ -412,7 +412,6 @@ void ASpaceGamePlayerController::on_simulation_paused() {
 void ASpaceGamePlayerController::finish_level() {
     modal_ui_.clear_modals(*this);
     set_control_context(levels::ControlContext::None);
-    hud_.cancel_restore();
     hud_.shutdown();
     hud_.shutdown_benchmark();
 }

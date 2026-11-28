@@ -68,7 +68,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     // Lifecycle and possession
     /* **************************************** */
     auto is_gameplay_mode() const -> bool {
-        return mode_ == EPlayerControllerMode::Gameplay && !ending_play_;
+        return mode_ == EPlayerControllerMode::Gameplay && lifecycle_ != Lifecycle::Ending;
     }
 
     auto can_activate_gameplay_control() const -> bool {
@@ -119,8 +119,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     float viewer_speed_{50000.f};
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator_;
     EPlayerControllerMode mode_{EPlayerControllerMode::Gameplay};
-    bool begin_play_finished_{false};
-    bool ending_play_{false};
+    enum class Lifecycle { BeforePlay, Playing, Ending };
+    Lifecycle lifecycle_{};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

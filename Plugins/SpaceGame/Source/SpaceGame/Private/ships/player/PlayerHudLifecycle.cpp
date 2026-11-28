@@ -123,7 +123,7 @@ void FPlayerHudLifecycle::shutdown() {
     if (!IsValid(hud_widget_)) {
         hud_widget_ = nullptr;
         registered_orchestrator_.Reset();
-        restore_pending_ = false;
+        visibility_before_modal_.Reset();
         return;
     }
 
@@ -135,7 +135,7 @@ void FPlayerHudLifecycle::shutdown() {
     hud_widget_->RemoveFromParent();
     hud_widget_ = nullptr;
     registered_orchestrator_.Reset();
-    restore_pending_ = false;
+    visibility_before_modal_.Reset();
 }
 auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner,
                                                ATestBatchOrchestrator* orchestrator,
@@ -219,24 +219,23 @@ void FPlayerHudLifecycle::update_run_controls() {
     }
 }
 void FPlayerHudLifecycle::hide_for_modal() {
-    if (restore_pending_ || !IsValid(hud_widget_)) {
+    if (visibility_before_modal_.IsSet() || !IsValid(hud_widget_)) {
         return;
     }
 
     visibility_before_modal_ = hud_widget_->GetVisibility();
-    restore_pending_ = true;
     hud_widget_->SetVisibility(ESlateVisibility::Collapsed);
 }
 void FPlayerHudLifecycle::restore_after_modal() {
-    if (!restore_pending_) {
+    if (!visibility_before_modal_.IsSet()) {
         return;
     }
 
     if (IsValid(hud_widget_)) {
-        hud_widget_->SetVisibility(visibility_before_modal_);
+        hud_widget_->SetVisibility(*visibility_before_modal_);
     }
 
-    restore_pending_ = false;
+    visibility_before_modal_.Reset();
 }
 void FPlayerHudLifecycle::set_mouse_steering(TOptional<FVector2D> const displacement) {
     if (auto* const hud{Cast<UShipHudWidget>(hud_widget_)}) {
@@ -247,9 +246,6 @@ void FPlayerHudLifecycle::set_observer_speed(float const speed) {
     if (auto* const viewer_hud{Cast<UBattleViewerHudWidget>(hud_widget_)}; IsValid(viewer_hud)) {
         viewer_hud->set_movement_speed(speed);
     }
-}
-void FPlayerHudLifecycle::cancel_restore() {
-    restore_pending_ = false;
 }
 
 } // namespace ioj
