@@ -341,7 +341,7 @@
     (projections (cpp :storage std::uint16_t))))
 
 (module player_host_actions
-  :header "native/levels/lib/include/ioj/input/dispatch/input_actions.h"
+  :header "native/levels/lib/include/ioj/input/input_actions.h"
   :namespace ioj::host
   (enum PlayerAction @native_uint8 :native-api true :helpers (traits)
     (value OpenPause)

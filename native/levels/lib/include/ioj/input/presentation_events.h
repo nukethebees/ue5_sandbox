@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/dispatch/input_actions.h>
+#include <ioj/input/input_actions.h>
 #include <ioj/input/logical/actions.h>
 #include <ioj/input/physical/modifiers.h>
 #include <ioj/input/physical/physical_key.h>

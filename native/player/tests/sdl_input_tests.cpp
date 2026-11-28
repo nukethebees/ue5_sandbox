@@ -1,6 +1,6 @@
 #include "player/input/input_system.h"
 #include "UnrealEndpoint.h"
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>

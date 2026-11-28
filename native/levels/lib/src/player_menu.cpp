@@ -1,4 +1,4 @@
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 
 #include <ioj/input/logical/flight_controls.h>
 #include <ioj/settings/setting_control_kind.h>

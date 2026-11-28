@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 
 #include "Blueprint/UserWidget.h"
 

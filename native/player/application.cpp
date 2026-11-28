@@ -9,7 +9,7 @@
 #include <ioj/bridge/level_catalog.h>
 #include <ioj/bridge/level_frame.h>
 #include <ioj/files.h>
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>

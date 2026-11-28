@@ -2,7 +2,7 @@
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
-#include <ioj/input/dispatch/events.h>
+#include <ioj/input/presentation_events.h>
 
 #include "PauseMenuWidget.generated.h"
 

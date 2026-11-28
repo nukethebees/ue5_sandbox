@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/input/dispatch/events.h>
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/input/presentation_events.h>
+#include <ioj/menu/player_menu.h>
 #include <ioj/input/physical/keyboard_layout.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/level_frame.h>

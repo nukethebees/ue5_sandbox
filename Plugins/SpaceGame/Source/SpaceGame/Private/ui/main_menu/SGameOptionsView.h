@@ -4,7 +4,7 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 
 #include <Widgets/SCompoundWidget.h>
 

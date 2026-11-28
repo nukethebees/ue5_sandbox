@@ -1,5 +1,5 @@
 #include "player/loaded_level.h"
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/menu/player_menu.h>
 
 #include <gtest/gtest.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/dispatch/input_actions.h>
+#include <ioj/input/input_actions.h>
 #include <ioj/input/logical/flight_controls.h>
 #include <ioj/input/physical/physical_key.h>
 #include <ioj/levels/launch_options.h>
