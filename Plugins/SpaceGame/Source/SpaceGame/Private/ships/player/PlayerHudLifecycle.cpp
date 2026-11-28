@@ -190,17 +190,13 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
 
-    created_widget->set_state_source([weak = TWeakObjectPtr<ATestBatchOrchestrator>{orchestrator}] {
-        return weak.IsValid() ? FRunHudState{.ticks_remaining = weak->get_run_ticks_remaining(),
-                                             .state = weak->get_state()}
-                              : FRunHudState{};
-    });
+    created_widget->present_status(orchestrator->status());
     created_widget->pause_requested.AddLambda(
         [] { unreal_endpoint().player_action(host::PlayerAction::ToggleBenchmark); });
     created_widget->end_requested.AddLambda(
         [] { unreal_endpoint().player_action(host::PlayerAction::EndBenchmark); });
     created_widget->AddToPlayerScreen(100);
-    created_widget->select_button(false);
+    created_widget->select_button(host::BenchmarkAction::ToggleSimulation);
     return true;
 }
 void FPlayerHudLifecycle::shutdown_benchmark() {
@@ -212,11 +208,6 @@ void FPlayerHudLifecycle::shutdown_benchmark() {
     benchmark_hud_widget_->pause_requested.Clear();
     benchmark_hud_widget_->RemoveFromParent();
     benchmark_hud_widget_ = nullptr;
-}
-void FPlayerHudLifecycle::update_run_controls() {
-    if (IsValid(benchmark_hud_widget_)) {
-        benchmark_hud_widget_->update_state();
-    }
 }
 void FPlayerHudLifecycle::hide_for_modal() {
     if (visibility_before_modal_.IsSet() || !IsValid(hud_widget_)) {

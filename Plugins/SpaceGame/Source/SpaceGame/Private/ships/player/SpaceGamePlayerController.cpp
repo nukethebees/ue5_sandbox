@@ -43,7 +43,7 @@ void ASpaceGamePlayerController::BeginPlay() {
     initialise_gameplay();
 }
 void ASpaceGamePlayerController::initialise_gameplay() {
-    bind_orchestrator_events();
+    find_orchestrator();
     if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
         attach_ship(*ship);
         activate_ship_control();
@@ -63,7 +63,7 @@ void ASpaceGamePlayerController::show_main_menu() {
 }
 void ASpaceGamePlayerController::initialise_main_menu() {
     modal_ui_.clear_menus(*this);
-    unbind_orchestrator_events();
+    orchestrator_.Reset();
     detach_ship();
     set_control_context(levels::ControlContext::None);
     hud_.shutdown();
@@ -77,7 +77,7 @@ void ASpaceGamePlayerController::initialise_main_menu() {
 void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     lifecycle_ = Lifecycle::Ending;
     modal_ui_.detach_callbacks(*this);
-    unbind_orchestrator_events();
+    orchestrator_.Reset();
     detach_ship();
     set_control_context(levels::ControlContext::None);
     hud_.shutdown();
@@ -126,7 +126,7 @@ void ASpaceGamePlayerController::activate_ship_control() {
         return;
     }
 
-    bind_orchestrator_events();
+    find_orchestrator();
     modal_ui_.initialise_root(*this, ui_data);
     set_control_context(levels::ControlContext::Player);
     hud_.initialise(
@@ -157,38 +157,24 @@ void ASpaceGamePlayerController::detach_ship() {
 void ASpaceGamePlayerController::on_player_ship_died() {
     UnPossess();
 }
-void ASpaceGamePlayerController::bind_orchestrator_events() {
+void ASpaceGamePlayerController::find_orchestrator() {
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ASpaceGamePlayerController::bind_orchestrator_events: World is invalid."));
+               TEXT("ASpaceGamePlayerController::find_orchestrator: World is invalid."));
         return;
     }
 
     auto* const orchestrator{get_first_actor<ATestBatchOrchestrator>(*world)};
     if (!IsValid(orchestrator)) {
-        UE_LOG(
-            LogSandboxController,
-            Warning,
-            TEXT("ASpaceGamePlayerController::bind_orchestrator_events: Orchestrator is invalid."));
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::find_orchestrator: Orchestrator is invalid."));
         return;
     }
 
-    if (orchestrator_.Get() == orchestrator) {
-        return;
-    }
-
-    unbind_orchestrator_events();
     orchestrator_ = orchestrator;
-    orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
-}
-void ASpaceGamePlayerController::unbind_orchestrator_events() {
-    if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
-        orchestrator->on_simulation_paused.RemoveAll(this);
-    }
-
-    orchestrator_.Reset();
 }
 
 /* **************************************** */
@@ -218,7 +204,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         return false;
     }
 
-    bind_orchestrator_events();
+    find_orchestrator();
     viewer_camera_ = &camera;
     SetViewTarget(&camera);
     if (context == levels::ControlContext::Benchmark) {
@@ -245,7 +231,7 @@ auto ASpaceGamePlayerController::activate_run_controls() -> bool {
         return false;
     }
 
-    bind_orchestrator_events();
+    find_orchestrator();
     if (!set_control_context(levels::ControlContext::Benchmark)) {
         return false;
     }
@@ -401,13 +387,6 @@ void ASpaceGamePlayerController::on_pause_menu_deactivated() {
 }
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
-}
-void ASpaceGamePlayerController::on_simulation_paused() {
-    if (!is_gameplay_mode()) {
-        return;
-    }
-
-    hud_.update_run_controls();
 }
 void ASpaceGamePlayerController::finish_level() {
     modal_ui_.clear_modals(*this);

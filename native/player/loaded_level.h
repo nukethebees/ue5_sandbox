@@ -20,7 +20,7 @@ struct LoadedLevel {
     auto elapsed_seconds() -> double;
 
     std::chrono::steady_clock::time_point previous_frame{std::chrono::steady_clock::now()};
-    bool end_selected{};
+    host::BenchmarkAction benchmark_action{};
     levels::ControlContext control_context;
     sim::LevelSim simulation;
     std::optional<presentation::LevelPresentationSetup> presentation_setup;

@@ -252,11 +252,14 @@ void Application::handle_action(host::PlayerAction action) {
             }
             break;
         case BenchmarkNext:
-            level->end_selected = !level->end_selected;
-            endpoint_.select_benchmark(level->end_selected);
+            level->benchmark_action = level->benchmark_action == host::BenchmarkAction::End
+                                        ? host::BenchmarkAction::ToggleSimulation
+                                        : host::BenchmarkAction::End;
+            endpoint_.select_benchmark(level->benchmark_action);
             break;
         case BenchmarkActivate:
-            handle_action(level->end_selected ? EndBenchmark : ToggleBenchmark);
+            handle_action(level->benchmark_action == host::BenchmarkAction::End ? EndBenchmark
+                                                                                : ToggleBenchmark);
             break;
         case ToggleBenchmark:
             level->set_simulation_mode(level->simulation.state() == sim::LevelState::Running
@@ -694,7 +697,6 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
             }
         } else if (engine_.presents_level && !level->presentation_setup) {
             simulation.append_player_input(input_.ship_input());
-            auto const before{simulation.state()};
             auto const seconds{level->elapsed_seconds()};
             simulation.advance(seconds);
             auto frame{bridge::level_frame(simulation)};
@@ -703,10 +705,6 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
                                           ? seconds
                                           : 0.0};
             endpoint_.present_frame({visual_seconds, frame});
-            if (before == sim::LevelState::Running &&
-                simulation.state() == sim::LevelState::Paused) {
-                endpoint_.send(host::NativeMessageKind::SimulationPaused);
-            }
             endpoint_.publish();
             level->update_pause(menu_.screen == MenuScreen::Pause);
         }

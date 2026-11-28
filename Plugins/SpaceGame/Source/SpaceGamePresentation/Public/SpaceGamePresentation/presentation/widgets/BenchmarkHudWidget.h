@@ -1,20 +1,15 @@
 #pragma once
 
-#include <ioj/sim/levels/level_state.h>
+#include <ioj/input/presentation_events.h>
+#include <ioj/presentation/level_frame.h>
 
 #include <Blueprint/UserWidget.h>
-#include <TimerManager.h>
 
 #include "BenchmarkHudWidget.generated.h"
 
 class UBorder;
 class UOverlay;
 class UTextBlock;
-
-struct FRunHudState {
-    TOptional<uint64> ticks_remaining;
-    ioj::sim::LevelState state{ioj::sim::LevelState::Uninitialised};
-};
 
 namespace ioj {
 class UValueWidget;
@@ -26,9 +21,8 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void apply_ui_style(FGameUiStyle const& style);
-    void set_state_source(TFunction<FRunHudState()> source);
-    void update_state();
-    void select_button(bool end_selected);
+    void present_status(presentation::LevelStatus const& status);
+    void select_button(host::BenchmarkAction action);
 
     FSimpleMulticastDelegate end_requested;
     FSimpleMulticastDelegate pause_requested;
@@ -56,10 +50,6 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UUserWidget {
   private:
     void handle_end_requested();
     void handle_pause_requested();
-    void clear_update_timer();
-
-    TFunction<FRunHudState()> state_source_;
-    FTimerHandle update_timer_{};
 };
 
 } // namespace ioj

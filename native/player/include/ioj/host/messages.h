@@ -93,8 +93,7 @@ enum class NativeMessageKind {
     Error,
     Keyboard,
     Capabilities,
-    OpenLevel,
-    SimulationPaused
+    OpenLevel
 };
 struct NativeMessageHandle {
     NativeMessageKind kind;
@@ -134,7 +133,7 @@ struct NativeMessageColumns {
     Column<MenuPointer> pointers;
     Column<MenuMessage> menus;
     Column<PauseCommand> pause_commands;
-    Column<std::uint8_t> benchmark_selections;
+    Column<BenchmarkAction> benchmark_selections;
     Column<ViewerStep> viewer_steps;
     Column<std::optional<Vector2d>> steering;
     Column<SettingsPresentation> settings;

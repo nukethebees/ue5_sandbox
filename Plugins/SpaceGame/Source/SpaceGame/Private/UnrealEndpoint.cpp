@@ -98,7 +98,7 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             case Benchmark:
                 if (auto* hud{player->get_benchmark_hud()}) {
-                    hud->select_button(messages.benchmark_selections[index] != 0);
+                    hud->select_button(messages.benchmark_selections[index]);
                 }
                 break;
             case Viewer: {
@@ -167,18 +167,25 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                     UE_LOG(LogTemp, Error, TEXT("%s"), *message);
                     level_world_->release_level();
                     error = to_string(message);
+                } else if (auto* hud{player->get_benchmark_hud()}) {
+                    hud->present_status(init.frame.status);
                 }
                 level_initialized(std::move(error));
                 break;
             }
             case Frame: {
                 auto const& frame{messages.frames[index]};
+                auto const& previous{level_world_->status()};
+                auto const& status{frame.frame.status};
+                if (previous.state != status.state ||
+                    previous.ticks_remaining != status.ticks_remaining) {
+                    if (auto* hud{player->get_benchmark_hud()}) {
+                        hud->present_status(status);
+                    }
+                }
                 level_world_->present_level(frame.seconds, frame.frame);
                 break;
             }
-            case SimulationPaused:
-                level_world_->on_simulation_paused.Broadcast();
-                break;
             case Finish: {
                 auto const& result{messages.completions[index]};
                 if (level_world_ && level_world_->has_level()) {

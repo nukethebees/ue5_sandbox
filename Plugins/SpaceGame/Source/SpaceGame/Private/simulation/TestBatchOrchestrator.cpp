@@ -84,8 +84,7 @@ void ATestBatchOrchestrator::release_level() {
     }
 
     presentation_host_.reset();
-    status_.reset();
-    level_id_ = NAME_None;
+    status_ = {};
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (get_state() != sim::LevelState::Paused) {
@@ -96,7 +95,7 @@ void ATestBatchOrchestrator::start_simulation() {
     unreal_endpoint().request_simulation_mode(levels::LaunchMode::Running);
 }
 void ATestBatchOrchestrator::pause_simulation() {
-    if (status_) {
+    if (has_level()) {
         unreal_endpoint().request_simulation_mode(levels::LaunchMode::Paused);
     }
 }
@@ -105,7 +104,7 @@ void ATestBatchOrchestrator::pause_simulation() {
 // Level configuration
 /* **************************************** */
 auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> bool {
-    if (status_) {
+    if (has_level()) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("Reset the level simulation before replacing its configuration"));
@@ -224,7 +223,6 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
     auto* const audio{GetGameInstance()->GetSubsystem<UGameAudio>()};
     check(audio);
     status_ = frame.status;
-    level_id_ = FName{to_fstring(level.id)};
     grid_ = level.grid;
     refresh_collision_grid_visualization();
     if (is_presentation_enabled()) {
@@ -275,7 +273,7 @@ void ATestBatchOrchestrator::set_collision_overlays(FCollisionOverlayVisibility 
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     TOptional<FCollisionGridVisualizationSettings> settings;
     if ((collision_overlays_.grid || collision_overlays_.bounds) && is_presentation_enabled() &&
-        IsValid(level_config) && status_) {
+        IsValid(level_config) && has_level()) {
         auto const grid{grid_};
         auto const& collision_grid{level_config->collision_grid};
         settings.Emplace(FCollisionGridVisualizationSettings{
@@ -294,7 +292,7 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 /* **************************************** */
 void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
                                            presentation::LevelFrame const& frame) {
-    check(status_);
+    check(has_level());
     status_ = frame.status;
     if (IsValid(player_ship) && frame.player) {
         auto const& player{*frame.player};

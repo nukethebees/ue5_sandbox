@@ -29,14 +29,12 @@ void UBenchmarkHudWidget::NativeOnInitialized() {
 }
 
 void UBenchmarkHudWidget::NativeDestruct() {
-    clear_update_timer();
     if (IsValid(end_benchmark_button)) {
         end_benchmark_button->clicked.RemoveAll(this);
     }
     if (IsValid(pause_resume_button)) {
         pause_resume_button->clicked.RemoveAll(this);
     }
-    state_source_ = {};
     Super::NativeDestruct();
 }
 
@@ -53,27 +51,11 @@ void UBenchmarkHudWidget::apply_ui_style(FGameUiStyle const& style) {
     }
 }
 
-void UBenchmarkHudWidget::set_state_source(TFunction<FRunHudState()> source) {
-    clear_update_timer();
-    state_source_ = MoveTemp(source);
-    update_state();
-
-    auto* const world{GetWorld()};
-    if (IsValid(world)) {
-        world->GetTimerManager().SetTimer(
-            update_timer_, this, &ThisClass::update_state, 1.0f, true);
-    }
-}
-
-void UBenchmarkHudWidget::select_button(bool end_selected) {
-    auto* target{end_selected ? end_benchmark_button : pause_resume_button};
+void UBenchmarkHudWidget::select_button(host::BenchmarkAction action) {
+    auto* target{action == host::BenchmarkAction::End ? end_benchmark_button : pause_resume_button};
     target->focus_target()->SetFocus();
 }
-void UBenchmarkHudWidget::update_state() {
-    if (!state_source_) {
-        return;
-    }
-    auto const state{state_source_()};
+void UBenchmarkHudWidget::present_status(presentation::LevelStatus const& state) {
     auto const paused{state.state == sim::LevelState::Paused};
     auto const running{state.state == sim::LevelState::Running};
     if (IsValid(benchmark_title)) {
@@ -87,12 +69,12 @@ void UBenchmarkHudWidget::update_state() {
     }
 
     if (IsValid(ticks_remaining_widget)) {
-        ticks_remaining_widget->SetVisibility(state.ticks_remaining.IsSet()
+        ticks_remaining_widget->SetVisibility(state.ticks_remaining.has_value()
                                                   ? ESlateVisibility::HitTestInvisible
                                                   : ESlateVisibility::Collapsed);
-        if (state.ticks_remaining.IsSet()) {
+        if (state.ticks_remaining.has_value()) {
             ticks_remaining_widget->update(FNumberFormattingOptions::DefaultNoGrouping(),
-                                           state.ticks_remaining.GetValue());
+                                           *state.ticks_remaining);
         }
     }
 }
@@ -103,13 +85,6 @@ void UBenchmarkHudWidget::handle_end_requested() {
 
 void UBenchmarkHudWidget::handle_pause_requested() {
     pause_requested.Broadcast();
-    update_state();
-}
-
-void UBenchmarkHudWidget::clear_update_timer() {
-    if (auto* const world{GetWorld()}; IsValid(world)) {
-        world->GetTimerManager().ClearTimer(update_timer_);
-    }
 }
 
 } // namespace ioj

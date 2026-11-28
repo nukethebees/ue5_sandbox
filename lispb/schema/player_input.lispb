@@ -358,6 +358,10 @@
     (value DoubleClick)
     (value Wheel)
     (projections (cpp)))
+  (enum BenchmarkAction @native_uint8
+    (value ToggleSimulation)
+    (value End)
+    (projections (cpp)))
   (enum PauseMenuItem @native_uint8 :native-api true :helpers (traits cycle-next cycle-previous)
     (value Resume)
     (value Audio)

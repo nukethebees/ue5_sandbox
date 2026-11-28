@@ -81,8 +81,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void detach_ship();
     void activate_ship_control();
     void on_player_ship_died();
-    void bind_orchestrator_events();
-    void unbind_orchestrator_events();
+    void find_orchestrator();
 
     /* **************************************** */
     // Input and presentation callbacks
@@ -95,7 +94,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void restore_gameplay_presentation();
     void on_pause_menu_deactivated();
     void on_completion_menu_deactivated();
-    void on_simulation_paused();
     void finish_level();
     void show_level_completion(FLevelCompletion const& completion);
 

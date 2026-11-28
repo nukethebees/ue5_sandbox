@@ -52,6 +52,23 @@ inline constexpr MinMax<host::PointerAction> enum_range<host::PointerAction>{
 } // namespace ioj
 
 namespace ioj::host {
+using BenchmarkActionUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class BenchmarkAction : BenchmarkActionUnderlying {
+    ToggleSimulation,
+    End,
+};
+
+} // namespace ioj::host
+
+namespace ioj {
+template <>
+inline constexpr MinMax<host::BenchmarkAction> enum_range<host::BenchmarkAction>{
+    host::BenchmarkAction::ToggleSimulation, host::BenchmarkAction::End};
+} // namespace ioj
+
+namespace ioj::host {
 using PauseMenuItemUnderlying = std::uint8_t;
 
 // Logical bit width: 3.

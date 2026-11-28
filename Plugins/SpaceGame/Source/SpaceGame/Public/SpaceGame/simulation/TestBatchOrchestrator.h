@@ -9,8 +9,6 @@
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
-#include <optional>
-
 #include "TestBatchOrchestrator.generated.h"
 
 class UInstancedStaticMeshComponent;
@@ -25,7 +23,6 @@ UCLASS()
 class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
   public:
-    using tick_type = sim::SimTick::value_type;
     using time_type = double;
 
     /* **************************************** */
@@ -57,19 +54,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
-    auto get_state() const noexcept -> sim::LevelState {
-        return status_ ? status_->state : sim::LevelState::Uninitialised;
-    }
+    auto get_state() const noexcept -> sim::LevelState { return status_.state; }
 
-    auto has_level() const -> bool { return status_.has_value(); }
-    auto level_id() const -> FName { return level_id_; }
-
-    auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
-        if (status_ && status_->ticks_remaining) {
-            return *status_->ticks_remaining;
-        }
-        return NullOpt;
-    }
+    auto has_level() const -> bool { return status_.state != sim::LevelState::Uninitialised; }
+    auto status() const -> presentation::LevelStatus const& { return status_; }
 
     /* **************************************** */
     // Player actor
@@ -94,10 +82,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
 #endif
   private:
-    /* **************************************** */
-    // Level initialization
-    /* **************************************** */
-
     /* **************************************** */
     // Presentation
     /* **************************************** */
@@ -129,16 +113,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
-  public:
-    FSimpleMulticastDelegate on_simulation_paused;
-  private:
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
     FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
-    std::optional<presentation::LevelStatus> status_;
-    FName level_id_;
+    presentation::LevelStatus status_{};
     sim::collision::CollisionGridSpec grid_{};
     levels::PresentationMode presentation_mode_{levels::PresentationMode::Visual};
 

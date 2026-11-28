@@ -28,7 +28,6 @@ struct SPACEGAME_API FPlayerHudLifecycle {
                               ATestBatchOrchestrator* orchestrator,
                               UTestBatchGameUiData* ui_data) -> bool;
     void shutdown_benchmark();
-    void update_run_controls();
     void hide_for_modal();
     void restore_after_modal();
     void set_observer_speed(float speed);
