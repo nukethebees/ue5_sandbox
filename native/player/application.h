@@ -11,20 +11,27 @@
 #include <ioj/settings/player_settings.h>
 
 #include <filesystem>
-#include <optional>
 #include <vector>
 
 namespace ioj {
-struct CliArgs;
 class Application {
   public:
-    static auto run(CliArgs args) -> ApplicationResult;
+    Application(Window window,
+                PlayerSettings settings,
+                profiles::ProfileManager profiles,
+                std::filesystem::path scripts_directory,
+                bool exit_when_ready);
+    Application(Application const&) = delete;
+    Application(Application&&) = delete;
+    auto operator=(Application const&) -> Application& = delete;
+    auto operator=(Application&&) -> Application& = delete;
+    auto run(std::wstring const& engine_command_line, std::filesystem::path const& level_path)
+        -> ApplicationResult;
   private:
     struct AvailableLevel {
         levels::LevelDefinition definition;
         std::filesystem::path source_path;
     };
-    explicit Application(profiles::ProfileManager profiles);
     auto play(std::filesystem::path const& level_path) -> ApplicationResult;
     void exchange();
     void process_input(double seconds);
@@ -56,12 +63,12 @@ class Application {
     profiles::ProfileManager profiles_;
     profiles::SaveGameBrowser profile_browser_;
     host::NativeEndpoint endpoint_;
-    std::optional<InputSystem> input_;
+    InputSystem input_;
     host::EngineStatus engine_{};
     std::filesystem::path scripts_directory_;
     std::vector<AvailableLevel> available_levels_;
     ApplicationResult result_{};
     bool quit_requested_{};
-    bool exit_when_ready_{};
+    bool const exit_when_ready_;
 };
 }

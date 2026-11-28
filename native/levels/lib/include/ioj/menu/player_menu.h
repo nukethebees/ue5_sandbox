@@ -151,6 +151,8 @@ struct MenuPresentation {
 };
 
 struct PlayerMenu : MenuPresentation {
+    explicit PlayerMenu(bool show_reset = false)
+        : show_reset_profile{show_reset} {}
     auto pause_blocked() const -> bool;
     auto pause_item() const -> host::PauseMenuItem;
     auto select_pause_item(host::PauseMenuItem item) -> bool;
@@ -192,7 +194,7 @@ struct PlayerMenu : MenuPresentation {
     std::vector<std::string> profiles;
     std::vector<std::string> outcomes;
     std::string active_profile;
-    bool show_reset_profile{};
+    bool const show_reset_profile;
     std::optional<MainMenuItem> pending_page;
     std::string profile_name;
     bool pause_sidebar{};

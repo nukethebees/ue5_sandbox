@@ -3,41 +3,48 @@
 #include <ioj/settings/player_settings.h>
 
 #include <SDL3/SDL_error.h>
-#include <SDL3/SDL_hints.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_main.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_video.h>
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 namespace ioj {
 Window::~Window() {
     if (window_) {
         SDL_DestroyWindow(window_);
     }
-
-    SDL_Quit();
 }
 
-auto Window::create() -> ApplicationResult {
-    SDL_SetMainReady();
-    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
-        return ApplicationResult{std::unexpect, SDL_GetError()};
-    }
+Window::Window(Window&& other) noexcept
+    : preview_{std::exchange(other.preview_, {})}
+    , window_{std::exchange(other.window_, nullptr)}
+    , supported_resolutions_{std::move(other.supported_resolutions_)} {}
 
-    window_ =
+auto Window::operator=(Window&& other) noexcept -> Window& {
+    if (this != &other) {
+        Window previous{std::move(*this)};
+        window_ = std::exchange(other.window_, nullptr);
+        preview_ = std::exchange(other.preview_, {});
+        supported_resolutions_ = std::move(other.supported_resolutions_);
+    }
+    return *this;
+}
+
+auto Window::create() -> std::expected<Window, std::string> {
+    Window result{
         SDL_CreateWindow("Isle of Jebbers",
                          startup_size.width,
                          startup_size.height,
-                         SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    if (!window_) {
-        return ApplicationResult{std::unexpect, SDL_GetError()};
+                         SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY)};
+    if (!result.window_) {
+        return std::unexpected{std::string{SDL_GetError()}};
     }
-
-    return refresh_resolutions();
+    if (auto refreshed{result.refresh_resolutions()}; !refreshed) {
+        return std::unexpected{std::move(refreshed.error())};
+    }
+    return result;
 }
 
 auto Window::desktop_resolution() const -> std::expected<ScreenResolution, std::string> {

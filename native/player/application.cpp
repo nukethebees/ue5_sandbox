@@ -1,6 +1,5 @@
 #include "player/application.h"
 
-#include "player/cli_args.h"
 #include "player/engine.h"
 #include "player/input/input_system.h"
 #include "player/loaded_level.h"
@@ -9,19 +8,15 @@
 #include <ioj/bridge/level_catalog.h>
 #include <ioj/bridge/level_frame.h>
 #include <ioj/files.h>
-#include <ioj/menu/player_menu.h>
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/menu/player_menu.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
-#include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
 #include <ioj/profiles/sample_profile_records.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/system_capabilities.h>
-
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
 #include <chrono>
@@ -37,153 +32,41 @@
 #include <utility>
 
 namespace ioj {
-namespace {
-auto user_settings_path(std::filesystem::path const& user_directory,
-                        std::filesystem::path const& editor_scripts_directory,
-                        std::filesystem::path const& local_data) -> std::filesystem::path {
-    if (!user_directory.empty()) {
-        return user_directory / "Config/preferences.scm";
-    }
-
-    if (!editor_scripts_directory.empty()) {
-        return editor_scripts_directory / "Settings/preferences.scm";
-    }
-
-    return local_data / "IsleOfJebbers/Config/preferences.scm";
+/* **************************************** */
+// Process lifecycle
+/* **************************************** */
+Application::Application(Window window,
+                         PlayerSettings settings,
+                         profiles::ProfileManager profiles,
+                         std::filesystem::path scripts_directory,
+                         bool exit_when_ready)
+    : window_{std::move(window)}
+    , settings_{std::move(settings)}
+    , menu_{!IOJ_SHIPPING}
+    , profiles_{std::move(profiles)}
+    , input_{*window_.sdl_window(), settings_.applied().controls, endpoint_}
+    , scripts_directory_{std::move(scripts_directory)}
+    , exit_when_ready_{exit_when_ready} {
+    profile_browser_.refresh(profiles_);
+    menu_.draft.begin(settings_.applied(), settings_.defaults());
 }
 
-auto open_profiles(std::filesystem::path const& project_directory,
-                   std::filesystem::path const& user_directory,
-                   std::filesystem::path const& local_data)
-    -> std::expected<profiles::ProfileManager, std::string> {
-    auto user_root{project_directory};
-    if (!user_directory.empty()) {
-        user_root = user_directory;
-    } else if (IOJ_SHIPPING ||
-               std::filesystem::is_regular_file(project_directory.parent_path() /
-                                                "Engine/Build/InstalledProjectBuild.txt")) {
-        user_root = local_data / "Sandbox";
-    }
-
-    auto const save_directory{user_root / "Saved/SaveGames"};
-    auto manager{
-        profiles::ProfileManager::open(profiles::make_file_profile_storage(save_directory))};
-    if (!manager) {
-        return std::unexpected{manager.error() + " in " + path_to_utf8(save_directory)};
-    }
-
-    return manager;
-}
-
-}
-
-Application::Application(profiles::ProfileManager profiles)
-    : profiles_{std::move(profiles)} {}
-
-auto Application::run(CliArgs args) -> ApplicationResult {
-    using Result = ApplicationResult;
-
-    auto const base{SDL_GetBasePath()};
-    if (!base) {
-        return Result{std::unexpect, SDL_GetError()};
-    }
-
-    // SDL includes the trailing separator in its UTF-8 executable directory.
-    auto const binary_directory{
-        std::filesystem::path{reinterpret_cast<char8_t const*>(base)}.parent_path()};
-    auto const project_directory{binary_directory.parent_path().parent_path()};
-
-    if (!args.user_directory.empty()) {
-        args.user_directory = std::filesystem::absolute(args.user_directory);
-    }
-
-    if (!args.editor_scripts_directory.empty()) {
-        args.editor_scripts_directory = std::filesystem::absolute(args.editor_scripts_directory);
-    }
-
-    if (!args.level_path.empty()) {
-        args.level_path = (project_directory / args.level_path).lexically_normal();
-        if (!std::filesystem::is_regular_file(args.level_path)) {
-            return Result{std::unexpect,
-                          "Level file does not exist: " + path_to_utf8(args.level_path)};
-        }
-    }
-
-    auto const scripts_directory{args.editor_scripts_directory.empty()
-                                     ? project_directory / "LevelScripts"
-                                     : args.editor_scripts_directory};
-    auto local_data{local_app_data()};
-    if (!local_data) {
-        return Result{std::unexpect, std::move(local_data.error())};
-    }
-
-    auto const settings_path{
-        user_settings_path(args.user_directory, args.editor_scripts_directory, *local_data)};
-
-    auto profile_manager{open_profiles(project_directory, args.user_directory, *local_data)};
-    if (!profile_manager) {
-        return Result{std::unexpect, std::move(profile_manager.error())};
-    }
-
-    Application application{std::move(*profile_manager)};
-
-    auto& window{application.window_};
-    if (auto result{window.create()}; !result) {
-        return result;
-    }
-
-    auto desktop{window.desktop_resolution()};
-    if (!desktop) {
-        return Result{std::unexpect, std::move(desktop.error())};
-    }
-
-    auto& settings{application.settings_};
-    if (auto result{
-            settings.load(scripts_directory, settings_path, *desktop, args.launch_display_mode)};
-        !result) {
-        return result;
-    }
-
-    if (auto display{initial_display(
-            settings.launch_display_mode(), args.initial_window_size, settings.saved_display())}) {
-        auto actual{window.configure(*display)};
-        if (!actual) {
-            return Result{std::unexpect, std::move(actual.error())};
-        }
-
-        settings.set_running_display(*actual);
-    }
-
-    if (settings.application().print_save_data) {
-        std::println("Native save profile {}: {} profiles, {} outcomes",
-                     application.profiles_.active_profile_id(),
-                     application.profiles_.profiles().size(),
-                     application.profiles_.active_records().size());
-    }
-
-    application.profile_browser_.refresh(application.profiles_);
+auto Application::run(std::wstring const& engine_command_line,
+                      std::filesystem::path const& level_path) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
-    auto const engine_command_line{
-        engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
-    application.scripts_directory_ = scripts_directory;
-    application.exit_when_ready_ = args.exit_when_ready;
-    application.input_.emplace(
-        *window.sdl_window(), settings.applied().controls, application.endpoint_);
-    application.menu_.show_reset_profile = !IOJ_SHIPPING;
-    application.menu_.draft.begin(settings.view().applied_values, settings.view().defaults);
-    application.endpoint_.present_capabilities(&capabilities);
-    application.endpoint_.present_keyboard(&application.input_->keyboard());
-    application.endpoint_.present_menu(application.menu_);
-    application.publish_settings();
-    application.endpoint_.exchange();
-    if (auto result{start_engine(window, engine_command_line, settings.launch_display_mode())};
+    endpoint_.present_capabilities(&capabilities);
+    endpoint_.present_keyboard(&input_.keyboard());
+    endpoint_.present_menu(menu_);
+    publish_settings();
+    endpoint_.exchange();
+    if (auto result{start_engine(window_, engine_command_line, settings_.launch_display_mode())};
         !result) {
         return result;
     }
 
-    Result play_result;
+    ApplicationResult play_result;
     try {
-        play_result = application.play(args.level_path);
+        play_result = play(level_path);
     } catch (std::exception const& error) {
         play_result = std::unexpected{std::string{error.what()}};
     } catch (...) {
@@ -191,10 +74,13 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     }
 
     try {
-        application.unload_level(sim::RunEndReason::WorldEnd, false);
-        application.exchange();
+        unload_level(sim::RunEndReason::WorldEnd, false);
+        exchange();
+        if (play_result && !result_) {
+            play_result = result_;
+        }
     } catch (...) {
-        if (auto shutdown{shutdown_engine(window)}; !shutdown) {
+        if (auto shutdown{shutdown_engine(window_)}; !shutdown) {
             std::println(
                 stderr, "Engine shutdown failed during level cleanup: {}", shutdown.error());
         }
@@ -202,7 +88,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
         throw;
     }
 
-    auto shutdown_result{shutdown_engine(window)};
+    auto shutdown_result{shutdown_engine(window_)};
     if (!play_result && !shutdown_result) {
         play_result.error() += "; " + shutdown_result.error();
     }
@@ -417,8 +303,8 @@ void Application::finish_leave(bool accepted) {
     }
 }
 void Application::consume_commands() {
-    for (std::size_t i{}; i < input_->commands().size(); ++i) {
-        auto const command{input_->commands()[i]};
+    for (std::size_t i{}; i < input_.commands().size(); ++i) {
+        auto const command{input_.commands()[i]};
         switch (command.kind) {
             case InputCommand::Kind::Action:
                 handle_action(command.action);
@@ -456,16 +342,16 @@ void Application::consume_commands() {
             }
         }
     }
-    input_->clear_commands();
+    input_.clear_commands();
 }
 void Application::process_input(double seconds) {
-    auto const window{input_->poll()};
+    auto const window{input_.poll()};
     if (window.close_requested) {
         quit_requested_ = true;
         return;
     }
     if (window.keyboard_changed) {
-        endpoint_.present_keyboard(&input_->keyboard());
+        endpoint_.present_keyboard(&input_.keyboard());
     }
     if (window.display_changed) {
         result_ = window_.refresh_resolutions();
@@ -481,18 +367,18 @@ void Application::process_input(double seconds) {
         }
         publish_settings();
     }
-    auto const& events{input_->events()};
+    auto const& events{input_.events()};
     std::size_t cursor{};
     for (;;) {
-        input_->synchronize(route(), menu_.input_mode());
-        if (!input_->commands().empty()) {
+        input_.synchronize(route(), menu_.input_mode());
+        if (!input_.commands().empty()) {
             consume_commands();
             continue;
         }
         if (cursor == events.order.size()) {
             break;
         }
-        cursor = input_->map_events(events, cursor);
+        cursor = input_.map_events(events, cursor);
         consume_commands();
         if (endpoint_.size() != 0) {
             exchange();
@@ -501,13 +387,13 @@ void Application::process_input(double seconds) {
             return;
         }
     }
-    input_->repeat_navigation(seconds);
+    input_.repeat_navigation(seconds);
     consume_commands();
-    if (auto step{input_->viewer_step(seconds)}) {
+    if (auto step{input_.viewer_step(seconds)}) {
         endpoint_.step_viewer(*step);
     }
     if (route().context == InputContext::Gameplay) {
-        endpoint_.present_steering(input_->steering());
+        endpoint_.present_steering(input_.steering());
     }
     if (endpoint_.size() != 0) {
         exchange();
@@ -678,7 +564,7 @@ void Application::finish_preferences(host::SettingsApplied reply) {
                 break;
             case GameSettingCategory::Controls:
                 settings_.apply(values.controls);
-                input_->refresh_bindings();
+                input_.refresh_bindings();
                 break;
             default:
                 break;
@@ -809,7 +695,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
                 return {};
             }
         } else if (engine_.presents_level && !level->presentation_setup) {
-            simulation.append_player_input(input_->ship_input());
+            simulation.append_player_input(input_.ship_input());
             auto const before{simulation.state()};
             auto const seconds{level->elapsed_seconds()};
             simulation.advance(seconds);

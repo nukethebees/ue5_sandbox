@@ -18,12 +18,13 @@ class PlayerSettings;
 
 class Window {
   public:
-    Window() = default;
     ~Window();
     Window(Window const&) = delete;
     auto operator=(Window const&) -> Window& = delete;
 
-    auto create() -> ApplicationResult;
+    Window(Window&& other) noexcept;
+    auto operator=(Window&& other) noexcept -> Window&;
+    static auto create() -> std::expected<Window, std::string>;
     auto desktop_resolution() const -> std::expected<ScreenResolution, std::string>;
     auto sdl_window() const -> SDL_Window* { return window_; }
     auto supported_resolutions() const -> std::vector<ScreenResolution> const& {
@@ -40,6 +41,8 @@ class Window {
         -> std::expected<WindowDisplaySettings, std::string>;
 
   private:
+    explicit Window(SDL_Window* window)
+        : window_{window} {}
     auto synchronize(bool activate) -> ApplicationResult;
 
     auto display() const -> std::expected<WindowDisplaySettings, std::string>;
