@@ -4,6 +4,7 @@
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
 #include <SpaceGame/ui/common/SMenuEditableText.h>
+#include <SpaceGame/UnrealEndpoint.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -65,9 +66,10 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
         if (!battle_duration_input_->GetText().EqualTo(duration)) {
             battle_duration_input_->SetText(duration);
         }
-        simulation_only_->SetIsChecked(unreal_endpoint().menu().simulation_only
-                                           ? ECheckBoxState::Checked
-                                           : ECheckBoxState::Unchecked);
+        simulation_only_->SetIsChecked(
+            (unreal_endpoint().menu().presentation_mode == levels::PresentationMode::SimulationOnly)
+                ? ECheckBoxState::Checked
+                : ECheckBoxState::Unchecked);
     }
 
     battle_options_->SetVisibility(playerless ? EVisibility::Visible : EVisibility::Collapsed);
@@ -111,7 +113,8 @@ void SScriptLevelSelectView::present(MenuUpdate const& update) {
                 slate.SetKeyboardFocus(battle_duration_input_);
                 break;
             case MenuControl::SimulationOnly:
-                simulation_only_->SetIsChecked(unreal_endpoint().menu().simulation_only
+                simulation_only_->SetIsChecked((unreal_endpoint().menu().presentation_mode ==
+                                                levels::PresentationMode::SimulationOnly)
                                                    ? ECheckBoxState::Checked
                                                    : ECheckBoxState::Unchecked);
                 slate.SetKeyboardFocus(simulation_only_);
@@ -375,7 +378,8 @@ void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
     }
 }
 void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState state) {
-    if ((state == ECheckBoxState::Checked) != unreal_endpoint().menu().simulation_only) {
+    if ((state == ECheckBoxState::Checked) !=
+        (unreal_endpoint().menu().presentation_mode == levels::PresentationMode::SimulationOnly)) {
         unreal_endpoint().hit(MenuControl::SimulationOnly);
     }
 }

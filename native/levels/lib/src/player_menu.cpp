@@ -68,8 +68,7 @@ auto MenuPresentation::launch_options() const -> std::optional<levels::LaunchOpt
     if (seconds) {
         options.simulated_duration_seconds = PositiveFinite<double>::make(*seconds);
     }
-    options.presentation_mode = simulation_only ? levels::PresentationMode::SimulationOnly
-                                                : levels::PresentationMode::Visual;
+    options.presentation_mode = presentation_mode;
     options.control_context = category == Category::Benchmark ? levels::ControlContext::Benchmark
                                                               : levels::ControlContext::Observer;
     return options;
@@ -149,7 +148,7 @@ void PlayerMenu::open(MenuScreen next, bool content) {
     category = levels::authoring::LevelCatalogCategory::Playable;
     pending_page.reset();
     prompt = {};
-    create_profile = false;
+    profile_page = ProfilePage::Browse;
     draft.cancel();
 }
 
@@ -201,10 +200,10 @@ void PlayerMenu::set_prompt(OptionsPrompt next) {
     prompt = next;
 }
 
-void PlayerMenu::set_create_profile(bool open) {
-    create_profile = open;
+void PlayerMenu::select_profile_page(ProfilePage next) {
+    profile_page = next;
     profile_name.clear();
-    focus = open ? MenuControl::ProfileName : MenuControl::CreateProfile;
+    focus = next == ProfilePage::Create ? MenuControl::ProfileName : MenuControl::CreateProfile;
 }
 
 auto PlayerMenu::select(MenuTarget target) -> MenuUpdate {
@@ -224,7 +223,7 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
     if (prompt == OptionsPrompt::Display) {
         return {KeepDisplay, RevertDisplay};
     }
-    if (create_profile) {
+    if (profile_page == ProfilePage::Create) {
         return {ProfileName, CancelCreate, ConfirmCreate};
     }
     std::vector<MenuTarget> targets;
@@ -295,7 +294,8 @@ auto PlayerMenu::primary_target(PlayerSettingsView const& settings) const -> Men
         return selected_level.empty() ? MenuTarget{category}
                                       : MenuTarget{MenuTarget::Kind::Level, selected_level};
     }
-    if (page == MainMenuItem::DataArchive && !create_profile && !selected_profile.empty()) {
+    if (page == MainMenuItem::DataArchive && profile_page == ProfilePage::Browse &&
+        !selected_profile.empty()) {
         return MenuTarget{MenuTarget::Kind::Profile, selected_profile};
     }
     auto targets{content_targets(settings)};
@@ -306,7 +306,7 @@ auto PlayerMenu::edit_text(MenuControl control, std::string text) -> std::option
     if (screen == MenuScreen::Closed || saving) {
         return {};
     }
-    if (control == MenuControl::ProfileName && create_profile) {
+    if (control == MenuControl::ProfileName && profile_page == ProfilePage::Create) {
         profile_name = std::move(text);
     } else if (page == MainMenuItem::SelectLevel &&
                category != levels::authoring::LevelCatalogCategory::Playable) {
@@ -347,7 +347,7 @@ auto PlayerMenu::activate(MenuTarget target,
         return MenuUpdate{draft.binding_edit().mapping, MenuOperation::BindingPrompt};
     }
     if (target.kind == MenuTarget::Kind::Page) {
-        if (screen != MenuScreen::Main || prompt != OptionsPrompt::None || create_profile ||
+        if (screen != MenuScreen::Main || prompt != OptionsPrompt::None || profile_page == ProfilePage::Create ||
             draft.binding_edit().prompt != BindingPrompt::Closed) {
             return {};
         }
@@ -392,11 +392,14 @@ auto PlayerMenu::activate(MenuTarget target,
         }
     }
     if (target == MenuTarget{MenuControl::SimulationOnly}) {
-        simulation_only = !simulation_only;
+        presentation_mode = presentation_mode == levels::PresentationMode::Visual
+                              ? levels::PresentationMode::SimulationOnly
+                              : levels::PresentationMode::Visual;
     }
     if (target == MenuTarget{MenuControl::CreateProfile} ||
         target == MenuTarget{MenuControl::CancelCreate}) {
-        set_create_profile(target == MenuTarget{MenuControl::CreateProfile});
+        select_profile_page(target == MenuTarget{MenuControl::CreateProfile} ? ProfilePage::Create
+                                                                             : ProfilePage::Browse);
     }
     if (target.kind == MenuTarget::Kind::Setting) {
         auto const setting{target.setting()};
@@ -471,7 +474,7 @@ auto PlayerMenu::navigate(MenuCommand command,
         if (prompt == OptionsPrompt::Display) {
             return activate(MenuControl::RevertDisplay, settings, resolutions);
         }
-        if (create_profile) {
+        if (profile_page == ProfilePage::Create) {
             return activate(MenuControl::CancelCreate, settings, resolutions);
         }
         if (screen == MenuScreen::Main) {
@@ -538,7 +541,7 @@ auto PlayerMenu::navigate(MenuCommand command,
             }
         }
         if (backward && screen == MenuScreen::Main && prompt == OptionsPrompt::None &&
-            !create_profile) {
+            profile_page == ProfilePage::Browse) {
             return select(page);
         }
     }

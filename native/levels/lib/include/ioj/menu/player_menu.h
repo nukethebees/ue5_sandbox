@@ -42,6 +42,7 @@ enum class MenuControl {
 };
 enum class MenuScreen { Main, Pause, Completion, Closed };
 enum class OptionsPrompt { None, Dirty, Display };
+enum class ProfilePage { Browse, Create };
 enum class MenuOperation { Focus, Activate, RefreshSettings, BindingPrompt };
 
 struct MenuTarget {
@@ -141,13 +142,13 @@ struct MenuPresentation {
     std::string selected_level;
     std::string selected_profile;
     std::string selected_outcome;
-    bool create_profile{};
+    ProfilePage profile_page{};
     bool saving{};
     std::chrono::steady_clock::time_point display_deadline{};
     std::string viewer_speed{"1.0"};
     std::string benchmark_speed{"10.0"};
     std::string duration;
-    bool simulation_only{};
+    levels::PresentationMode presentation_mode{levels::PresentationMode::Visual};
 };
 
 struct PlayerMenu : MenuPresentation {
@@ -162,7 +163,7 @@ struct PlayerMenu : MenuPresentation {
     auto leave_ready() -> bool;
     auto finish_main_leave(bool accepted) -> std::optional<MenuUpdate>;
     void set_prompt(OptionsPrompt prompt);
-    void set_create_profile(bool open);
+    void select_profile_page(ProfilePage page);
     auto navigate(MenuCommand command,
                   bool repeat,
                   PlayerSettingsView const& settings,

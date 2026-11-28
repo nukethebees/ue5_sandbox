@@ -612,6 +612,10 @@ void Application::finish_preferences(host::SettingsApplied reply) {
 void Application::publish_settings() {
     endpoint_.present_settings({settings_.view(), window_.supported_resolutions()});
 }
+
+/* **************************************** */
+// Profiles
+/* **************************************** */
 void Application::profile_action(MenuControl action) {
     using Result = profiles::CreateProfileResult;
     auto result{Result::succeeded};
@@ -619,7 +623,7 @@ void Application::profile_action(MenuControl action) {
         case MenuControl::ConfirmCreate:
             result = profiles_.create_profile(menu_.profile_name).result;
             if (result == Result::succeeded) {
-                menu_.set_create_profile(false);
+                menu_.select_profile_page(ProfilePage::Browse);
             }
             endpoint_.profile_result(result);
             break;
