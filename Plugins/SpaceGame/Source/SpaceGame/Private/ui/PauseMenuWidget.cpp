@@ -132,7 +132,7 @@ void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
                                return_to_level_select_button,
                                quit_button}) {
         if (IsValid(button)) {
-            auto const page{options_widget->page()};
+            auto const page{unreal_endpoint().menu().page};
             button->SetIsEnabled(enabled &&
                                  !(button == audio_button && page == MainMenuItem::Audio) &&
                                  !(button == controls_button && page == MainMenuItem::Controls));

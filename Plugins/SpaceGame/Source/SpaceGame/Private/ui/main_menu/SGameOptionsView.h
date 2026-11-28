@@ -40,7 +40,7 @@ class SGameOptionsView final : public SCompoundWidget {
         , _Audio() {}
     SLATE_ARGUMENT(SystemCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ATTRIBUTE(MainMenuItem, Page)
+    SLATE_ARGUMENT(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FOnOptionsInteractionModalChanged, OnInteractionModalChanged)
     SLATE_END_ARGS()
@@ -49,7 +49,7 @@ class SGameOptionsView final : public SCompoundWidget {
     // Lifecycle and state
     /* **************************************** */
     void Construct(FArguments const& args);
-    void show_page();
+    void show_page(MainMenuItem page);
     void refresh();
     void refresh_controls();
     void present_binding_prompt();
@@ -112,7 +112,7 @@ class SGameOptionsView final : public SCompoundWidget {
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
     PendingRebuild pending_rebuild_{};
-    TAttribute<MainMenuItem> page_;
+    MainMenuItem rendered_page_{};
 
     FOnOptionsInteractionModalChanged on_interaction_modal_changed_{};
 

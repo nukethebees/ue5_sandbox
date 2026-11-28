@@ -173,7 +173,7 @@ void SGameOptionsView::Construct(FArguments const& args) {
     capabilities_ = args._Capabilities;
     style_ = args._Style;
     audio_ = args._Audio;
-    page_ = args._Page;
+    rendered_page_ = args._Page;
     check(style_ != nullptr);
     on_interaction_modal_changed_ = args._OnInteractionModalChanged;
 
@@ -207,7 +207,11 @@ void SGameOptionsView::Construct(FArguments const& args) {
     refresh();
 }
 
-void SGameOptionsView::show_page() {
+void SGameOptionsView::show_page(MainMenuItem page) {
+    if (rendered_page_ == page) {
+        return;
+    }
+    rendered_page_ = page;
     setting_focus_.Reset();
     controls_content_.Reset();
     controls_focus_targets_.Reset();
@@ -223,7 +227,7 @@ void SGameOptionsView::refresh() {
     dirty_prompt_->SetVisibility(unreal_endpoint().menu().prompt == OptionsPrompt::Dirty
                                      ? EVisibility::Visible
                                      : EVisibility::Collapsed);
-    auto const category{settings_category(page_.Get())};
+    auto const category{settings_category(rendered_page_)};
     if (reset_button_.IsValid()) {
         reset_button_->SetEnabled(category.has_value() &&
                                   !unreal_endpoint().menu().draft.is_at_defaults(*category) &&
@@ -279,7 +283,7 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     }
     refresh();
     if (update.operation == MenuOperation::RefreshSettings) {
-        if (page_.Get() == MainMenuItem::Controls) {
+        if (rendered_page_ == MainMenuItem::Controls) {
             request_controls_rebuild();
         }
         return;
@@ -346,7 +350,7 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
            SVerticalBox::Slot().AutoHeight().Padding(FMargin{
                0.0f, 4.0f})[SNew(STextBlock)
                                 .Text_Lambda([this] {
-                                    auto category{settings_category(page_.Get())};
+                                    auto category{settings_category(rendered_page_)};
                                     return category
                                              ? category_label(*category)
                                              : NSLOCTEXT("OptionsMenu", "SystemTab", "System");
@@ -355,20 +359,21 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
-    if (page_.Get() == MainMenuItem::Controls) {
+    if (rendered_page_ == MainMenuItem::Controls) {
         return build_controls_page();
     }
-    if (auto category{settings_category(page_.Get())}) {
+    if (auto category{settings_category(rendered_page_)}) {
         return build_category_page(*category);
     }
-    return page_.Get() == MainMenuItem::System ? build_system_page() : SNullWidget::NullWidget;
+    return rendered_page_ == MainMenuItem::System ? build_system_page() : SNullWidget::NullWidget;
 }
 
 auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
     auto const spacing{style_->settings().button_spacing};
     return SNew(SBorder)
         .Visibility_Lambda([this] {
-            return settings_category(page_.Get()) ? EVisibility::Visible : EVisibility::Collapsed;
+            return settings_category(rendered_page_) ? EVisibility::Visible
+                                                     : EVisibility::Collapsed;
         })
         .BorderImage(&style_->chrome().footer_background)
         .Padding(style_->chrome().footer_padding)
@@ -378,13 +383,13 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                       .Style(&style_->button(EGameButtonStyle::Secondary))
                       .Audio(audio_)
                       .Text_Lambda([this] {
-                          if (page_.Get() != MainMenuItem::Controls) {
+                          if (rendered_page_ != MainMenuItem::Controls) {
                               return NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category");
                           }
                           return NSLOCTEXT("OptionsMenu", "ResetAllControls", "Reset All Controls");
                       })
                       .ToolTipText_Lambda([this] {
-                          if (page_.Get() != MainMenuItem::Controls) {
+                          if (rendered_page_ != MainMenuItem::Controls) {
                               return FText::GetEmpty();
                           }
                           return NSLOCTEXT(

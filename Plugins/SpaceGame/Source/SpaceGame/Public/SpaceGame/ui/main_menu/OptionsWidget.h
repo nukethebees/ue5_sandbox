@@ -20,7 +20,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
   public:
     UOptionsWidget(FObjectInitializer const& object_initializer);
 
-    auto page() const -> MainMenuItem;
     void show_page(MainMenuItem page);
     void refresh_view();
     void focus_content();
@@ -43,6 +42,5 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     UGameUiStyleSubsystem* style_{nullptr};
 
     TSharedPtr<SGameOptionsView> options_view_{};
-    TOptional<MainMenuItem> rendered_page_{};
 };
 } // namespace ioj

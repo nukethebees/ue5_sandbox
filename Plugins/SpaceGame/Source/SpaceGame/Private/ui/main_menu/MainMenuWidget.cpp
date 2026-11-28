@@ -60,7 +60,6 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto result{
         SAssignNew(view_, SMainMenuView)
             .Style(style)
-            .Page_UObject(options_widget_, &UOptionsWidget::page)
             .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
                                    : FGameAudioFacade{})
             .LevelContent()[level_content]

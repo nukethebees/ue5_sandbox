@@ -19,10 +19,8 @@ class SMainMenuView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SMainMenuView)
         : _Style(nullptr)
-        , _Page(MainMenuItem::SelectLevel)
         , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ATTRIBUTE(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_NAMED_SLOT(FArguments, LevelContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
@@ -60,7 +58,5 @@ class SMainMenuView final : public SCompoundWidget {
     TSharedPtr<SHiveNavigationButton> quit_button_{};
     TSharedPtr<SWidgetSwitcher> content_switcher_{};
     TSharedPtr<SBox> level_content_{};
-    TAttribute<MainMenuItem> page_;
-    bool navigation_enabled_{true};
 };
 } // namespace ioj

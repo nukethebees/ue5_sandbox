@@ -58,7 +58,7 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .Capabilities(&unreal_endpoint().capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
-        .Page_UObject(this, &ThisClass::page)
+        .Page(unreal_endpoint().menu().page)
         .OnInteractionModalChanged(FOnOptionsInteractionModalChanged::CreateUObject(
             this, &ThisClass::handle_interaction_modal_changed));
 }
@@ -77,18 +77,11 @@ auto UOptionsWidget::NativeOnFocusReceived(FGeometry const& geometry,
 }
 
 void UOptionsWidget::show_page(MainMenuItem page) {
-    if (rendered_page_ == page) {
-        return;
-    }
-    rendered_page_ = page;
     if (options_view_) {
-        options_view_->show_page();
+        options_view_->show_page(page);
     }
 }
 
-auto UOptionsWidget::page() const -> MainMenuItem {
-    return unreal_endpoint().menu().page;
-}
 void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {
         options_view_->focus_content();

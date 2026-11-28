@@ -1,6 +1,7 @@
 #include "SMainMenuView.h"
 
 #include "SpaceGame/ui/common/HiveWidgets.h"
+#include <SpaceGame/UnrealEndpoint.h>
 
 #include "InputCoreTypes.h"
 #include "Widgets/Images/SImage.h"
@@ -14,7 +15,6 @@ namespace ioj {
 void SMainMenuView::Construct(FArguments const& args) {
     style_ = args._Style;
     audio_ = args._Audio;
-    page_ = args._Page;
     check(style_ != nullptr);
     on_item_ = args._OnItem;
     on_restore_focus_ = args._OnRestoreFocus;
@@ -41,7 +41,7 @@ void SMainMenuView::Construct(FArguments const& args) {
 }
 
 void SMainMenuView::refresh_page() {
-    auto const page{page_.Get()};
+    auto const page{unreal_endpoint().menu().page};
     if (content_switcher_.IsValid()) {
         content_switcher_->SetActiveWidgetIndex(page_content_index(page));
     }
@@ -62,7 +62,6 @@ void SMainMenuView::set_level_content(TSharedRef<SWidget> content) {
 }
 
 void SMainMenuView::set_navigation_enabled(bool const enabled) {
-    navigation_enabled_ = enabled;
     for (auto const& button : page_buttons_) {
         if (button.IsValid()) {
             button->SetEnabled(enabled);
