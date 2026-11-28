@@ -259,16 +259,18 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
     control_context_ = context;
     return true;
 }
-void ASpaceGamePlayerController::present_menu(MenuUpdate const& update) {
+void ASpaceGamePlayerController::present_menu(host::MenuMessage const& message) {
     switch (unreal_endpoint().menu().screen) {
         case MenuScreen::Main:
             if (auto* main{modal_ui_.main_menu()}) {
-                main->present(update);
+                if (message.update) {
+                    main->present(*message.update);
+                }
             }
             break;
         case MenuScreen::Pause:
             if (auto* pause{modal_ui_.pause_menu()}) {
-                pause->get_options_widget()->present(update);
+                pause->present(message);
             }
             break;
         case MenuScreen::Completion:
@@ -310,16 +312,16 @@ void ASpaceGamePlayerController::set_observer_movement_speed(float const speed) 
 /* **************************************** */
 // Modal and simulation transitions
 /* **************************************** */
-auto ASpaceGamePlayerController::present_pause(host::PauseCommand command) -> bool {
-    if (command.kind != host::PauseCommandKind::Open) {
-        auto* widget{modal_ui_.pause_menu()};
-        if (!IsValid(widget)) {
-            UE_LOG(LogSandboxController, Error, TEXT("Pause menu command has no widget."));
-            return false;
-        }
-        widget->present(command);
-        return true;
+auto ASpaceGamePlayerController::close_pause() -> bool {
+    auto* widget{modal_ui_.pause_menu()};
+    if (!IsValid(widget)) {
+        UE_LOG(LogSandboxController, Error, TEXT("Cannot close a missing pause menu."));
+        return false;
     }
+    widget->close();
+    return true;
+}
+auto ASpaceGamePlayerController::open_pause() -> bool {
     if (!is_gameplay_mode() || modal_ui_.has_modal()) {
         UE_LOG(
             LogSandboxController, Error, TEXT("Cannot present a pause menu in the current view."));
@@ -341,7 +343,6 @@ auto ASpaceGamePlayerController::present_pause(host::PauseCommand command) -> bo
         restore_gameplay_presentation();
         return false;
     }
-    modal_ui_.pause_menu()->present(command);
     return true;
 }
 void ASpaceGamePlayerController::restore_gameplay_presentation() {

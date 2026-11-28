@@ -89,13 +89,20 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
             case Menu: {
                 auto const& message{messages.menus[index]};
                 menu_ = message.state;
-                if (player && message.update) {
-                    player->present_menu(*message.update);
+                if (player) {
+                    player->present_menu(message);
                 }
                 break;
             }
-            case Pause:
-                pause_presented(player && player->present_pause(messages.pause_commands[index]));
+            case OpenPause:
+                if (!player || !player->open_pause()) {
+                    send(UnrealMessageKind::PausePresentationFailed);
+                }
+                break;
+            case ClosePause:
+                if (!player || !player->close_pause()) {
+                    send(UnrealMessageKind::PausePresentationFailed);
+                }
                 break;
             case Benchmark:
                 if (auto* hud{player->get_benchmark_hud()}) {

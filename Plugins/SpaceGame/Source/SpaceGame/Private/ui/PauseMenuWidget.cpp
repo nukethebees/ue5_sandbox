@@ -100,23 +100,18 @@ void UPauseMenuWidget::send_event(host::PauseWidgetEvent event) {
     unreal_endpoint().pause_interaction(event);
 }
 
-void UPauseMenuWidget::present(host::PauseCommand command) {
-    using enum host::PauseCommandKind;
-    switch (command.kind) {
-        case Open:
-        case host::PauseCommandKind::Select:
-            button_for(command.item)->focus_target()->SetKeyboardFocus();
-            break;
-        case ShowPage:
-            options_widget->show_page(command.item == host::PauseMenuItem::Audio
-                                          ? MainMenuItem::Audio
-                                          : MainMenuItem::Controls);
-            options_widget->present({unreal_endpoint().menu().focus, MenuOperation::Focus});
-            set_navigation_enabled(!options_modal_visible_);
-            break;
-        case Finish:
-            close();
-            break;
+void UPauseMenuWidget::present(host::MenuMessage const& message) {
+    options_widget->show_page(message.state.page);
+    set_navigation_enabled(!options_modal_visible_);
+    if (!message.update) {
+        return;
+    }
+    auto const& update{*message.update};
+    if (update.target.kind == MenuTarget::Kind::PauseItem) {
+        options_widget->refresh_view();
+        button_for(update.target.pause_item())->focus_target()->SetKeyboardFocus();
+    } else {
+        options_widget->present(update);
     }
 }
 

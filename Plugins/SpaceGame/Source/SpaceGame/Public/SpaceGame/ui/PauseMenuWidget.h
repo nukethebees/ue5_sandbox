@@ -9,6 +9,9 @@
 class UOverlay;
 class UTextBlock;
 
+namespace ioj::host {
+struct MenuMessage;
+}
 namespace ioj {
 class UMenuButtonWidget;
 
@@ -19,9 +22,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // State and opening
     /* **************************************** */
-    [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget; }
     void prepare_for_open();
-    void present(host::PauseCommand command);
+    void present(host::MenuMessage const& message);
 
   protected:
     /* **************************************** */

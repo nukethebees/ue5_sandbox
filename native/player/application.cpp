@@ -164,7 +164,7 @@ void Application::consume_replies() {
                         break;
                     case host::PauseWidgetEventKind::Select:
                         if (menu_.select_pause_item(event.item)) {
-                            endpoint_.present_pause({host::PauseCommandKind::Select, event.item});
+                            endpoint_.present_menu(menu_);
                         }
                         break;
                     case host::PauseWidgetEventKind::ContentFocused:
@@ -237,11 +237,8 @@ void Application::consume_replies() {
                 level->previous_frame = std::chrono::steady_clock::now();
                 break;
             }
-            case PausePresented:
-                if (!incoming.pause_results[index]) {
-                    result_ =
-                        std::unexpected{"Could not present the pause menu. See the game log."};
-                }
+            case PausePresentationFailed:
+                result_ = std::unexpected{"Could not present the pause menu. See the game log."};
                 break;
         }
         if (endpoint_.size() != 0) {
@@ -279,7 +276,7 @@ void Application::handle_action(host::PlayerAction action) {
             menu_.open(MenuScreen::Pause);
             level->update_pause(true);
             endpoint_.present_menu(menu_);
-            endpoint_.present_pause({host::PauseCommandKind::Open, host::PauseMenuItem::Resume});
+            endpoint_.send(host::NativeMessageKind::OpenPause);
             break;
         case RequestResume:
             if (menu_.screen == MenuScreen::Pause && !menu_.navigation_blocked()) {
@@ -318,14 +315,12 @@ void Application::choose_pause(host::PauseMenuItem item) {
             menu_.open(MenuScreen::Closed);
             storage_.get()->update_pause(false);
             endpoint_.present_menu(menu_);
-            endpoint_.present_pause({host::PauseCommandKind::Finish, item});
+            endpoint_.send(host::NativeMessageKind::ClosePause);
             break;
         case Controls:
         case Audio:
             menu_.select_page(item == Audio ? MainMenuItem::Audio : MainMenuItem::Controls);
-            menu_.select(menu_.primary_target(settings_.view()));
-            endpoint_.present_menu(menu_);
-            endpoint_.present_pause({host::PauseCommandKind::ShowPage, item});
+            present_menu(menu_.select(menu_.primary_target(settings_.view())));
             break;
         case LevelSelect:
             return_to_menu();
@@ -365,8 +360,7 @@ void Application::consume_commands() {
                     if (auto item{menu_.navigate_pause(button.command, button.repeat)}) {
                         choose_pause(*item);
                     } else if (before != menu_.focus) {
-                        endpoint_.present_pause(
-                            {host::PauseCommandKind::Select, menu_.focus.pause_item()});
+                        present_menu({menu_.focus, MenuOperation::Focus});
                     }
                 } else if (auto update{menu_.navigate(button.command,
                                                       button.repeat,

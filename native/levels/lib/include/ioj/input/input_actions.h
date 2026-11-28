@@ -137,25 +137,6 @@ inline constexpr MinMax<host::PauseMenuItem> enum_range<host::PauseMenuItem>{
 } // namespace ioj
 
 namespace ioj::host {
-using PauseCommandKindUnderlying = std::uint8_t;
-
-// Logical bit width: 2.
-enum class PauseCommandKind : PauseCommandKindUnderlying {
-    Open,
-    Select,
-    ShowPage,
-    Finish,
-};
-
-} // namespace ioj::host
-
-namespace ioj {
-template <>
-inline constexpr MinMax<host::PauseCommandKind> enum_range<host::PauseCommandKind>{
-    host::PauseCommandKind::Open, host::PauseCommandKind::Finish};
-} // namespace ioj
-
-namespace ioj::host {
 using PauseWidgetEventKindUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -198,14 +179,6 @@ struct EnumTraits<host::PauseMenuItem> {
                                        host::PauseMenuItem::Controls,
                                        host::PauseMenuItem::LevelSelect,
                                        host::PauseMenuItem::Quit};
-};
-
-template <>
-struct EnumTraits<host::PauseCommandKind> {
-    static constexpr std::array values{host::PauseCommandKind::Open,
-                                       host::PauseCommandKind::Select,
-                                       host::PauseCommandKind::ShowPage,
-                                       host::PauseCommandKind::Finish};
 };
 
 template <>

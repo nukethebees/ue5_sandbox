@@ -62,10 +62,6 @@ struct UnrealEndpoint {
             {UnrealMessageKind::LevelInitialized, outgoing_.level_results.size()});
         outgoing_.level_results.push_back(std::move(value));
     }
-    void pause_presented(std::uint8_t value) {
-        outgoing_.order.push_back({UnrealMessageKind::PausePresented, outgoing_.pause_results.size()});
-        outgoing_.pause_results.push_back(std::move(value));
-    }
     void send(UnrealMessageKind kind) { outgoing_.order.push_back({kind, 0}); }
 
   private:

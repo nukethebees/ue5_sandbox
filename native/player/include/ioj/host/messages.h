@@ -69,7 +69,8 @@ enum class NativeMessageKind {
     Text,
     Pointer,
     Menu,
-    Pause,
+    OpenPause,
+    ClosePause,
     Benchmark,
     Viewer,
     Steering,
@@ -102,7 +103,6 @@ struct NativeMessageColumns {
                          self.texts,
                          self.pointers,
                          self.menus,
-                         self.pause_commands,
                          self.benchmark_selections,
                          self.viewer_steps,
                          self.steering,
@@ -124,7 +124,6 @@ struct NativeMessageColumns {
     Column<MenuText> texts;
     Column<MenuPointer> pointers;
     Column<MenuMessage> menus;
-    Column<PauseCommand> pause_commands;
     Column<BenchmarkAction> benchmark_selections;
     Column<ViewerStep> viewer_steps;
     Column<std::optional<Vector2d>> steering;
@@ -150,7 +149,7 @@ enum class UnrealMessageKind {
     SimulationMode,
     Applied,
     LevelInitialized,
-    PausePresented,
+    PausePresentationFailed,
     MainMenuReady,
     MainMenuFailed,
     LevelWorldReady,
@@ -176,8 +175,7 @@ struct UnrealMessageColumns {
                          self.edits,
                          self.simulation_modes,
                          self.settings_results,
-                         self.level_results,
-                         self.pause_results);
+                         self.level_results);
     }
 
     Column<UnrealMessageHandle> order;
@@ -189,7 +187,6 @@ struct UnrealMessageColumns {
     Column<levels::LaunchMode> simulation_modes;
     Column<SettingsApplied> settings_results;
     Column<std::string> level_results;
-    Column<std::uint8_t> pause_results;
 };
 using UnrealMessages = UnrealMessageColumns<MessageSpan>;
 }

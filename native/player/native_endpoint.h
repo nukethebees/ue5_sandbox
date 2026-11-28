@@ -41,10 +41,6 @@ struct NativeEndpoint {
         outgoing_.order.push_back({NativeMessageKind::Menu, outgoing_.menus.size()});
         outgoing_.menus.emplace_back(state, std::move(update));
     }
-    void present_pause(PauseCommand value) {
-        outgoing_.order.push_back({NativeMessageKind::Pause, outgoing_.pause_commands.size()});
-        outgoing_.pause_commands.push_back(std::move(value));
-    }
     void select_benchmark(BenchmarkAction value) {
         outgoing_.order.push_back(
             {NativeMessageKind::Benchmark, outgoing_.benchmark_selections.size()});
