@@ -46,7 +46,7 @@ class SdlPlayerInput : public ::testing::Test {
     host::NativeEndpoint endpoint_;
     host::UnrealEndpoint unreal_;
     std::optional<MenuTarget> pointer_hit_;
-    std::vector<host::PauseCommand> pause_commands_;
+    std::vector<MenuTarget> pause_focus_;
     void SetUp() override {
         SDL_SetMainReady();
         ASSERT_TRUE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) << SDL_GetError();
@@ -78,7 +78,7 @@ class SdlPlayerInput : public ::testing::Test {
                         view.actions.push_back(command.action);
                         if (command.action == host::PlayerAction::OpenPause) {
                             menu_.open(MenuScreen::Pause);
-                            pause_commands_.push_back({host::PauseCommandKind::Open});
+                            pause_focus_.push_back(menu_.focus);
                         } else if (command.action == host::PlayerAction::RequestResume) {
                             menu_.open(MenuScreen::Closed);
                         }
@@ -86,8 +86,7 @@ class SdlPlayerInput : public ::testing::Test {
                     case InputCommand::Kind::Navigation:
                         if (menu_.screen == MenuScreen::Pause) {
                             menu_.navigate_pause(command.button.command, command.button.repeat);
-                            pause_commands_.push_back(
-                                {host::PauseCommandKind::Select, menu_.pause_selection});
+                            pause_focus_.push_back(menu_.focus);
                         } else {
                             view.commands.push_back(command.button.command);
                         }
@@ -244,7 +243,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_EQ(menu.transaction, SettingsTransaction::ConfirmLeave);
     EXPECT_EQ(menu.focus, MenuTarget{MenuControl::Save});
     menu.set_transaction(SettingsTransaction::Editing);
-    EXPECT_FALSE(menu.finish_main_leave(false));
+    EXPECT_FALSE(menu.finish_leave(false));
     EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::Audio});
 }
 
@@ -351,11 +350,10 @@ TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
     frame();
     EXPECT_EQ(view.actions, std::vector{host::PlayerAction::OpenPause});
     EXPECT_TRUE(view.commands.empty());
-    EXPECT_EQ(menu_.pause_selection, host::PauseMenuItem::Controls);
-    EXPECT_EQ(pause_commands_,
-              (std::vector<host::PauseCommand>{
-                  {host::PauseCommandKind::Open, host::PauseMenuItem::Resume},
-                  {host::PauseCommandKind::Select, host::PauseMenuItem::Controls}}));
+    EXPECT_EQ(menu_.focus.pause_item(), host::PauseMenuItem::Controls);
+    EXPECT_EQ(
+        pause_focus_,
+        (std::vector<MenuTarget>{host::PauseMenuItem::Resume, host::PauseMenuItem::Controls}));
     EXPECT_TRUE(ship_frame().events.empty());
 }
 

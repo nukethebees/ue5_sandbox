@@ -97,11 +97,10 @@ auto PlayerMenu::pause_item() const -> host::PauseMenuItem {
 }
 auto PlayerMenu::select_pause_item(host::PauseMenuItem item) -> bool {
     if (screen != MenuScreen::Pause || navigation_blocked() || item == pause_item() ||
-        (pause_sidebar && item == pause_selection)) {
+        focus == MenuTarget{item}) {
         return false;
     }
-    pause_selection = item;
-    pause_sidebar = true;
+    focus = item;
     return true;
 }
 auto PlayerMenu::navigate_pause(MenuCommand command, bool repeat)
@@ -118,7 +117,7 @@ auto PlayerMenu::navigate_pause(MenuCommand command, bool repeat)
             break;
         case Accept:
             if (!repeat) {
-                return pause_selection;
+                return focus.pause_item();
             }
             break;
         case Right:
@@ -127,27 +126,26 @@ auto PlayerMenu::navigate_pause(MenuCommand command, bool repeat)
             break;
         default:
             do {
-                pause_selection = command == Up || command == Previous
-                                    ? cycle_previous(pause_selection)
-                                    : cycle_next(pause_selection);
-            } while (pause_selection == pause_item());
+                focus = command == Up || command == Previous ? cycle_previous(focus.pause_item())
+                                                             : cycle_next(focus.pause_item());
+            } while (focus.pause_item() == pause_item());
             break;
     }
     return {};
 }
 void PlayerMenu::open(MenuScreen next, bool content) {
     screen = next;
-    pending_pause.reset();
-    pause_sidebar = next == MenuScreen::Pause;
-    pause_selection = host::PauseMenuItem::Resume;
     page = next == MenuScreen::Pause ? MainMenuItem::Audio : MainMenuItem::SelectLevel;
     focus =
         next == MenuScreen::Completion ? MenuTarget{MenuControl::ReturnToLevels} : MenuTarget{page};
+    if (next == MenuScreen::Pause) {
+        focus = host::PauseMenuItem::Resume;
+    }
     if (content && next == MenuScreen::Main) {
         focus = MenuTarget{MenuTarget::Kind::Level, selected_level};
     }
     category = levels::authoring::LevelCatalogCategory::Playable;
-    pending_page.reset();
+    pending_destination.reset();
     transaction = {};
     profile_page = ProfilePage::Browse;
     draft.cancel();
@@ -168,13 +166,13 @@ auto PlayerMenu::leave_ready() -> bool {
     return true;
 }
 
-auto PlayerMenu::finish_main_leave(bool accepted) -> std::optional<MenuUpdate> {
-    auto const destination{std::exchange(pending_page, {})};
+auto PlayerMenu::finish_leave(bool accepted) -> std::optional<MenuUpdate> {
+    auto const destination{std::exchange(pending_destination, {})};
     if (!destination || !accepted) {
         return {};
     }
-    if (*destination != MainMenuItem::Quit) {
-        select_page(*destination);
+    if (destination->kind == MenuTarget::Kind::Page && destination->page() != MainMenuItem::Quit) {
+        select_page(destination->page());
     }
     return MenuUpdate{*destination, MenuOperation::Activate};
 }
@@ -356,7 +354,7 @@ auto PlayerMenu::activate(MenuTarget target,
         }
         auto const item{target.page()};
         if (item != page && !leave_ready()) {
-            pending_page = item;
+            pending_destination = item;
             return MenuUpdate{focus, MenuOperation::Focus};
         }
         if (item != MainMenuItem::Quit) {

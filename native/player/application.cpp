@@ -168,8 +168,10 @@ void Application::consume_replies() {
                         }
                         break;
                     case host::PauseWidgetEventKind::ContentFocused:
-                        if (!menu_.navigation_blocked()) {
-                            menu_.pause_sidebar = false;
+                        if (!menu_.navigation_blocked() &&
+                            menu_.focus.kind == MenuTarget::Kind::PauseItem) {
+                            menu_.select(menu_.primary_target(settings_.view()));
+                            endpoint_.present_menu(menu_);
                         }
                         break;
                 }
@@ -306,7 +308,7 @@ void Application::handle_action(host::PlayerAction action) {
 }
 void Application::choose_pause(host::PauseMenuItem item) {
     if (item != menu_.pause_item() && !menu_.leave_ready()) {
-        menu_.pending_pause = item;
+        menu_.pending_destination = item;
         present_menu({menu_.focus, MenuOperation::Focus});
         return;
     }
@@ -321,7 +323,6 @@ void Application::choose_pause(host::PauseMenuItem item) {
         case Controls:
         case Audio:
             menu_.select_page(item == Audio ? MainMenuItem::Audio : MainMenuItem::Controls);
-            menu_.pause_sidebar = false;
             menu_.select(menu_.primary_target(settings_.view()));
             endpoint_.present_menu(menu_);
             endpoint_.present_pause({host::PauseCommandKind::ShowPage, item});
@@ -335,9 +336,7 @@ void Application::choose_pause(host::PauseMenuItem item) {
     }
 }
 void Application::finish_leave(bool accepted) {
-    if (auto item{std::exchange(menu_.pending_pause, {})}; item && accepted) {
-        choose_pause(*item);
-    } else if (auto update{menu_.finish_main_leave(accepted)}) {
+    if (auto update{menu_.finish_leave(accepted)}) {
         apply_menu(std::move(*update));
     }
 }
@@ -359,14 +358,15 @@ void Application::consume_commands() {
                     present_menu(
                         {menu_.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
                 } else if (menu_.screen == MenuScreen::Pause &&
-                           (menu_.pause_sidebar || button.command == MenuCommand::Back) &&
+                           (menu_.focus.kind == MenuTarget::Kind::PauseItem ||
+                            button.command == MenuCommand::Back) &&
                            !menu_.navigation_blocked()) {
-                    auto const before{menu_.pause_selection};
+                    auto const before{menu_.focus};
                     if (auto item{menu_.navigate_pause(button.command, button.repeat)}) {
                         choose_pause(*item);
-                    } else if (before != menu_.pause_selection) {
+                    } else if (before != menu_.focus) {
                         endpoint_.present_pause(
-                            {host::PauseCommandKind::Select, menu_.pause_selection});
+                            {host::PauseCommandKind::Select, menu_.focus.pause_item()});
                     }
                 } else if (auto update{menu_.navigate(button.command,
                                                       button.repeat,
@@ -440,6 +440,10 @@ void Application::apply_menu(MenuUpdate update) {
         return;
     }
     auto const& target{update.target};
+    if (target.kind == MenuTarget::Kind::PauseItem) {
+        choose_pause(target.pause_item());
+        return;
+    }
     if (target.kind == MenuTarget::Kind::Page && target.page() == MainMenuItem::Quit) {
         quit_requested_ = true;
         return;

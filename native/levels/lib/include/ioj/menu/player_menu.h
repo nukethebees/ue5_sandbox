@@ -48,6 +48,7 @@ enum class MenuOperation { Focus, Activate, RefreshSettings, BindingPrompt };
 struct MenuTarget {
     enum class Kind {
         Page,
+        PauseItem,
         Device,
         Setting,
         Mapping,
@@ -59,6 +60,12 @@ struct MenuTarget {
         Outcome
     };
 
+    MenuTarget(host::PauseMenuItem item)
+        : kind{Kind::PauseItem}
+        , index{static_cast<unsigned>(item)} {}
+    auto pause_item() const -> host::PauseMenuItem {
+        return static_cast<host::PauseMenuItem>(index);
+    }
     MenuTarget(MainMenuItem value)
         : kind{Kind::Page}
         , index{static_cast<unsigned>(value)} {}
@@ -160,7 +167,7 @@ struct PlayerMenu : MenuPresentation {
     void open(MenuScreen screen, bool focus_content = false);
     void select_page(MainMenuItem item);
     auto leave_ready() -> bool;
-    auto finish_main_leave(bool accepted) -> std::optional<MenuUpdate>;
+    auto finish_leave(bool accepted) -> std::optional<MenuUpdate>;
     void set_transaction(SettingsTransaction next);
     void select_profile_page(ProfilePage page);
     auto navigate(MenuCommand command,
@@ -195,10 +202,7 @@ struct PlayerMenu : MenuPresentation {
     std::vector<std::string> outcomes;
     std::string active_profile;
     bool const show_reset_profile;
-    std::optional<MainMenuItem> pending_page;
+    std::optional<MenuTarget> pending_destination;
     std::string profile_name;
-    bool pause_sidebar{};
-    host::PauseMenuItem pause_selection{host::PauseMenuItem::Resume};
-    std::optional<host::PauseMenuItem> pending_pause;
 };
 }

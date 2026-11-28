@@ -30,14 +30,14 @@ TEST(PauseMenu, PausedLaunchPointerSelectionAndOptionsLeaveConfirmation) {
     EXPECT_TRUE(menu.select_pause_item(Controls));
     EXPECT_EQ(menu.navigate_pause(MenuCommand::Accept, false), Controls);
     menu.select_page(MainMenuItem::Controls);
-    menu.pause_sidebar = false;
+    menu.select(menu.primary_target({}));
     EXPECT_TRUE(menu.draft.set_setting(GameSetting::MasterVolume, 0.4f));
     EXPECT_TRUE(menu.select_pause_item(Quit));
     EXPECT_FALSE(menu.leave_ready());
     EXPECT_TRUE(menu.navigation_blocked());
     EXPECT_FALSE(menu.select_pause_item(Resume));
     menu.set_transaction(SettingsTransaction::Editing);
-    EXPECT_EQ(menu.pause_selection, Quit);
+    EXPECT_EQ(menu.focus.pause_item(), Quit);
     menu.draft.cancel();
     EXPECT_TRUE(menu.leave_ready());
 }
