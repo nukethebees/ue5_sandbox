@@ -263,6 +263,7 @@ void ASpaceGamePlayerController::present_menu(host::MenuMessage const& message) 
     switch (unreal_endpoint().menu().screen) {
         case MenuScreen::Main:
             if (auto* main{modal_ui_.main_menu()}) {
+                main->refresh_navigation();
                 if (message.update) {
                     main->present(*message.update);
                 }

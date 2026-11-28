@@ -106,16 +106,12 @@ void USaveGameViewerWidget::begin_create_profile() {
     if (view_.IsValid()) {
         view_->show_create_profile();
     }
-
-    modal_state_changed.Broadcast(true);
 }
 
 void USaveGameViewerWidget::cancel_create_profile() {
     if (view_.IsValid()) {
         view_->hide_create_profile();
     }
-
-    modal_state_changed.Broadcast(false);
 }
 
 void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult result) {

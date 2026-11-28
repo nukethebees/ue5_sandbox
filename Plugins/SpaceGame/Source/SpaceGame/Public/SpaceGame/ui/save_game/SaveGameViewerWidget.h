@@ -51,8 +51,6 @@ struct FSaveGameViewState {
     bool can_activate{};
 };
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FSaveGameModalStateChanged, bool);
-
 UCLASS()
 class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     GENERATED_BODY()
@@ -69,7 +67,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void begin_create_profile();
     void cancel_create_profile();
 
-    FSaveGameModalStateChanged modal_state_changed;
   protected:
     /* **************************************** */
     // Widget lifecycle

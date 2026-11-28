@@ -105,10 +105,6 @@ void UMainMenuWidget::create_content_widgets() {
             : IsValid(world)
                 ? CreateWidget<USaveGameViewerWidget>(world, USaveGameViewerWidget::StaticClass())
                 : nullptr;
-        if (IsValid(save_game_viewer_)) {
-            save_game_viewer_->modal_state_changed.AddUObject(
-                this, &ThisClass::handle_page_modal_changed);
-        }
     }
 
     if (!IsValid(options_widget_)) {
@@ -119,10 +115,6 @@ void UMainMenuWidget::create_content_widgets() {
                 ? CreateWidget<UOptionsWidget>(game_instance, UOptionsWidget::StaticClass())
             : IsValid(world) ? CreateWidget<UOptionsWidget>(world, UOptionsWidget::StaticClass())
                              : nullptr;
-        if (IsValid(options_widget_)) {
-            options_widget_->modal_state_changed.AddUObject(this,
-                                                            &ThisClass::handle_page_modal_changed);
-        }
     }
 
     if (!IsValid(level_select_widget_) && level_select_class_) {
@@ -177,9 +169,9 @@ void UMainMenuWidget::restore_focus() {
     present({unreal_endpoint().menu().focus, MenuOperation::Focus});
 }
 
-void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
+void UMainMenuWidget::refresh_navigation() {
     if (view_.IsValid()) {
-        view_->set_navigation_enabled(!visible);
+        view_->set_navigation_enabled(!unreal_endpoint().menu().navigation_blocked());
     }
 }
 

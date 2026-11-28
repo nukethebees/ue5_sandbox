@@ -48,8 +48,6 @@ void UPauseMenuWidget::NativeOnInitialized() {
         this,
         &ThisClass::send_event,
         host::PauseWidgetEvent{host::PauseWidgetEventKind::ContentFocused});
-    options_widget->modal_state_changed.AddUObject(this,
-                                                   &ThisClass::handle_options_modal_state_changed);
 
     auto* const game_instance{GetGameInstance()};
     auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
@@ -69,9 +67,8 @@ void UPauseMenuWidget::NativeConstruct() {
 }
 
 void UPauseMenuWidget::prepare_for_open() {
-    options_modal_visible_ = false;
-    options_widget->show_page(MainMenuItem::Audio);
-    set_navigation_enabled(true);
+    options_widget->show_page(unreal_endpoint().menu().page);
+    refresh_navigation();
 }
 
 auto UPauseMenuWidget::focus_target() const -> UWidget* {
@@ -102,7 +99,7 @@ void UPauseMenuWidget::send_event(host::PauseWidgetEvent event) {
 
 void UPauseMenuWidget::present(host::MenuMessage const& message) {
     options_widget->show_page(message.state.page);
-    set_navigation_enabled(!options_modal_visible_);
+    refresh_navigation();
     if (!message.update) {
         return;
     }
@@ -115,12 +112,8 @@ void UPauseMenuWidget::present(host::MenuMessage const& message) {
     }
 }
 
-void UPauseMenuWidget::handle_options_modal_state_changed(bool const visible) {
-    options_modal_visible_ = visible;
-    set_navigation_enabled(!visible);
-}
-
-void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
+void UPauseMenuWidget::refresh_navigation() {
+    auto const enabled{!unreal_endpoint().menu().navigation_blocked()};
     for (auto* const button : {resume_button,
                                audio_button,
                                controls_button,

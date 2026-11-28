@@ -27,8 +27,6 @@ struct FControlsFocusTarget {
     TSharedPtr<SGameButton> button;
 };
 
-DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
-
 class SGameOptionsView final : public SCompoundWidget {
     enum class PendingRebuild { None, PreserveScroll, ResetScroll };
     friend struct ::SlateGenerated::ioj::SGameOptionsViewBuilder;
@@ -42,7 +40,6 @@ class SGameOptionsView final : public SCompoundWidget {
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(MainMenuItem, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
-    SLATE_EVENT(FOnOptionsInteractionModalChanged, OnInteractionModalChanged)
     SLATE_END_ARGS()
 
     /* **************************************** */
@@ -113,8 +110,6 @@ class SGameOptionsView final : public SCompoundWidget {
     FGameAudioFacade audio_{};
     PendingRebuild pending_rebuild_{};
     MainMenuItem rendered_page_{};
-
-    FOnOptionsInteractionModalChanged on_interaction_modal_changed_{};
 
     TSharedPtr<SGameButton> apply_button_{};
     TSharedPtr<SGameButton> reset_button_{};

@@ -175,7 +175,6 @@ void SGameOptionsView::Construct(FArguments const& args) {
     audio_ = args._Audio;
     rendered_page_ = args._Page;
     check(style_ != nullptr);
-    on_interaction_modal_changed_ = args._OnInteractionModalChanged;
 
     auto header{build_header()};
     auto body{SAssignNew(page_content_, SBox)[build_body()]};
@@ -245,7 +244,6 @@ void SGameOptionsView::refresh() {
     if (display_visible != display_prompt_->GetVisibility().IsVisible()) {
         display_prompt_->SetVisibility(display_visible ? EVisibility::Visible
                                                        : EVisibility::Collapsed);
-        on_interaction_modal_changed_.ExecuteIfBound(display_visible);
         if (display_visible) {
             if (confirm_display_button_.IsValid()) {
                 confirm_display_button_->focus();
@@ -303,7 +301,6 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     } else if (update.target.kind == MenuTarget::Kind::Mapping) {
         auto const mapping{update.target.mapping()};
         if (activate) {
-            on_interaction_modal_changed_.ExecuteIfBound(true);
             present_binding_prompt();
         } else {
             restore_controls_focus(MenuTarget{mapping});
@@ -671,7 +668,6 @@ void SGameOptionsView::present_binding_prompt() {
     capture_prompt_->SetVisibility(capturing ? EVisibility::Visible : EVisibility::Collapsed);
     conflict_prompt_->SetVisibility(conflicts ? EVisibility::Visible : EVisibility::Collapsed);
     if (edit.prompt == BindingPrompt::Closed) {
-        on_interaction_modal_changed_.ExecuteIfBound(false);
         request_controls_rebuild();
         refresh();
     } else if (capturing) {

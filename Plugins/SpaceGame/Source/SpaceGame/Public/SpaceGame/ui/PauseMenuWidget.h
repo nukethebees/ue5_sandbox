@@ -63,13 +63,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     auto button_for(host::PauseMenuItem item) const -> UMenuButtonWidget*;
     void send_event(host::PauseWidgetEvent event);
-    void handle_options_modal_state_changed(bool visible);
-    void set_navigation_enabled(bool enabled);
+    void refresh_navigation();
     void apply_ui_style();
-
-    /* **************************************** */
-    // State
-    /* **************************************** */
-    bool options_modal_visible_{};
 };
 }

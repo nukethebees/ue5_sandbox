@@ -59,9 +59,7 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .Capabilities(&unreal_endpoint().capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
-        .Page(unreal_endpoint().menu().page)
-        .OnInteractionModalChanged(FOnOptionsInteractionModalChanged::CreateUObject(
-            this, &ThisClass::handle_interaction_modal_changed));
+        .Page(unreal_endpoint().menu().page);
 }
 
 void UOptionsWidget::ReleaseSlateResources(bool const release_children) {
@@ -87,10 +85,6 @@ void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {
         options_view_->focus_content();
     }
-}
-
-void UOptionsWidget::handle_interaction_modal_changed(bool const visible) {
-    modal_state_changed.Broadcast(visible);
 }
 
 void UOptionsWidget::present(MenuUpdate const& update) {

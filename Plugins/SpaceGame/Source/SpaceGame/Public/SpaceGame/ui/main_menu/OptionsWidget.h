@@ -12,8 +12,6 @@ enum class GameSettingCategory : uint8;
 class SGameOptionsView;
 class UGameUiStyleSubsystem;
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOptionsModalStateChanged, bool);
-
 UCLASS()
 class SPACEGAME_API UOptionsWidget : public UUserWidget {
     GENERATED_BODY()
@@ -25,7 +23,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void focus_content();
     void present(MenuUpdate const& update);
 
-    FOptionsModalStateChanged modal_state_changed;
     FSimpleMulticastDelegate content_focused;
   protected:
     void NativeOnInitialized() override;
@@ -36,8 +33,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void handle_interaction_modal_changed(bool visible);
-
     UPROPERTY(Transient)
     UGameUiStyleSubsystem* style_{nullptr};
 
