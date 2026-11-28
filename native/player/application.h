@@ -33,7 +33,7 @@ class Application {
         std::filesystem::path source_path;
     };
     auto play(std::filesystem::path const& level_path) -> ApplicationResult;
-    void exchange();
+    void consume_replies();
     void process_input(double seconds);
     void consume_commands();
     auto route() const -> InputRoute;

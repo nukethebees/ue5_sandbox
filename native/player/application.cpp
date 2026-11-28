@@ -54,11 +54,11 @@ Application::Application(Window window,
 auto Application::run(std::wstring const& engine_command_line,
                       std::filesystem::path const& level_path) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
-    endpoint_.present_capabilities(&capabilities);
-    endpoint_.present_keyboard(&input_.keyboard());
+    endpoint_.present_capabilities(capabilities);
+    endpoint_.present_keyboard(input_.keyboard());
     endpoint_.present_menu(menu_);
     publish_settings();
-    endpoint_.exchange();
+    endpoint_.publish();
     if (auto result{start_engine(window_, engine_command_line, settings_.launch_display_mode())};
         !result) {
         return result;
@@ -75,7 +75,7 @@ auto Application::run(std::wstring const& engine_command_line,
 
     try {
         unload_level(sim::RunEndReason::WorldEnd, false);
-        exchange();
+        consume_replies();
         if (play_result && !result_) {
             play_result = result_;
         }
@@ -99,9 +99,12 @@ auto Application::run(std::wstring const& engine_command_line,
 
     return shutdown_result;
 }
-void Application::exchange() {
+/* **************************************** */
+// Endpoint replies
+/* **************************************** */
+void Application::consume_replies() {
     // Publishing a borrowed frame or catalog can append replies and renew these spans.
-    auto const& incoming{endpoint_.exchange()};
+    auto const& incoming{endpoint_.publish()};
     for (std::size_t cursor{}; cursor < incoming.order.size(); ++cursor) {
         auto const [kind, index]{incoming.order[cursor]};
         using enum host::UnrealMessageKind;
@@ -211,7 +214,7 @@ void Application::exchange() {
                 break;
         }
         if (endpoint_.size() != 0) {
-            endpoint_.exchange();
+            endpoint_.publish();
         }
     }
     endpoint_.release_replies();
@@ -348,7 +351,7 @@ void Application::process_input(double seconds) {
         return;
     }
     if (window.keyboard_changed) {
-        endpoint_.present_keyboard(&input_.keyboard());
+        endpoint_.present_keyboard(input_.keyboard());
     }
     if (window.display_changed) {
         result_ = window_.refresh_resolutions();
@@ -378,7 +381,7 @@ void Application::process_input(double seconds) {
         cursor = input_.map_events(events, cursor);
         consume_commands();
         if (endpoint_.size() != 0) {
-            exchange();
+            consume_replies();
         }
         if (quit_requested_ || !result_) {
             return;
@@ -391,7 +394,7 @@ void Application::process_input(double seconds) {
         endpoint_.present_steering(input_.steering());
     }
     if (endpoint_.size() != 0) {
-        exchange();
+        consume_replies();
     }
 }
 
@@ -626,7 +629,7 @@ void Application::return_to_menu(std::string error) {
     endpoint_.open_menu(std::move(error));
 }
 auto Application::play(std::filesystem::path const& level_path) -> ApplicationResult {
-    exchange();
+    consume_replies();
     if (!engine_.ready) {
         return std::unexpected{"Unreal did not initialize a playable world. See the game log."};
     }
@@ -634,7 +637,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
         endpoint_.apply_settings(
             {host::PreferenceOperation::Startup, category, settings_.view().applied_values});
     }
-    exchange();
+    consume_replies();
     if (!result_) {
         return result_;
     }
@@ -649,7 +652,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
             return result;
         }
     }
-    exchange();
+    consume_replies();
     auto previous{std::chrono::steady_clock::now()};
     auto const deadline{previous + std::chrono::minutes{2}};
     while (result_ && !quit_requested_ && !engine_.exit_requested) {
@@ -675,7 +678,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
         if (auto result{tick_engine()}; !result) {
             return result;
         }
-        exchange();
+        consume_replies();
         auto* level{storage_.get()};
         if (!level || !result_) {
             continue;
@@ -684,7 +687,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
         if (level->presentation_setup && engine_.world_ready) {
             endpoint_.initialize_level({bridge::level_init(*level->presentation_setup, simulation),
                                         bridge::level_frame(simulation)});
-            exchange();
+            consume_replies();
             if (exit_when_ready_ && result_ && engine_.presents_level) {
                 std::println("Ready: {}", path_to_utf8(level_path));
                 return {};
@@ -704,7 +707,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
                 simulation.state() == sim::LevelState::Paused) {
                 endpoint_.send(host::NativeMessageKind::SimulationPaused);
             }
-            endpoint_.exchange();
+            endpoint_.publish();
             level->update_pause(menu_.screen == MenuScreen::Pause);
         }
         if (auto* current{storage_.get()};
@@ -712,7 +715,7 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
             current->simulation.state() == sim::LevelState::Stopped) {
             unload_level(sim::RunEndReason::LevelCompleted, true);
         }
-        exchange();
+        consume_replies();
     }
     if (!result_) {
         return result_;
@@ -733,7 +736,7 @@ void Application::publish_catalog() {
     if (!loaded) {
         auto const error{levels::format_diagnostics(loaded.error())};
         endpoint_.present_catalog({directory, error, {}, {}});
-        endpoint_.exchange();
+        endpoint_.publish();
         return;
     }
 
@@ -770,7 +773,7 @@ void Application::publish_catalog() {
     }
     endpoint_.present_menu(menu_);
     endpoint_.present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
-    endpoint_.exchange();
+    endpoint_.publish();
 
     available_levels_.reserve(
         std::ranges::count(rows.listings, true, &presentation::LevelListing::unlocked));
@@ -815,7 +818,7 @@ void Application::publish_profiles() {
     }
     endpoint_.present_menu(menu_);
     endpoint_.present_profiles(view);
-    endpoint_.exchange();
+    endpoint_.publish();
 }
 
 auto Application::launch_level(std::filesystem::path const& path) -> ApplicationResult {
@@ -885,7 +888,7 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         }
         endpoint_.present_menu(menu_);
         endpoint_.finish_level({completed, score.has_value(), saved.new_best_time, show_results});
-        endpoint_.exchange();
+        endpoint_.publish();
     }
 
     storage_.unload();

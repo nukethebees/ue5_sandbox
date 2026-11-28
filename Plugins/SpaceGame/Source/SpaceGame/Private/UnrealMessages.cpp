@@ -167,10 +167,10 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             }
             case Keyboard:
-                keyboard = *messages.keyboards[index];
+                keyboard = messages.keyboards[index].get();
                 break;
             case Capabilities:
-                capabilities = *messages.capabilities[index];
+                capabilities = messages.capabilities[index].get();
                 break;
             case Settings: {
                 auto const& update{messages.settings[index]};

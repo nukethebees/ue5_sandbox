@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ioj/input/physical/keyboard_layout.h>
 #include <ioj/input/presentation_events.h>
 #include <ioj/menu/player_menu.h>
-#include <ioj/input/physical/keyboard_layout.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/level_frame.h>
 #include <ioj/presentation/level_init.h>
@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -99,28 +100,56 @@ struct NativeMessageHandle {
     NativeMessageKind kind;
     std::size_t index;
 };
-struct NativeMessages {
-    std::span<NativeMessageHandle const> order;
-    std::span<MenuKey const> keys;
-    std::span<MenuText const> texts;
-    std::span<MenuPointer const> pointers;
-    std::span<MenuMessage const> menus;
-    std::span<PauseCommand const> pause_commands;
-    std::span<std::uint8_t const> benchmark_selections;
-    std::span<ViewerStep const> viewer_steps;
-    std::span<std::optional<Vector2d> const> steering;
-    std::span<SettingsPresentation const> settings;
-    std::span<presentation::LevelCatalogView const> catalogs;
-    std::span<presentation::ProfileView const> profiles;
-    std::span<LevelInitialization const> initializations;
-    std::span<LevelPresentation const> frames;
-    std::span<LevelCompletion const> completions;
-    std::span<profiles::CreateProfileResult const> profile_results;
-    std::span<ApplySettings const> preferences;
-    std::span<std::string const> errors;
-    std::span<KeyboardLayout const* const> keyboards;
-    std::span<SystemCapabilities const* const> capabilities;
+template <typename T>
+using MessageSpan = std::span<T const>;
+
+template <template <typename> class Column>
+struct NativeMessageColumns {
+    auto with_columns(this auto& self, auto operation) {
+        return operation(self.order,
+                         self.keys,
+                         self.texts,
+                         self.pointers,
+                         self.menus,
+                         self.pause_commands,
+                         self.benchmark_selections,
+                         self.viewer_steps,
+                         self.steering,
+                         self.settings,
+                         self.catalogs,
+                         self.profiles,
+                         self.initializations,
+                         self.frames,
+                         self.completions,
+                         self.profile_results,
+                         self.preferences,
+                         self.errors,
+                         self.keyboards,
+                         self.capabilities);
+    }
+
+    Column<NativeMessageHandle> order;
+    Column<MenuKey> keys;
+    Column<MenuText> texts;
+    Column<MenuPointer> pointers;
+    Column<MenuMessage> menus;
+    Column<PauseCommand> pause_commands;
+    Column<std::uint8_t> benchmark_selections;
+    Column<ViewerStep> viewer_steps;
+    Column<std::optional<Vector2d>> steering;
+    Column<SettingsPresentation> settings;
+    Column<presentation::LevelCatalogView> catalogs;
+    Column<presentation::ProfileView> profiles;
+    Column<LevelInitialization> initializations;
+    Column<LevelPresentation> frames;
+    Column<LevelCompletion> completions;
+    Column<profiles::CreateProfileResult> profile_results;
+    Column<ApplySettings> preferences;
+    Column<std::string> errors;
+    Column<std::reference_wrapper<KeyboardLayout const>> keyboards;
+    Column<std::reference_wrapper<SystemCapabilities const>> capabilities;
 };
+using NativeMessages = NativeMessageColumns<MessageSpan>;
 enum class UnrealMessageKind {
     Hit,
     PauseInteraction,
@@ -140,18 +169,34 @@ struct UnrealMessageHandle {
     UnrealMessageKind kind;
     std::size_t index;
 };
-struct UnrealMessages {
-    std::span<UnrealMessageHandle const> order;
-    std::span<MenuTarget const> hits;
-    std::span<PauseWidgetEvent const> pause_events;
-    std::span<PlayerAction const> actions;
-    std::span<SettingChange const> settings;
-    std::span<MenuTextEdit const> edits;
-    std::span<levels::LaunchMode const> simulation_modes;
-    std::span<SettingsApplied const> settings_results;
-    std::span<std::string const> level_results;
-    std::span<std::uint8_t const> pause_results;
-    std::span<EngineStatus const> status;
+template <template <typename> class Column>
+struct UnrealMessageColumns {
+    auto with_columns(this auto& self, auto operation) {
+        return operation(self.order,
+                         self.hits,
+                         self.pause_events,
+                         self.actions,
+                         self.settings,
+                         self.edits,
+                         self.simulation_modes,
+                         self.settings_results,
+                         self.level_results,
+                         self.pause_results,
+                         self.status);
+    }
+
+    Column<UnrealMessageHandle> order;
+    Column<MenuTarget> hits;
+    Column<PauseWidgetEvent> pause_events;
+    Column<PlayerAction> actions;
+    Column<SettingChange> settings;
+    Column<MenuTextEdit> edits;
+    Column<levels::LaunchMode> simulation_modes;
+    Column<SettingsApplied> settings_results;
+    Column<std::string> level_results;
+    Column<std::uint8_t> pause_results;
+    Column<EngineStatus> status;
 };
+using UnrealMessages = UnrealMessageColumns<MessageSpan>;
 }
 }

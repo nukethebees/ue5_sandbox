@@ -1,9 +1,6 @@
 #pragma once
 
-namespace ioj::host {
-struct NativeMessages;
-struct UnrealMessages;
-}
+#include <ioj/host/messages.h>
 
 namespace ioj {
 #ifdef IOJ_PLAYER_EXPORTS
